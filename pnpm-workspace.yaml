@@ -1,6 +1,10 @@
 packages:
   - 'packages/*'
   - 'clients/*'
+  - 'servers/*'
   - 'frontend/*'
 allowBuilds:
   esbuild: true
+  unrs-resolver: true
+minimumReleaseAgeExclude:
+  - '@langchain/core@1.2.7'
