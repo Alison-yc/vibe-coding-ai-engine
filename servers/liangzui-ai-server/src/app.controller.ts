@@ -11,7 +11,8 @@ export class AppController {
   }
 
   @Get('translate')
-  async translate(@Query('text') text: string): Promise<any> {
+  async translate(@Query('text') text: string): Promise<string> {
+    console.log('🚀 ~ AppController ~ translate ~ text:', text);
     return await this.appService.translate(text);
   }
 

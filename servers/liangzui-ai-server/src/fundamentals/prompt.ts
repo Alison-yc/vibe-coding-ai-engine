@@ -1,14 +1,15 @@
 import { HumanMessage, SystemMessage } from '@langchain/core/messages';
-import { ChatOllama } from '@langchain/ollama';
+import { createChatOllama } from './ollama';
 
-const llm = new ChatOllama({ model: 'qwen3.5:2b' });
+const llm = createChatOllama();
 
 export const translate = async (text: string) => {
   const conversation = [
-    new SystemMessage('你是一个专业的翻译助手，请将问题翻译成英文。'),
+    new SystemMessage(
+      'Translate the following text to English. Output only the translation.',
+    ),
     new HumanMessage(text),
   ];
   const res = await llm.invoke(conversation);
-  console.log(res);
-  return res;
+  return res.text;
 };
