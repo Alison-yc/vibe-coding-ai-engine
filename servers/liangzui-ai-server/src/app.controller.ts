@@ -16,6 +16,11 @@ export class AppController {
     return await this.appService.translate(text);
   }
 
+  @Get('rag-query')
+  async ragQuery(@Query('q') q: string): Promise<string> {
+    return await this.appService.ragQuery(q);
+  }
+
   @Get()
   getHello(): string {
     return this.appService.getHello();
