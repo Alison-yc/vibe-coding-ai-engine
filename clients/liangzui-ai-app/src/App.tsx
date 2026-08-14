@@ -1,36 +1,40 @@
 import { useState } from "react";
 import reactLogo from "./assets/react.svg";
 import { invoke } from "@tauri-apps/api/core";
-import "./App.css";
+import { Button } from "@/components/ui/button";
 
 function App() {
   const [greetMsg, setGreetMsg] = useState("");
   const [name, setName] = useState("");
 
   async function greet() {
-    // Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
     setGreetMsg(await invoke("greet", { name }));
   }
 
   return (
-    <main className="container">
-      <h1>Welcome to Tauri + React</h1>
+    <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-8">
+      <h1 className="text-3xl font-bold tracking-tight">
+        Welcome to Tauri + React
+      </h1>
 
-      <div className="row">
+      <div className="flex items-center gap-6">
         <a href="https://vite.dev" target="_blank">
-          <img src="/vite.svg" className="logo vite" alt="Vite logo" />
+          <img src="/vite.svg" className="h-16 w-16" alt="Vite logo" />
         </a>
         <a href="https://tauri.app" target="_blank">
-          <img src="/tauri.svg" className="logo tauri" alt="Tauri logo" />
+          <img src="/tauri.svg" className="h-16 w-16" alt="Tauri logo" />
         </a>
         <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
+          <img src={reactLogo} className="h-16 w-16" alt="React logo" />
         </a>
       </div>
-      <p>Click on the Tauri, Vite, and React logos to learn more.</p>
+
+      <p className="text-muted-foreground">
+        Click on the Tauri, Vite, and React logos to learn more.
+      </p>
 
       <form
-        className="row"
+        className="flex items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
           greet();
@@ -38,12 +42,15 @@ function App() {
       >
         <input
           id="greet-input"
+          className="flex h-9 w-64 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          value={name}
           onChange={(e) => setName(e.currentTarget.value)}
           placeholder="Enter a name..."
         />
-        <button type="submit">Greet</button>
+        <Button type="submit">Greet</Button>
       </form>
-      <p>{greetMsg}</p>
+
+      {greetMsg ? <p className="text-sm">{greetMsg}</p> : null}
     </main>
   );
 }

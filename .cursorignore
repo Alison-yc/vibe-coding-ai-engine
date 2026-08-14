@@ -1,0 +1,26 @@
+# Dependencies
+node_modules/
+
+# Build & compile
+dist/
+build/
+out/
+**/target/
+
+# Generated
+**/gen/
+
+# Git
+.git/
+
+# Logs & caches
+*.log
+.cache/
+.turbo/
+coverage/
+
+# Large binaries
+*.dmg
+*.app
+*.exe
+*.msi
