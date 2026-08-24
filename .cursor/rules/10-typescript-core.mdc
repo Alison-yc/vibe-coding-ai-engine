@@ -1,0 +1,59 @@
+---
+description: TypeScript 通用规范：类型来源、错误处理、命名与导出约定
+globs: **/*.{ts,tsx,mts,cts}
+alwaysApply: false
+---
+
+# TypeScript 规范
+
+## 类型的唯一来源是 zod schema
+
+跨进程边界（HTTP、SSE、Tauri invoke、数据库行）的数据一律先定义 zod schema，再用 `z.infer` 派生类型。
+
+```ts
+// ✅ GOOD —— packages/contracts/src/chat.ts
+export const ChatRequestSchema = z.object({
+  sessionId: z.string().uuid(),
+  content: z.string().min(1).max(8000),
+});
+export type ChatRequest = z.infer<typeof ChatRequestSchema>;
+
+// ❌ BAD —— 手写 interface，运行时无校验，前后端会漂移
+export interface ChatRequest { sessionId: string; content: string }
+```
+
+## 禁止 any 与非空断言逃逸
+
+- `any` 一律替换为 `unknown` + 收窄，或补上真实类型。
+- 不用 `!` 非空断言。用早返回、`??`，或抛出带上下文的错误。
+- 不用 `as` 强转跨越不兼容类型；需要转换时写 type guard 函数。
+
+## 错误必须带上下文并保留 cause
+
+```ts
+// ❌ BAD
+try { await embed(text); } catch { return null; }
+
+// ✅ GOOD
+try {
+  return await embed(text);
+} catch (error) {
+  throw new EmbeddingError(
+    `向量化失败，检查 Ollama 是否在 ${baseUrl} 运行`,
+    { cause: error },
+  );
+}
+```
+
+吞掉异常返回 `null` 会让"Ollama 没启动"看起来像"模型能力不行"，这是本项目最容易踩的调试陷阱。
+
+## 命名与导出
+
+- 文件名 `kebab-case`；类型/组件 `PascalCase`；函数/变量 `camelCase`；常量 `SCREAMING_SNAKE_CASE`。
+- 只用具名导出，不用 `export default`（React 组件与 Vite/Nest 配置文件除外）。
+- 每个包必须有 `src/index.ts` 作为唯一公共出口，内部文件不被外部直接引用。
+
+## 异步
+
+- 不写 floating promise，要么 `await`，要么显式 `void`。
+- 长耗时的模型调用必须接受 `AbortSignal` 并向下传递，否则用户关闭页面后请求还在占用 Ollama。

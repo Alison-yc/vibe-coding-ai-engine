@@ -1,0 +1,45 @@
+---
+description: Git 协作规范：提交信息格式、分支策略、变更粒度与不可提交内容
+alwaysApply: false
+---
+
+# Git 与提交规范
+
+## 提交信息（commitlint 强制）
+
+格式 `<type>(<scope>): <subject>`，subject 用中文，不加句号，不超过 72 字符。
+
+允许的 type：`feat` `fix` `refactor` `perf` `docs` `test` `build` `ci` `chore` `revert`
+
+允许的 scope（与包/领域对应）：`app` `web` `server` `ui` `contracts` `platform` `app-core` `workflow` `rag` `agent` `chat` `tauri` `ci` `deps` `plan`
+
+```
+✅ feat(rag): 接入 pgvector 替换内存向量库
+✅ fix(agent): 修复路径沙箱未处理符号链接逃逸
+✅ chore(deps): 升级 @xyflow/react 到 12.11.3
+❌ update code
+❌ feat: 一次性加了对话页、工作流引擎和打包脚本
+```
+
+## 分支
+
+- `main` 保护分支，只接受 PR 合并。
+- 功能分支 `feat/<scope>-<简述>`，修复 `fix/<scope>-<简述>`。
+- 一个分支对应 `.plan/` 里的一个阶段任务，分支生命周期不超过一周。
+
+## 变更粒度
+
+一个提交只做一件事。以下必须拆成独立提交：
+
+- 依赖升级与业务改动
+- 目录重命名/搬迁与逻辑修改
+- 格式化（prettier 全量格式化）与功能变更
+- 生成产物（drizzle 迁移、SDK 类型）与手写代码
+
+## 不可提交
+
+`.env`、`node_modules/`、`dist/`、`src-tauri/target/`、`src-tauri/gen/`、`coverage/`、`*.dmg`、`*.app`、个人 IDE 配置、含真实数据的数据库导出。
+
+## PR 要求
+
+标题同提交格式。描述里必须写：关联的 plan 编号、改了什么、怎么验证（可执行的命令）、有没有破坏性变更。CI 全绿才能合并。
