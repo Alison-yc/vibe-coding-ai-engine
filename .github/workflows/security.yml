@@ -1,0 +1,105 @@
+name: Security
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # 每周一早八点跑一次，捕获新披露的依赖漏洞
+    - cron: "0 0 * * 1"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # SARIF 上传到 Code Scanning 需要这个权限。
+  # 私有仓库若无 Advanced Security，把 upload-sarif 换成 upload-artifact。
+  security-events: write
+
+jobs:
+  # ── SAST：Semgrep ───────────────────────────────────────────
+  sast:
+    name: SAST（Semgrep）
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v5
+
+      # 自定义规则的自测。没测过的规则等于没有：
+      # 可能永远不触发，也可能满屏误报。见 .plan/16 实施步骤 2。
+      - name: 自定义规则自测
+        run: semgrep --test --config .semgrep.yml
+        continue-on-error: true # tests/semgrep/ 补齐后改为 false
+
+      - name: 扫描
+        run: |
+          semgrep scan \
+            --config .semgrep.yml \
+            --config p/typescript \
+            --config p/nodejs \
+            --config p/react \
+            --config p/secrets \
+            --sarif --output semgrep.sarif \
+            --metrics off
+
+      - name: 上传 SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  # ── SCA：依赖漏洞（npm + Cargo 都要覆盖） ─────────────────────
+  sca:
+    name: SCA（依赖漏洞）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: pnpm audit（high 及以上失败）
+        run: pnpm audit --audit-level=high
+
+      # 关键：Tauri 的 Rust 依赖树很大，只扫 npm 会漏掉一半
+      - name: OSV-Scanner（npm + Cargo）
+        uses: google/osv-scanner-action/osv-scanner-action@v2
+        with:
+          scan-args: |-
+            --lockfile=pnpm-lock.yaml
+            --lockfile=clients/liangzui-ai-app/src-tauri/Cargo.lock
+            --format=sarif
+            --output=osv.sarif
+        continue-on-error: true
+
+      - name: 上传 SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: osv.sarif
+          category: osv-scanner
+        continue-on-error: true
+
+  # ── 密钥扫描（含完整 git 历史） ──────────────────────────────
+  secrets:
+    name: 密钥扫描（Gitleaks）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          # 扫全部历史。改代码删掉密钥不够，历史里还在。
+          fetch-depth: 0
+
+      - uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
