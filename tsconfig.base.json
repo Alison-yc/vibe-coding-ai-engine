@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "compilerOptions": {
+    /* 目标与模块 */
+    "target": "ES2023",
+    "lib": ["ES2023"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "resolveJsonModule": true,
+
+    /* 严格性：这几项是防运行时崩溃的主力，不要为了少几个报错关掉 */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    "noImplicitOverride": true,
+    "noFallthroughCasesInSwitch": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "exactOptionalPropertyTypes": false,
+
+    /* 模块语法：强制 import type，避免运行时误引入只用于类型的模块 */
+    "verbatimModuleSyntax": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+
+    /* 输出 */
+    "declaration": true,
+    "declarationMap": true,
+    "sourceMap": true,
+    "removeComments": false,
+    "noEmitOnError": false,
+
+    /* 第三方类型冲突不阻塞自己的代码 */
+    "skipLibCheck": true
+  },
+  "exclude": ["node_modules", "dist", "build", "coverage", "**/target", "**/gen"]
+}

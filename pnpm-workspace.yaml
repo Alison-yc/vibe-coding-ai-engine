@@ -1,10 +1,16 @@
 packages:
-  - 'packages/*'
-  - 'clients/*'
-  - 'servers/*'
-  - 'frontend/*'
+  - "packages/*"
+  - "clients/*"
+  - "servers/*"
+  - "frontend/*"
+
+# 注意：glob 是 `frontend/*`，所以直接放在 frontend/ 根的 package.json
+# 不会被识别为 workspace 包。Web 应用必须建在 frontend/liangzui-ai-web/ 下。
+# 见 .plan/02-monorepo-and-toolchain.md 步骤 1。
+
 allowBuilds:
   esbuild: true
   unrs-resolver: true
+
 minimumReleaseAgeExclude:
-  - '@langchain/core@1.2.7'
+  - "@langchain/core@1.2.7"

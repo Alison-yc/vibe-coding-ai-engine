@@ -1,0 +1,49 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "stream",
+  "globalDependencies": ["tsconfig.base.json", ".prettierrc", "eslint.config.js"],
+  "globalEnv": [
+    "NODE_ENV",
+    "LOG_LEVEL",
+    "OLLAMA_BASE_URL",
+    "OLLAMA_MODEL",
+    "OLLAMA_EMBED_MODEL",
+    "DATABASE_URL",
+    "SERVER_PORT",
+    "VITE_API_BASE_URL"
+  ],
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "inputs": ["$TURBO_DEFAULT$", "!**/*.test.ts", "!**/*.spec.ts", "!**/__tests__/**"],
+      "outputs": ["dist/**", "build/**", ".nest/**"]
+    },
+    "typecheck": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "lint": {
+      "outputs": []
+    },
+    "lint:fix": {
+      "cache": false,
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test:cov": {
+      "dependsOn": ["^build"],
+      "outputs": ["coverage/**"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "clean": {
+      "cache": false,
+      "outputs": []
+    }
+  }
+}
