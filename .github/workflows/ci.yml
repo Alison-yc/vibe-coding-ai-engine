@@ -1,0 +1,216 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# 同一分支的新 push 取消旧的运行，省额度
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # CI 上没有 Ollama 和模型。所有测试都必须通过 FakeLlmGateway 运行，
+  # 需要真实模型的验证（E2E 全流程、基线测评、RAG 评测）只在本地跑。
+  # 见 .plan/17-ci-cd-pipeline.md。
+  NODE_VERSION: "24"
+
+jobs:
+  # ── 变更检测：改文档不该触发全量 CI ──────────────────────────
+  changes:
+    name: 变更检测
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      rust: ${{ steps.filter.outputs.rust }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'packages/**'
+              - 'servers/**'
+              - 'clients/**'
+              - 'frontend/**'
+              - 'scripts/**'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'tsconfig.base.json'
+              - 'eslint.config.js'
+              - 'vitest.config.ts'
+              - 'turbo.json'
+            rust:
+              - 'clients/**/src-tauri/**'
+            frontend:
+              - 'frontend/**'
+              - 'packages/ui/**'
+              - 'packages/app-core/**'
+
+  # ── ① 快速门禁（最先跑，失败则后续不执行） ────────────────────
+  quality:
+    name: 快速门禁
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # commitlint 需要历史
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: turbo 缓存
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ github.ref_name }}-
+            turbo-${{ runner.os }}-
+
+      - name: 格式检查
+        run: pnpm format:check
+
+      - name: Lint（含架构护栏）
+        run: pnpm lint
+
+      - name: 类型检查
+        run: pnpm typecheck
+
+      - name: 提交信息检查
+        if: github.event_name == 'pull_request'
+        run: |
+          pnpm commitlint \
+            --from ${{ github.event.pull_request.base.sha }} \
+            --to ${{ github.event.pull_request.head.sha }} \
+            --verbose
+
+  # ── ② 测试与覆盖率门禁 ──────────────────────────────────────
+  test:
+    name: 测试与覆盖率
+    needs: [changes, quality]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: ai_engine
+          POSTGRES_PASSWORD: ai_engine_ci
+          POSTGRES_DB: ai_engine_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ai_engine -d ai_engine_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    env:
+      DATABASE_URL: postgresql://ai_engine:ai_engine_ci@localhost:5432/ai_engine_test
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: turbo 缓存
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ github.ref_name }}-
+
+      # service container 不支持挂载初始化脚本目录，所以扩展在这里装
+      - name: 安装 pgvector 扩展
+        run: |
+          PGPASSWORD=ai_engine_ci psql -h localhost -U ai_engine -d ai_engine_test \
+            -c 'CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS pgcrypto;'
+
+      - name: 数据库迁移
+        run: pnpm db:migrate
+        continue-on-error: true # M1 之前还没有迁移文件
+
+      - name: 测试与覆盖率门禁
+        run: pnpm test:cov
+
+      - name: 上传覆盖率报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
+  # ── ③ 构建 ─────────────────────────────────────────────────
+  build:
+    name: 构建
+    needs: [changes, quality]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ github.ref_name }}-
+      - name: 构建全部包
+        run: pnpm build
+
+  # ── ④ Rust 检查 ────────────────────────────────────────────
+  rust:
+    name: Rust 检查
+    needs: changes
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      # Rust 编译很慢，没缓存每次要几分钟
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: clients/liangzui-ai-app/src-tauri
+
+      # Tauri 在 Linux 上的系统依赖
+      - name: 安装系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: 格式检查
+        working-directory: clients/liangzui-ai-app/src-tauri
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        working-directory: clients/liangzui-ai-app/src-tauri
+        run: cargo clippy --all-targets -- -D warnings
