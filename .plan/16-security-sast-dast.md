@@ -7,6 +7,17 @@
 | 预计工期 | 2～3 天                    |
 | 状态     | 未开始                     |
 
+## 子阶段状态
+
+| 子阶段 | 内容                                        | 所属批次     | 状态   |
+| ------ | ------------------------------------------- | ------------ | ------ |
+| 16-A   | Semgrep 规则自测、SCA、Gitleaks、SARIF 基础 | CR-04        | 未开始 |
+| 16-B1  | RAG 提示词注入与输出安全测试                | CR-08、CR-10 | 未开始 |
+| 16-B2  | code 沙箱、资源耗尽、SSRF 测试              | CR-11        | 未开始 |
+| 16-B3  | 路径穿越、符号链接逃逸、审批绕过测试        | CR-13        | 未开始 |
+
+安全测试跟攻击面实现同批次提交，不允许等到项目收尾统一补。
+
 ## 先明确术语
 
 你在需求里提到 "SARR、SAST、DAST"。其中 **SARR 应为 SARIF**（Static Analysis Results Interchange Format）——它不是一种扫描类型，而是**静态分析结果的标准交换格式**。Semgrep、CodeQL、Trivy 等工具都能输出 SARIF，GitHub 的 Code Scanning 直接消费它，在 PR 上以行内注释展示问题。
@@ -160,17 +171,26 @@ Gitleaks，扫两个范围：
 
 ## 实施步骤
 
-1. 写 `.semgrep.yml` 的 10 条自定义规则。
+### 16-A · CR-04 扫描工具与规则门禁
+
+1. 审查现有 `.semgrep.yml` 的 11 条自定义规则。
 2. 为每条规则写 test 用例，`semgrep --test` 全绿。
-3. 配 `pnpm sec:sast` 脚本（官方规则集 + 自定义规则，输出 SARIF）。
-4. 配 `pnpm sec:sca`（pnpm audit + OSV-Scanner，覆盖 npm 与 Cargo）。
-5. 装 Gitleaks，接入 pre-commit hook 与 CI。
-6. 写安全测试用例（16 条，随对应功能 plan 逐步补齐——`06` 完成后补提示词注入的，`08` 完成后补沙箱与 SSRF 的，`10` 完成后补路径穿越的）。
-7. 配 `.github/dependabot.yml`。
-8. CI 里加 security job，上传 SARIF（`17`）。
-9. 写一份 `SECURITY.md`：威胁模型说明 + 已知限制 + 报告方式。
+3. 审查 `pnpm sec:sast`（官方规则集 + 自定义规则，输出 SARIF）。
+4. 审查 `pnpm sec:sca`，确认覆盖 npm 与 Cargo。
+5. 验证 Gitleaks 的 pre-commit 与 CI 接入。
+6. 审查 Dependabot、security job、SARIF 上传和现有 `SECURITY.md`。
+7. 用故意漏洞验证规则会报错，也用安全样本验证不会误报。
+
+### 16-B · 随攻击面实现
+
+1. CR-08/10：补 RAG 提示词注入、引用污染和模型输出 XSS 用例。
+2. CR-11：补 code 沙箱逃逸、资源耗尽、SSRF/重定向绕过用例。
+3. CR-13：补路径穿越、符号链接逃逸、权限与审批绕过用例。
+4. 每组用例与实现同批次 Review，不建立项目末尾的“统一补安全测试”任务。
 
 ## 验收标准（DoD）
+
+### 16-A
 
 - [ ] `semgrep --test --config .semgrep.yml` 全部规则测试通过
 - [ ] `pnpm sec:sast` 在当前代码上跑通并输出 SARIF
@@ -178,10 +198,13 @@ Gitleaks，扫两个范围：
 - [ ] 故意写一行 `path.join(root, req.body.path)` 后跟 `fs.readFile`，**必须报出来**
 - [ ] `pnpm sec:sca` 同时覆盖 `pnpm-lock.yaml` 与 `Cargo.lock`
 - [ ] 故意在文件里写一个假的 AWS key 格式字符串，pre-commit **必须拒绝**
-- [ ] 16 条安全测试用例（随功能进度）全部通过
 - [ ] SARIF 上传到 GitHub 后，能在 Security 标签页看到结果
 - [ ] `SECURITY.md` 存在且写明了威胁模型与已知限制
 - [ ] critical/high 漏洞数为 0，或每个都有豁免理由
+
+### 16-B / 项目整体
+
+- [ ] 16 条安全测试用例随对应功能逐批完成并全部通过
 
 ## 验证命令
 

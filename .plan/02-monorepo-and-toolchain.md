@@ -1,15 +1,15 @@
 # 02 · Monorepo 结构与工具链
 
-| 项       | 值            |
-| -------- | ------------- |
-| 阶段     | M0 · 工程底座 |
-| 依赖     | 无            |
-| 预计工期 | 2～3 天       |
-| 状态     | 未开始        |
+| 项       | 值              |
+| -------- | --------------- |
+| 阶段     | M0 · 工程底座   |
+| 依赖     | 无              |
+| 预计工期 | 2～3 天         |
+| 状态     | 待开发（CR-01） |
 
 ## 目标
 
-把当前"两个能跑的应用 + 三个空壳目录 + 四个 0 字节配置文件"的仓库，改造成一个规范完整、`pnpm ci:local` 一键自检的 monorepo。
+把当前“根配置已经预填，但共享包、脚本目录和 Web 壳尚未落地”的仓库，改造成一个结构完整、`pnpm ci:local` 一键自检的 monorepo。
 
 **非目标**：这个阶段不写任何业务代码。功能一行都不加，只动结构和配置。
 
@@ -19,23 +19,24 @@
 - Rust toolchain（本机 1.97.1 ✓）
 - 当前分支已提交干净，改造前打一个 tag 方便回滚
 
-## 当前状态盘点（改造的起点）
+## 当前状态盘点（CR-01 开工前）
 
-| 项                                              | 现状                                                  | 问题                                                   |
-| ----------------------------------------------- | ----------------------------------------------------- | ------------------------------------------------------ |
-| 根 `package.json`                               | `npm init` 默认模板，`type: commonjs`，`test: exit 1` | 不是 workspace 根的样子                                |
-| `pnpm-workspace.yaml`                           | 已含 `packages/* clients/* servers/* frontend/*`      | 可用，但 `frontend/*` 匹配不到 `frontend/package.json` |
-| `frontend/package.json`                         | 孤立空壳，**实际不在 workspace 内**                   | 需删除，改建子目录                                     |
-| `packages/`                                     | 完全空                                                | 需建 6 个子包                                          |
-| `.editorconfig`                                 | 0 字节                                                | 需填充                                                 |
-| `.prettierrc`                                   | 0 字节                                                | 需填充                                                 |
-| `eslint.config.js`                              | 0 字节                                                | 需填充                                                 |
-| `commitlint.config.js`                          | 0 字节                                                | 需填充                                                 |
-| `turbo.json`                                    | 不存在                                                | 需创建                                                 |
-| `tsconfig.base.json`                            | 不存在                                                | 需创建                                                 |
-| Husky                                           | 未安装                                                | 需安装并配 hooks                                       |
-| `servers/.../.prettierrc` + `eslint.config.mjs` | 子包各自一套                                          | 需收敛到共享配置                                       |
-| CI                                              | **仓库全部提交历史中都不存在 `.github/`**             | 需从零搭建（见 17）                                    |
+规划阶段已经提前填充了一批根配置。实施时必须**审查、复用并验证**，不要按旧计划盲目重写。
+
+| 项                      | 当前状态                                                      | CR-01 要做什么                                                   |
+| ----------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------- |
+| 根 `package.json`       | 已是 workspace 根，含 turbo/test/security/ci 脚本             | 核对 filter、依赖和脚本能否在真实子包上运行                      |
+| `pnpm-workspace.yaml`   | 已含 `packages/* clients/* servers/* frontend/*`              | 保留；删除孤立 `frontend/package.json` 后验证包发现              |
+| `frontend/package.json` | 孤立空壳，不被 `frontend/*` 匹配                              | 删除；只占位 `frontend/liangzui-ai-web/`，最小 Web 骨架属于 12-A |
+| `packages/`             | 目录存在但为空                                                | 建 6 个共享包及最小 package/tsconfig/index                       |
+| `scripts/`              | 不存在，但根脚本已引用其中路径                                | 建三个目录；真实脚本分别由 04/15/18 实现                         |
+| 根格式与 lint 配置      | `.editorconfig`、Prettier、ESLint、commitlint 已填充          | 审查并验证；不要重写已正确的内容                                 |
+| Turbo / TS / Vitest     | `turbo.json`、`tsconfig.base.json`、`vitest.config.ts` 已存在 | 接入真实子包后验证任务图与测试发现                               |
+| Husky                   | hook 文件已存在                                               | 核对依赖、内容和可执行权限                                       |
+| 服务端局部配置          | 仍有 `.prettierrc` 与 `eslint.config.mjs`                     | 收敛到根配置，避免双重规则                                       |
+| CI / 安全 / Docker      | 骨架文件已经存在                                              | CR-01 只保证本地命令可用；16-A/17-A 在 CR-04 审查远端门禁        |
+
+如果开工时仓库状态再次变化，先更新本表，再实施；不要让模型根据过时盘点覆盖已有成果。
 
 ## 技术选型
 
@@ -75,7 +76,7 @@ mkdir -p scripts/{model-baseline,gen-tests,rag-eval}
 
 ### 步骤 2 · 重写根 `package.json`
 
-关键点：
+根文件已经预填。本步骤改为**逐项核对并修正**，只有不满足下列要求时才修改：
 
 - `"private": true`，根包不发布
 - `"type": "module"`，全仓库统一 ESM（现有子包已经是 module）
@@ -101,7 +102,7 @@ mkdir -p scripts/{model-baseline,gen-tests,rag-eval}
 
 ### 步骤 3 · 共享 TS 配置
 
-`tsconfig.base.json`（根）设定全仓库通用编译选项，关键项：
+`tsconfig.base.json`（根）已经存在，先核对下列关键项；本步骤主要创建 `packages/tsconfig` 预设并让各包接入：
 
 | 选项                       | 值     | 理由                                                                                 |
 | -------------------------- | ------ | ------------------------------------------------------------------------------------ |
@@ -118,7 +119,7 @@ mkdir -p scripts/{model-baseline,gen-tests,rag-eval}
 
 ### 步骤 4 · ESLint 共享配置
 
-`packages/eslint-config` 导出四个预设，根 `eslint.config.js` 按目录组合：
+根 `eslint.config.js` 已有基础规则和架构护栏。本步骤创建 `packages/eslint-config` 四个预设，再把根配置收敛为按目录组合：
 
 | 预设    | 覆盖         | 关键规则                                                                                           |
 | ------- | ------------ | -------------------------------------------------------------------------------------------------- |
@@ -142,13 +143,13 @@ mkdir -p scripts/{model-baseline,gen-tests,rag-eval}
 
 ### 步骤 5 · Prettier
 
-`.prettierrc`：单引号、分号、行宽 100、trailing comma all、`endOfLine: lf`。加 `prettier-plugin-tailwindcss` 自动排序 class（Tailwind v4 需要 plugin ≥ 0.6）。
+根 `.prettierrc` 与 `.prettierignore` 已存在。核对：单引号、分号、行宽 100、trailing comma all、`endOfLine: lf`，并确认 `prettier-plugin-tailwindcss` 可处理 Tailwind v4。
 
-`.prettierignore` 排除 `pnpm-lock.yaml`、`dist`、`target`、`gen`、`coverage`、`*.md` 里的生成内容。
+不要为了让门禁变绿而扩大 ignore。既存源码的格式问题应在 CR-01 单独格式化并作为清晰提交，不和结构变更混在同一个提交。
 
 ### 步骤 6 · Turborepo
 
-`turbo.json` 的 pipeline 依赖关系：
+`turbo.json` 已存在。接入新包后验证任务依赖关系：
 
 ```
 typecheck ─ 依赖 ─→ ^build（上游包先构建出 .d.ts）
@@ -163,7 +164,7 @@ lint      ─ 无依赖，可完全并行
 
 ### 步骤 7 · Vitest 根配置
 
-根 `vitest.config.ts` 用 `test.projects` 列出各包，coverage 只能在根配置（Vitest 的限制）。
+根 `vitest.config.ts` 已存在。本步骤与 `15-A` 合并实施：核对 `test.projects`、接入真实项目，并实测 NestJS 迁移。coverage 只能在根配置（Vitest 的限制）。
 
 ```
 projects: ['packages/*', 'servers/*', 'frontend/*']
@@ -175,10 +176,7 @@ projects: ['packages/*', 'servers/*', 'frontend/*']
 
 ### 步骤 8 · Git hooks
 
-```bash
-pnpm add -Dw husky lint-staged @commitlint/cli @commitlint/config-conventional
-pnpm exec husky init
-```
+依赖与 hook 文件已经预填。核对版本、内容与可执行权限；缺失时才补装或重新初始化，不覆盖已有 hook。
 
 - `pre-commit`：`lint-staged`（只处理暂存文件：ESLint --fix + Prettier --write；`.rs` 文件走 `rustfmt`）
 - `commit-msg`：`commitlint --edit $1`
@@ -189,29 +187,29 @@ pnpm exec husky init
 
 ### 步骤 9 · 环境变量与 gitignore
 
-- 根 `.env.example` 汇总所有服务的变量（Ollama 地址与模型名、Postgres 连接串、NestJS 端口、日志级别）
-- `.gitignore` 补上：`.env.local`、`docker/data/`（Postgres 数据卷）、`*.sarif`、`.turbo/`（已有）
-- `.cursorignore` 补上 `.plan/` 不排除（要让 AI 读到），排除 `docker/data/`
+- 根 `.env.example` 已有 Ollama、Postgres、NestJS、前端和沙箱变量；核对端口是否与 01 一致。
+- `.gitignore` 已有数据库数据、SARIF、覆盖率和生成测试规则；验证而非重复追加。
+- 核对 `.cursorignore`：不能排除 `.plan/`，应排除 `docker/data/`。
 
 ## 目录产出
 
 ```
 根/
-├── package.json               重写
-├── pnpm-workspace.yaml        微调（确认 frontend/* 能匹配到新建的子目录）
-├── turbo.json                 新建
-├── tsconfig.base.json         新建
-├── vitest.config.ts           新建
-├── eslint.config.js           填充
-├── .prettierrc                填充
-├── .prettierignore            新建
-├── .editorconfig              填充
-├── commitlint.config.js       填充
-├── .lintstagedrc.json         新建
-├── .nvmrc                     新建
-├── .npmrc                     新建
-├── .env.example               新建
-├── .husky/{pre-commit,commit-msg}
+├── package.json               已有，核对并修正
+├── pnpm-workspace.yaml        已有，验证包发现
+├── turbo.json                 已有，验证任务图
+├── tsconfig.base.json         已有，接入子包
+├── vitest.config.ts           已有，与 15-A 一起验证
+├── eslint.config.js           已有，收敛为共享预设
+├── .prettierrc                已有，验证
+├── .prettierignore            已有，验证
+├── .editorconfig              已有，验证
+├── commitlint.config.js       已有，核对规则一致性
+├── .lintstagedrc.json         已有，验证
+├── .nvmrc                     已有，验证
+├── .npmrc                     已有，验证
+├── .env.example               已有，核对端口
+├── .husky/{pre-commit,commit-msg}  已有，核对可执行权限
 └── packages/
     ├── tsconfig/{base,react,node}.json
     └── eslint-config/src/{base,react,node,test}.js

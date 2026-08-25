@@ -3,9 +3,18 @@
 | 项       | 值                                  |
 | -------- | ----------------------------------- |
 | 阶段     | M0 起步（令牌层），随功能增量补组件 |
-| 依赖     | 02                                  |
+| 依赖     | 14-A：02、12-A；14-B：对应功能 plan |
 | 预计工期 | 令牌层 1～2 天；组件随功能开发      |
 | 状态     | 未开始                              |
+
+## 子阶段状态
+
+| 子阶段 | 内容                                                | 所属批次                   | 状态   |
+| ------ | --------------------------------------------------- | -------------------------- | ------ |
+| 14-A   | 共享 UI 包、Tailwind 跨包扫描、主题令牌、令牌展示页 | CR-03                      | 未开始 |
+| 14-B   | 按真实页面需求增量补 shadcn/业务组合组件            | CR-10、CR-12、CR-13、CR-15 | 未开始 |
+
+14-B 不建立单独的大批次。组件必须跟使用它的功能一起 Review，避免预造没有调用方的抽象。
 
 ## 目标
 
@@ -154,26 +163,39 @@ packages/ui/src/
 
 ## 实施步骤
 
+### 14-A · CR-03 令牌底座
+
 1. 建 `packages/ui`，配 `package.json` 的 `exports`（分 `./styles` 与 `./components`）。
 2. 写 `tokens.css` 三层令牌 + `themes.css` 四套主题。
-3. 把 `clients/liangzui-ai-app/src/components/ui/button.tsx` 与 `lib/utils.ts` 迁到 `packages/ui`。
-4. 配 `components.json` 指向 `packages/ui`，验证 `pnpm dlx shadcn add` 能生成到正确位置。
-5. 一次性装齐上面清单里的组件。
-6. 在壳的 CSS 里配 `@source` 指向跨包目录，**验证跨包 class 不丢失**（这一步单独验证，是最容易出问题的地方）。
-7. 实现 `ThemeProvider`（主题状态、持久化、系统主题订阅）与 `ThemeToggle`。
-8. 在 `index.html` 加防闪白的内联脚本。
-9. 实现 `composite` 层组件。
-10. 建一个 `/dev/tokens` 开发页面：展示全部令牌与组件在四套主题 × 明暗下的样子。**这个页面是主题回归测试的唯一有效手段。**
+3. 把现有 button 与 `lib/utils.ts` 迁到 `packages/ui`，不批量安装未来组件。
+4. 配 `components.json` 指向 `packages/ui`，验证 shadcn 能生成到正确位置；验证后删除未使用的测试组件。
+5. 在两个壳的 CSS 里配 `@source` 指向跨包目录，验证跨包 class 不丢失。
+6. 实现 `ThemeProvider`、`ThemeToggle` 与防闪白脚本。
+7. 建 `/dev/tokens`：展示全部令牌和**当前已有组件**的主题状态。
+8. 配 Playwright 并写第一条主题切换/令牌页 smoke，作为 `15-C` 的起点。
+
+### 14-B · 随功能增量
+
+1. 只在真实页面需要时用 shadcn CLI 增加原语组件。
+2. 组合组件与使用它的页面放在同一 CR review，不提前预造。
+3. 每次新增主题状态同步更新 `/dev/tokens`。
+4. 工作流节点状态、列表空态等专项验收随 `09` / `07` 完成。
 
 ## 验收标准（DoD）
 
+### 14-A
+
 - [ ] `packages/ui` 能被两个壳正常引入，样式不丢失
 - [ ] 跨包 class 生效验证：在 `packages/app-core` 写一个只在那里用过的 class（如 `bg-accent`），构建后样式存在
-- [ ] 四套主题 × 明暗 = 8 种组合，在 `/dev/tokens` 页面下全部显示正常
+- [ ] 四套主题 × 明暗 = 8 种组合，令牌与当前组件在 `/dev/tokens` 显示正常
 - [ ] 切换主题无闪烁，刷新页面主题保持
 - [ ] 「跟随系统」模式下，改系统外观，应用实时跟随
-- [ ] 全仓库搜不到硬编码色值：`grep -rE 'bg-(neutral|gray|zinc|slate)-[0-9]|text-\[#' packages/ clients/ frontend/` 无结果
 - [ ] `packages/ui` 的组件不 import `app-core` 或 `contracts`（ESLint 护栏）
+- [ ] Playwright 的主题 smoke 在 Web 壳通过
+
+### 14-B / 项目收尾
+
+- [ ] 全仓库搜不到硬编码色值：`grep -rE 'bg-(neutral|gray|zinc|slate)-[0-9]|text-\[#' packages/ clients/ frontend/` 无结果
 - [ ] 暗色模式下工作流节点的四种状态色都清晰可辨
 - [ ] 所有列表页有空态设计
 

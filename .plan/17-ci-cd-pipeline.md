@@ -1,17 +1,34 @@
 # 17 · CI 流水线
 
-| 项       | 值                     |
-| -------- | ---------------------- |
-| 阶段     | M0（骨架），随功能增强 |
-| 依赖     | 02、15、16             |
-| 预计工期 | 2 天                   |
-| 状态     | 未开始                 |
+| 项       | 值                                     |
+| -------- | -------------------------------------- |
+| 阶段     | M0（骨架），随功能增强                 |
+| 依赖     | 17-A：02/15-A/16-A；后续阶段见子阶段表 |
+| 预计工期 | 2 天                                   |
+| 状态     | 未开始                                 |
 
-## 重要前提：当前仓库没有任何 CI
+## 子阶段状态
 
-你提到"已配置简单的 CI 设置"，但我检索了 `main` 与 `feature/zyc` 两个分支以及全部 7 次提交的历史，**`.github/` 目录从未存在过**。本机也没有 `gh` CLI，无法查询远端仓库的 Actions 配置。
+| 子阶段 | 内容                                           | 所属批次                 | 状态   |
+| ------ | ---------------------------------------------- | ------------------------ | ------ |
+| 17-A   | 快速门禁、测试、构建、安全 job、缓存、变更检测 | CR-04                    | 未开始 |
+| 17-B   | Postgres service container 与数据库集成测试    | CR-06                    | 未开始 |
+| 17-C   | tag 触发的 macOS release / dmg artifact        | CR-16（本机 dmg 通过后） | 未开始 |
 
-**所以"已有 CI"这一点当前信息无法确认。** 本 plan 按从零搭建规划。如果 GitHub 上确实有网页端配置的 workflow，实施时先 `git pull` 看看，与本计划合并。
+CI 只接入已经在本地跑通的命令。不要先写一个“看起来完整”的 workflow，再让后续实现迁就它。
+
+## 当前状态：已有骨架，尚未完成远端验收
+
+规划阶段已经创建：
+
+- `.github/workflows/ci.yml`
+- `.github/workflows/security.yml`
+- `.github/dependabot.yml`
+- `.github/pull_request_template.md`
+
+这些文件只能证明“本地有 YAML 骨架”，不能证明 GitHub Actions 已成功运行、SARIF 能上传、缓存与变更检测有效。CR-04 必须以当前文件为起点审查和修正，**不要从零覆盖**。
+
+远端分支保护、Actions 运行结果和仓库是否启用 Code Scanning，当前信息无法从本地文件确认，实施时需要在 GitHub 上验证。
 
 ## 目标
 
@@ -156,26 +173,25 @@ pnpm ci:local
 
 ## 实施步骤
 
-1. `git pull` 确认远端有没有已存在的 workflow，若有则合并而非覆盖。
-2. 写 `.github/workflows/ci.yml`：快速门禁 + 测试 + 构建。
-3. 加 paths-filter 变更检测。
-4. 加 turbo 与 pnpm 缓存。
-5. 加 Postgres service container 与集成测试 job。
-6. 接入覆盖率门禁与 artifact 上传。
-7. 写 `.github/workflows/security.yml`：Semgrep + SCA + Gitleaks + SARIF 上传。
-8. 写 `.github/workflows/release.yml`：tag 触发的 macOS 打包（在 `13` 完成后再启用）。
-9. 写 `.github/dependabot.yml`（npm + cargo + github-actions 三个生态）。
-10. 写 `.github/pull_request_template.md`。
-11. 配 GitHub 分支保护规则。
-12. 实现 `pnpm ci:local` 与 `ci:local:full`。
-13. 故意提交一个 lint 错误，验证 CI 真的会红。
+1. 拉取远端后核对 workflow；与当前骨架合并，不覆盖未知配置。
+2. 审查 `ci.yml`：快速门禁 + 测试 + 构建、paths-filter、turbo/pnpm 缓存。
+3. 审查 `security.yml`：Semgrep + SCA + Gitleaks + SARIF 上传。
+4. 审查 Dependabot 的 npm + cargo + github-actions 三个生态配置。
+5. 审查 PR 模板是否要求 plan、验证命令和破坏性变更说明。
+6. 在 `15-A` 完成后接入覆盖率门禁与 artifact 上传。
+7. 在 `17-B` 接入 Postgres service container 与集成测试 job。
+8. 在 `17-C` 创建 `release.yml`：tag 触发 macOS 打包；`13-A` 通过前不得启用。
+9. 配 GitHub 分支保护规则。
+10. 核对 `pnpm ci:local` 与 `ci:local:full` 和 CI job 一致。
+11. 故意提交一个 lint 错误，验证 CI 真的会红。
 
 ## 验收标准（DoD）
+
+### 17-A · CR-04
 
 - [ ] push 后 CI 自动触发，各 job 按设计的层次执行
 - [ ] 故意提交格式错误，快速门禁失败且**后续 job 不执行**（早退出生效）
 - [ ] 故意让某包覆盖率掉到阈值下，测试 job 失败
-- [ ] 集成测试在 CI 上能连到 Postgres 并跑通
 - [ ] Semgrep/SCA/Gitleaks 的 SARIF 出现在 GitHub Security 标签页
 - [ ] 只改 `.plan/**` 的提交，只触发 format:check（变更检测生效）
 - [ ] 第二次 push（无代码变更）命中 turbo 缓存，测试 job 明显变快
@@ -184,6 +200,16 @@ pnpm ci:local
 - [ ] `pnpm ci:local` 的结果与 CI 一致（同一个 commit，两边都绿或都红）
 - [ ] `main` 分支无法直推，必须 PR
 - [ ] Dependabot 开始产生依赖升级 PR
+
+### 17-B · CR-06 后
+
+- [ ] 集成测试在 CI 上能连到 Postgres + pgvector 并跑通
+- [ ] 数据库 job 不依赖本地 Docker 数据卷或开发机状态
+
+### 17-C · CR-16 后
+
+- [ ] tag 能触发 macOS 构建并上传 dmg artifact
+- [ ] 普通 PR 不运行 release job
 
 ## 验证命令
 
