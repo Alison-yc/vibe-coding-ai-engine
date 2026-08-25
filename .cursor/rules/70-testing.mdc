@@ -39,6 +39,8 @@ it('把系统提示词与用户输入按顺序传给模型', async () => {
 
 不要断言私有方法被调用几次、不要快照整个 DOM 树。断言"给定输入产生什么可观察结果"。
 
+`it` 的标题写清可观察行为，不要写 `should work` 这种看不出测了什么的标题。
+
 ## 覆盖率门禁
 
 - 提供方：`@vitest/coverage-v8`，配置只在根 `vitest.config.ts` 里（Vitest 的 coverage 不支持在 project 级配置）。

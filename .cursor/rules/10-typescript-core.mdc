@@ -49,9 +49,18 @@ try {
 
 ## 命名与导出
 
-- 文件名 `kebab-case`；类型/组件 `PascalCase`；函数/变量 `camelCase`；常量 `SCREAMING_SNAKE_CASE`。
+- 文件名 `kebab-case`；类型/组件 `PascalCase`；函数/变量 `camelCase`；常量 `SCREAMING_SNAKE_CASE`。标识符用英文，不要用拼音。
 - 只用具名导出，不用 `export default`（React 组件与 Vite/Nest 配置文件除外）。
 - 每个包必须有 `src/index.ts` 作为唯一公共出口，内部文件不被外部直接引用。
+
+## 注释
+
+只写代码本身表达不了的约束、权衡、非直觉原因，不要复述下一行代码。
+
+```ts
+// ✅ numCtx 设 4096 而非更大：M 系列 16G 内存下 8192 会触发 swap。实测见 .plan/04。
+// ❌ 设置上下文长度（只复述下一行，没有新信息）
+```
 
 ## 异步
 
