@@ -1,5 +1,6 @@
 import { usePlatform } from '@ai-engine/platform';
 import { BrowserRouter, HashRouter } from 'react-router';
+import { AppErrorBoundary } from './components/app-error-boundary';
 import { AppRoutes } from './app-routes';
 import { ThemeProvider } from './theme-provider';
 
@@ -10,7 +11,9 @@ export const App = () => {
   return (
     <Router>
       <ThemeProvider>
-        <AppRoutes />
+        <AppErrorBoundary platform={platform}>
+          <AppRoutes />
+        </AppErrorBoundary>
       </ThemeProvider>
     </Router>
   );

@@ -23,6 +23,7 @@ const stubPlatform = {
     nativeDirectoryPicker: false,
     windowControls: false,
     routerMode: 'history' as const,
+    devTools: true,
   },
   pickDirectory: async () => null,
   pickFiles: async () => [],
@@ -36,6 +37,7 @@ const stubPlatform = {
     minimize: async () => undefined,
     maximize: async () => undefined,
     close: async () => undefined,
+    reload: async () => undefined,
   },
 } satisfies Platform;
 
@@ -157,6 +159,22 @@ describe('AppRoutes', () => {
     );
     expect(html).toContain('设计令牌');
     expect(html).toContain('bg-node-running');
+  });
+
+  it('在 /dev/observability 渲染可观测性页', () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        PlatformProvider,
+        { value: stubPlatform },
+        createElement(
+          MemoryRouter,
+          { initialEntries: ['/dev/observability'] },
+          createElement(ThemeProvider, null, createElement(AppRoutes)),
+        ),
+      ),
+    );
+    expect(html).toContain('可观测性');
+    expect(html).toContain('加载指标');
   });
 });
 

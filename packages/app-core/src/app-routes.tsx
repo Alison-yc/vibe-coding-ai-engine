@@ -1,4 +1,7 @@
+import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
+import { usePlatform } from '@ai-engine/platform';
+import { ObservabilityPage } from './pages/observability-page';
 import { TokenGalleryPage } from './pages/token-gallery-page';
 
 const PlaceholderPage = ({ title }: { title: string }) => (
@@ -21,5 +24,21 @@ export const AppRoutes = () => (
     <Route path="/agent/:sessionId" element={<PlaceholderPage title="文件助手" />} />
     <Route path="/settings" element={<PlaceholderPage title="设置" />} />
     <Route path="/dev/tokens" element={<TokenGalleryPage />} />
+    <Route
+      path="/dev/observability"
+      element={
+        <DevObservabilityRoute>
+          <ObservabilityPage />
+        </DevObservabilityRoute>
+      }
+    />
   </Routes>
 );
+
+const DevObservabilityRoute = ({ children }: { children: ReactNode }) => {
+  const platform = usePlatform();
+  if (!platform.capabilities.devTools) {
+    return <Navigate to="/chat" replace />;
+  }
+  return children;
+};
