@@ -10,6 +10,9 @@ export default defineConfig(async () => ({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
+      '@ai-engine/app-core': path.resolve(__dirname, '../../packages/app-core/src/index.ts'),
+      '@ai-engine/platform': path.resolve(__dirname, '../../packages/platform/src/index.ts'),
+      '@ai-engine/contracts': path.resolve(__dirname, '../../packages/contracts/src/index.ts'),
     },
   },
   clearScreen: false,

@@ -4,6 +4,6 @@ export default defineProject({
   test: {
     name: 'app-core',
     environment: 'node',
-    passWithNoTests: true,
+    passWithNoTests: false,
   },
 });

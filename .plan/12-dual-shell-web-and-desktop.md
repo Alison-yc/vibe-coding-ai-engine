@@ -5,7 +5,7 @@
 | 阶段     | M5 · 双端交付（但**要在 M0 就打好地基**） |
 | 依赖     | 02                                        |
 | 预计工期 | 3～4 天                                   |
-| 状态     | 未开始                                    |
+| 状态     | 进行中                                    |
 
 ## 子阶段状态
 
@@ -13,7 +13,7 @@
 
 | 子阶段 | 内容                                          | 所属批次 | 状态   |
 | ------ | --------------------------------------------- | -------- | ------ |
-| 12-A   | platform 接口、最小双端壳、Provider、架构护栏 | CR-02    | 未开始 |
+| 12-A   | platform 接口、最小双端壳、Provider、架构护栏 | CR-02    | 已完成 |
 | 12-B   | 平台能力补全、设置页、双端体验收尾            | CR-15    | 未开始 |
 
 ## 重要：这个 plan 的时间安排是反直觉的
@@ -31,7 +31,12 @@
 
 Web 壳不能推迟到 M5：`07`、`09`、`14`、`15` 在更早阶段已经需要 `pnpm dev:web`、开发路由和 Playwright。12-A 只提供最小可运行载体，不提前实现业务页面。
 
-## 目标
+## 技术选型（12-A）
+
+| 工具         | 版本 | 说明                                      |
+| ------------ | ---- | ----------------------------------------- |
+| react-router | 7.x  | 两端共用路由。Web 用 history，桌面用 hash |
+| Vite         | 7.x  | Web 壳端口 5173，Tauri 壳端口 1420        |
 
 `packages/app-core` 里的业务代码在两个壳里跑，零改动。差异全部收敛在 `packages/platform`。
 
@@ -193,12 +198,12 @@ React Context + 一个 `usePlatform()` hook。壳在最外层注入实现：
 
 ### 12-A · CR-02
 
-- [ ] `packages/app-core` 里搜不到 `@tauri-apps`、`window.__TAURI__`、`localStorage`
-- [ ] 故意在 app-core 里加一行 `import { invoke } from '@tauri-apps/api/core'`，`pnpm lint` 报错
-- [ ] `pnpm dev:web` 能打开最小 Web 壳，端口固定 5173
-- [ ] `pnpm dev:app` 能打开最小 Tauri 壳
-- [ ] 两个壳挂载同一份 app-core 根组件，壳内没有业务页面
-- [ ] Web 与 Tauri platform 骨架都能通过类型检查
+- [x] `packages/app-core` 里搜不到 `@tauri-apps`、`window.__TAURI__`、`localStorage`
+- [x] 故意在 app-core 里加一行 `import { invoke } from '@tauri-apps/api/core'`，`pnpm lint` 报错
+- [x] `pnpm dev:web` 能打开最小 Web 壳，端口固定 5173
+- [x] `pnpm dev:app` 能打开最小 Tauri 壳
+- [x] 两个壳挂载同一份 app-core 根组件，壳内没有业务页面
+- [x] Web 与 Tauri platform 骨架都能通过类型检查
 
 ### 12-B · CR-15
 

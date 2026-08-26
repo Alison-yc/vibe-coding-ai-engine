@@ -26,8 +26,8 @@ export default [
           message: 'app-core 必须端无关。平台能力走 @ai-engine/platform 的接口。',
         },
         {
-          group: ['node:*', 'fs', 'path', 'child_process', 'os'],
-          message: 'app-core 运行在浏览器与 webview 中，不能使用 Node 内置模块。',
+          group: ['@ai-engine/platform/web', '@ai-engine/platform/tauri'],
+          message: 'app-core 只依赖 platform 接口，由壳注入实现。',
         },
       ]),
       'no-restricted-globals': [

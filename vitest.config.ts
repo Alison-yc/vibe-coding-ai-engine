@@ -32,6 +32,7 @@ export default defineConfig({
         '**/*.generated.*',
         '**/drizzle/**',
         '**/main.tsx', // 挂载入口
+        '**/main.ts', // NestJS 进程入口
         '**/vite-env.d.ts',
       ],
 
