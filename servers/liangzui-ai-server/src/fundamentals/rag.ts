@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto';
+import type { VectorStore } from '../database/vector-store';
 import type { LlmGateway } from '../llm/llm-gateway';
 
-const KNOWLEDGE_DOCUMENTS = [
+export const KNOWLEDGE_DOCUMENTS = [
   '我的名字是 liangzui。',
   '我住在北京，目前在北京生活。',
   '我今年 27 岁。',
@@ -9,49 +10,20 @@ const KNOWLEDGE_DOCUMENTS = [
   '我的爱好是编程和 AI 技术。',
 ];
 
-const vectorCache = new WeakMap<LlmGateway, Promise<number[][]>>();
-
-const cosineSimilarity = (left: number[], right: number[]): number => {
-  let dot = 0;
-  let leftNorm = 0;
-  let rightNorm = 0;
-  const length = Math.min(left.length, right.length);
-  for (let index = 0; index < length; index += 1) {
-    const leftValue = left[index] ?? 0;
-    const rightValue = right[index] ?? 0;
-    dot += leftValue * rightValue;
-    leftNorm += leftValue * leftValue;
-    rightNorm += rightValue * rightValue;
-  }
-  return dot / (Math.sqrt(leftNorm) * Math.sqrt(rightNorm));
-};
-
-const getDocumentVectors = (gateway: LlmGateway): Promise<number[][]> => {
-  const existing = vectorCache.get(gateway);
-  if (existing) return existing;
-  const created = gateway.embed(KNOWLEDGE_DOCUMENTS);
-  vectorCache.set(gateway, created);
-  return created;
-};
-
 export const ragQuery = async (
   gateway: LlmGateway,
+  store: VectorStore,
   question: string,
   signal?: AbortSignal,
 ): Promise<string> => {
-  const [documentVectors, queryVectors] = await Promise.all([
-    getDocumentVectors(gateway),
-    gateway.embed([question], signal),
-  ]);
+  await store.seedIfEmpty(KNOWLEDGE_DOCUMENTS, () => gateway.embed(KNOWLEDGE_DOCUMENTS, signal));
+
+  const queryVectors = await gateway.embed([question], signal);
   const queryVector = queryVectors[0];
   if (!queryVector) throw new Error('查询向量为空');
-  const context = KNOWLEDGE_DOCUMENTS.map((content, index) => ({
-    content,
-    score: cosineSimilarity(queryVector, documentVectors[index] ?? []),
-  }))
-    .sort((left, right) => right.score - left.score)
-    .slice(0, 3)
-    .map((item) => item.content)
+
+  const context = (await store.similaritySearch(queryVector, 3))
+    .map((hit) => hit.content)
     .join('\n');
 
   const response = await gateway.chat(

@@ -1,7 +1,12 @@
 import { beforeEach, describe, expect, it } from 'vitest';
+import { EMBEDDING_DIMENSION } from '@ai-engine/contracts';
 import { AppService } from './app.service';
+import { InMemoryVectorStore } from './database/in-memory-vector-store';
 import { FakeLlmGateway } from './llm/fake-llm-gateway';
 import { OllamaUnreachableError } from './llm/llm-errors';
+
+const embedding = (hotIndex = 0): number[] =>
+  Array.from({ length: EMBEDDING_DIMENSION }, (_, index) => (index === hotIndex ? 1 : 0));
 
 describe('AppService', () => {
   let gateway: FakeLlmGateway;
@@ -9,7 +14,7 @@ describe('AppService', () => {
 
   beforeEach(() => {
     gateway = new FakeLlmGateway();
-    service = new AppService(gateway);
+    service = new AppService(gateway, new InMemoryVectorStore());
   });
 
   it('返回基础问候与 prompt 文本', () => {
@@ -20,13 +25,13 @@ describe('AppService', () => {
   it('返回翻译与 RAG 基础实现的结果', async () => {
     gateway.enqueueText('Hello');
     gateway.enqueueEmbeddings([
-      [1, 0],
-      [0.9, 0.1],
-      [0, 1],
-      [0.1, 0.9],
-      [0.5, 0.5],
+      embedding(0),
+      embedding(1),
+      embedding(2),
+      embedding(3),
+      embedding(4),
     ]);
-    gateway.enqueueEmbeddings([[1, 0]]);
+    gateway.enqueueEmbeddings([embedding(0)]);
     gateway.enqueueText('北京');
 
     await expect(service.translate('你好')).resolves.toBe('Hello');
@@ -58,8 +63,14 @@ describe('AppService', () => {
   });
 
   it('为非 Error 的 RAG 失败提供稳定兜底信息', async () => {
-    gateway.enqueueEmbeddings([[1], [1], [1], [1], [1]]);
-    gateway.enqueueEmbeddings([[1]]);
+    gateway.enqueueEmbeddings([
+      embedding(0),
+      embedding(0),
+      embedding(0),
+      embedding(0),
+      embedding(0),
+    ]);
+    gateway.enqueueEmbeddings([embedding(0)]);
     gateway.enqueueError('failed');
 
     await expect(service.ragQuery('我住哪')).rejects.toThrow('Ollama request failed');

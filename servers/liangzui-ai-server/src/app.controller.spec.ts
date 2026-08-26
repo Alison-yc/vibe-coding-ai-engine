@@ -3,6 +3,8 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { InMemoryVectorStore } from './database/in-memory-vector-store';
+import { VECTOR_STORE } from './database/vector-store';
 import { FakeLlmGateway } from './llm/fake-llm-gateway';
 import { LLM_GATEWAY } from './llm/llm-gateway';
 
@@ -17,7 +19,11 @@ describe('AppController', () => {
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService, { provide: LLM_GATEWAY, useValue: new FakeLlmGateway() }],
+      providers: [
+        AppService,
+        { provide: LLM_GATEWAY, useValue: new FakeLlmGateway() },
+        { provide: VECTOR_STORE, useClass: InMemoryVectorStore },
+      ],
     }).compile();
 
     appController = app.get<AppController>(AppController);

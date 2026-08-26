@@ -40,4 +40,18 @@ describe('FakeLlmGateway', () => {
     await expect(gateway.countTokens('四个汉字')).resolves.toBe(2);
     expect(gateway.calls.map((call) => call.method)).toEqual(['embed', 'countTokens']);
   });
+
+  it('能模拟超时、连接失败与格式错误的 tool call 文本', async () => {
+    const gateway = new FakeLlmGateway();
+    gateway.enqueueError(new Error('chat 超时'));
+    await expect(gateway.chat(REQUEST)).rejects.toThrow('超时');
+
+    gateway.enqueueError(new Error('fetch failed'));
+    await expect(gateway.chat(REQUEST)).rejects.toThrow('fetch failed');
+
+    gateway.enqueueText('```json\n{"name": "not-a-tool"');
+    const response = await gateway.chat(REQUEST);
+    const text = response.message.parts[0];
+    expect(text && text.type === 'text' ? text.text : '').toContain('not-a-tool');
+  });
 });

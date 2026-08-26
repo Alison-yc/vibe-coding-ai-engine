@@ -11,6 +11,12 @@ const EnvironmentSchema = z.object({
   OLLAMA_NUM_PREDICT: z.coerce.number().int().positive().default(2048),
   OLLAMA_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.2),
   OLLAMA_KEEP_ALIVE: z.string().min(1).default('10m'),
+  NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
+  DATABASE_URL: z.string().url().optional(),
+  RUN_DB_INTEGRATION: z
+    .string()
+    .optional()
+    .transform((value) => value === 'true' || value === '1'),
 });
 
 export type AppConfig = z.infer<typeof EnvironmentSchema>;

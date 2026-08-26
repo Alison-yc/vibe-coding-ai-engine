@@ -28,7 +28,7 @@
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
     "test:cov": "turbo run build && vitest run --coverage",
-    "test:integration": "vitest run --project server -t integration",
+    "test:integration": "pnpm --filter liangzui-ai-server exec vitest run --config vitest.integration.config.ts",
     "test:e2e": "playwright test",
     "test:security": "vitest run --dir e2e/security",
     "db:generate": "pnpm --filter liangzui-ai-server db:generate",
