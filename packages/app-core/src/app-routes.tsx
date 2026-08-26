@@ -1,4 +1,5 @@
 import { Navigate, Route, Routes } from 'react-router';
+import { TokenGalleryPage } from './pages/token-gallery-page';
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <main>
@@ -19,5 +20,6 @@ export const AppRoutes = () => (
     <Route path="/agent" element={<PlaceholderPage title="文件助手" />} />
     <Route path="/agent/:sessionId" element={<PlaceholderPage title="文件助手" />} />
     <Route path="/settings" element={<PlaceholderPage title="设置" />} />
+    <Route path="/dev/tokens" element={<TokenGalleryPage />} />
   </Routes>
 );

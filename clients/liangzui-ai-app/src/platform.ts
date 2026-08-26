@@ -1,8 +1,33 @@
 import { createMemoryKeyValueStore, NotImplementedError, type Platform } from '@ai-engine/platform';
+import { THEME_STORAGE_KEY } from '@ai-engine/ui';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
 const readTheme = (): 'light' | 'dark' =>
   window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+
+const createTauriKeyValueStore = () => {
+  const memory = createMemoryKeyValueStore();
+  return {
+    get: (key: string) =>
+      memory.get(key).then((fromMemory) => {
+        if (fromMemory !== null) return fromMemory;
+        if (key === THEME_STORAGE_KEY) return window.localStorage.getItem(key);
+        return null;
+      }),
+    set: (key: string, value: string) =>
+      memory.set(key, value).then(() => {
+        if (key === THEME_STORAGE_KEY) {
+          window.localStorage.setItem(key, value);
+        }
+      }),
+    remove: (key: string) =>
+      memory.remove(key).then(() => {
+        if (key === THEME_STORAGE_KEY) {
+          window.localStorage.removeItem(key);
+        }
+      }),
+  };
+};
 
 export const createTauriPlatform = (): Platform => ({
   capabilities: {
@@ -12,7 +37,7 @@ export const createTauriPlatform = (): Platform => ({
   },
   pickDirectory: () => Promise.reject(new NotImplementedError('pickDirectory')),
   pickFiles: () => Promise.reject(new NotImplementedError('pickFiles')),
-  kv: createMemoryKeyValueStore(),
+  kv: createTauriKeyValueStore(),
   getApiBaseUrl: () => 'http://localhost:3000',
   openExternal: (url) => openUrl(url),
   getAppInfo: () =>

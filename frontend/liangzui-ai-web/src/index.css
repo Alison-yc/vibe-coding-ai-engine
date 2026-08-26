@@ -1,14 +1,4 @@
 @import 'tailwindcss';
-
-:root {
-  color-scheme: light dark;
-}
-
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
-}
-
-main {
-  padding: 1.5rem;
-}
+@source '../../../packages/ui/src';
+@source '../../../packages/app-core/src';
+@import '@ai-engine/ui/styles';

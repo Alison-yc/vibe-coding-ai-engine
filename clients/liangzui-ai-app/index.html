@@ -1,12 +1,26 @@
 <!doctype html>
-<html lang="en">
+<html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Liangzui AI</title>
+    <script>
+      (function () {
+        try {
+          var raw = localStorage.getItem('theme-preference');
+          var pref = raw ? JSON.parse(raw) : { palette: 'neutral', mode: 'system' };
+          var dark =
+            pref.mode === 'dark' ||
+            (pref.mode !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var root = document.documentElement;
+          if (pref.palette && pref.palette !== 'neutral') {
+            root.setAttribute('data-theme', pref.palette);
+          }
+          root.classList.toggle('dark', dark);
+        } catch (e) {}
+      })();
+    </script>
   </head>
-
   <body>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>

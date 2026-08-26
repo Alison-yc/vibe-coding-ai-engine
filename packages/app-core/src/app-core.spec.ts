@@ -6,6 +6,8 @@ import { describe, expect, it, vi } from 'vitest';
 import { App } from './app';
 import { AppRoutes } from './app-routes';
 import { createApiClient, createExampleChatRequest } from './api/client';
+import { ThemeProvider, useTheme } from './theme-provider';
+import { applyThemeToDocument, bindThemeRuntime, persistThemePreference } from './theme-sync';
 
 vi.mock('react-router', async () => {
   const actual = await vi.importActual<typeof import('react-router')>('react-router');
@@ -139,5 +141,89 @@ describe('AppRoutes', () => {
       createElement(MemoryRouter, { initialEntries: ['/chat'] }, createElement(AppRoutes)),
     );
     expect(html).toContain('对话');
+  });
+
+  it('在 /dev/tokens 渲染令牌页', () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        PlatformProvider,
+        { value: stubPlatform },
+        createElement(
+          MemoryRouter,
+          { initialEntries: ['/dev/tokens'] },
+          createElement(ThemeProvider, null, createElement(AppRoutes)),
+        ),
+      ),
+    );
+    expect(html).toContain('设计令牌');
+    expect(html).toContain('bg-node-running');
+  });
+});
+
+describe('useTheme', () => {
+  it('在 Provider 外使用时抛错', () => {
+    const Probe = () => {
+      useTheme();
+      return null;
+    };
+    expect(() => renderToStaticMarkup(createElement(Probe))).toThrow('ThemeProvider');
+  });
+});
+
+describe('theme-sync', () => {
+  it('document 不存在时 apply 直接返回', () => {
+    applyThemeToDocument({ palette: 'blue', mode: 'dark' }, 'light');
+  });
+
+  it('把偏好写入 kv', async () => {
+    await persistThemePreference(stubPlatform.kv, { palette: 'purple', mode: 'light' });
+    await expect(stubPlatform.kv.get('theme-preference')).resolves.toBe(
+      '{"palette":"purple","mode":"light"}',
+    );
+  });
+
+  it('从 kv 恢复偏好并订阅系统主题', async () => {
+    const onPreference = vi.fn();
+    const onSystem = vi.fn();
+    await stubPlatform.kv.set('theme-preference', '{"palette":"green","mode":"dark"}');
+    const unsubscribe = bindThemeRuntime(stubPlatform, onPreference, onSystem);
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(onPreference).toHaveBeenCalledWith({ palette: 'green', mode: 'dark' });
+    unsubscribe();
+  });
+
+  it('卸载后不再把延迟的 kv 结果写回', async () => {
+    const deferred = Promise.withResolvers<string | null>();
+    const platform: Platform = {
+      ...stubPlatform,
+      kv: {
+        ...stubPlatform.kv,
+        get: () => deferred.promise,
+      },
+    };
+    const onPreference = vi.fn();
+    const unsubscribe = bindThemeRuntime(platform, onPreference, vi.fn());
+    unsubscribe();
+    deferred.resolve('{"palette":"blue","mode":"dark"}');
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(onPreference).not.toHaveBeenCalled();
+  });
+
+  it('存在 document 时写入 data-theme', () => {
+    const setAttribute = vi.fn();
+    const toggle = vi.fn();
+    vi.stubGlobal('document', {
+      documentElement: {
+        setAttribute,
+        removeAttribute: vi.fn(),
+        classList: { toggle },
+      },
+    });
+    applyThemeToDocument({ palette: 'blue', mode: 'dark' }, 'light');
+    expect(setAttribute).toHaveBeenCalledWith('data-theme', 'blue');
+    expect(toggle).toHaveBeenCalledWith('dark', true);
+    vi.unstubAllGlobals();
   });
 });

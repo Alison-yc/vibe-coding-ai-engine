@@ -1,6 +1,7 @@
 import { usePlatform } from '@ai-engine/platform';
 import { BrowserRouter, HashRouter } from 'react-router';
 import { AppRoutes } from './app-routes';
+import { ThemeProvider } from './theme-provider';
 
 export const App = () => {
   const platform = usePlatform();
@@ -8,7 +9,9 @@ export const App = () => {
 
   return (
     <Router>
-      <AppRoutes />
+      <ThemeProvider>
+        <AppRoutes />
+      </ThemeProvider>
     </Router>
   );
 };

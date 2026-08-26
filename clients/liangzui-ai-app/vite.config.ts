@@ -13,6 +13,8 @@ export default defineConfig(async () => ({
       '@ai-engine/app-core': path.resolve(__dirname, '../../packages/app-core/src/index.ts'),
       '@ai-engine/platform': path.resolve(__dirname, '../../packages/platform/src/index.ts'),
       '@ai-engine/contracts': path.resolve(__dirname, '../../packages/contracts/src/index.ts'),
+      '@ai-engine/ui/styles': path.resolve(__dirname, '../../packages/ui/src/styles/index.css'),
+      '@ai-engine/ui': path.resolve(__dirname, '../../packages/ui/src/index.ts'),
     },
   },
   clearScreen: false,
