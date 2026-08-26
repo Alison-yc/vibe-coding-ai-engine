@@ -78,7 +78,7 @@ const relevantDocs = await vectorStore.similaritySearch(question, 3);  // 固定
 
 **中文特有的坑**：LangChain 默认的 `RecursiveCharacterTextSplitter` 分隔符列表是为英文设计的（`["\n\n", "\n", " ", ""]`），空格分隔在中文里几乎不起作用，会导致在句子中间硬切。必须自定义分隔符。
 
-参数默认值：chunk size 500 字符、overlap 80 字符。**这两个数字必须用 `04` 的 embedding 测评数据校准，不要照抄网上教程。** 同时受 `04` 测出的有效上下文长度约束：如果有效上下文只有 8k token，那么 top-5 检索时每个 chunk 不能太大。
+参数默认值：优先按语义边界切分（基线 `semantic-boundary` MRR 0.924），段落切分 Recall@3 最高（0.96），均优于固定 512 字符。chunk size 可从 500 起步。默认 `numCtx=8192`（有效预算与 `capabilities().effectiveContextTokens` 相同）；更大窗口仍能召回但延迟明显上升。出处：`scripts/model-baseline/reports/2026-08-26-baseline.md`。
 
 进阶（可选，做完基础版再说）：**父子切分**。子 chunk 小（精确匹配用），父 chunk 大（提供上下文用）。检索命中子 chunk，实际送给模型的是父 chunk。这个技巧对小模型特别有价值——用小 chunk 保证检索精度，用大 chunk 保证信息完整。
 

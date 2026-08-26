@@ -3,7 +3,7 @@ import prettierConfig from 'eslint-config-prettier';
 import globals from 'globals';
 import tseslint from 'typescript-eslint';
 
-const sourceFiles = ['**/src/**/*.{ts,tsx,mts,cts}'];
+const sourceFiles = ['**/src/**/*.{ts,tsx,mts,cts}', 'scripts/**/*.ts'];
 const testFiles = [
   '**/*.{test,spec}.{js,ts,tsx}',
   '**/__tests__/**/*.{js,ts,tsx}',

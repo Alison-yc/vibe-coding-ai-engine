@@ -1,10 +1,13 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { readOllamaConfig } from './config/ollama.config';
+import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { ragQuery as ragQueryFundamentals } from './fundamentals/rag';
 import { translate as translateFundamentals } from './fundamentals/translate';
+import { isLlmGatewayError } from './llm/llm-errors';
+import { LLM_GATEWAY, type LlmGateway } from './llm/llm-gateway';
 
 @Injectable()
 export class AppService {
+  constructor(@Inject(LLM_GATEWAY) private readonly llmGateway: LlmGateway) {}
+
   getHello(): string {
     return 'Hello World!';
   }
@@ -13,25 +16,23 @@ export class AppService {
     return `Hello, ${message}!`;
   }
 
-  async translate(text: string): Promise<string> {
+  async translate(text: string, signal?: AbortSignal): Promise<string> {
     try {
-      return await translateFundamentals(text);
+      return await translateFundamentals(this.llmGateway, text, signal);
     } catch (error) {
+      if (isLlmGatewayError(error)) throw error;
       const message = error instanceof Error ? error.message : 'Ollama request failed';
-      throw new ServiceUnavailableException(
-        `Translation failed: ${message}. Check Ollama is running at ${readOllamaConfig().baseUrl}.`,
-      );
+      throw new ServiceUnavailableException(`Translation failed: ${message}`);
     }
   }
 
-  async ragQuery(question: string): Promise<string> {
+  async ragQuery(question: string, signal?: AbortSignal): Promise<string> {
     try {
-      return await ragQueryFundamentals(question);
+      return await ragQueryFundamentals(this.llmGateway, question, signal);
     } catch (error) {
+      if (isLlmGatewayError(error)) throw error;
       const message = error instanceof Error ? error.message : 'Ollama request failed';
-      throw new ServiceUnavailableException(
-        `RAG query failed: ${message}. Check Ollama is running at ${readOllamaConfig().baseUrl}.`,
-      );
+      throw new ServiceUnavailableException(`RAG query failed: ${message}`);
     }
   }
 }

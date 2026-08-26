@@ -12,13 +12,13 @@
 
 ## 当前执行点（模型每次开工先看这里）
 
-| 项         | 当前值                                                               |
-| ---------- | -------------------------------------------------------------------- |
-| 当前里程碑 | M0 · 工程底座                                                        |
-| 当前批次   | M0 集成 Review                                                       |
-| 当前状态   | `待 CR`                                                              |
-| 下一动作   | 本地 `pnpm ci:local` 与远端 CI 核对后再通过 M0 Review                |
-| 批次详情   | [19 · M0 集成 Review](./19-roadmap-and-milestones.md#m0-集成-review) |
+| 项         | 当前值                                                                            |
+| ---------- | --------------------------------------------------------------------------------- |
+| 当前里程碑 | M1 · 模型能力与数据层                                                             |
+| 当前批次   | CR-06 · PostgreSQL、pgvector 与 Drizzle                                           |
+| 当前状态   | `待开发`                                                                          |
+| 下一动作   | 只实现 CR-06（plan 05 + 15-B + 17-B）。不要做 RAG 或 18-A                         |
+| 批次详情   | [19 · CR-06](./19-roadmap-and-milestones.md#cr-06--postgresqlpgvector-与-drizzle) |
 
 更新规则：
 
@@ -66,7 +66,7 @@
 | [00](./00-vision-and-scope.md)      | 做什么、不做什么           | 已完成 |
 | [01](./01-architecture-overview.md) | 分层、数据流、端口、处置表 | 已完成 |
 
-下一步仍是 **M0 集成 Review**：远端暴露的 type-aware lint、护栏测试超时和 Rust 格式阻塞均已修。请运行 `pnpm ci:local` 后 push，看 Actions 的 CI 是否整条绿。通过后才能进入 M1。
+M0 已通过。**CR-05 已通过。** 下一动作为 CR-06：Docker + PostgreSQL + pgvector + Drizzle。不要做正式 RAG 或 18-A。
 
 ### M0 · 工程底座（做完才能安心写业务）
 
@@ -81,7 +81,7 @@
 
 | Plan                                         | 主题                                     | 状态   |
 | -------------------------------------------- | ---------------------------------------- | ------ |
-| [04](./04-model-baseline-and-llm-gateway.md) | 本地模型能力基线测评 + LLM 网关抽象      | 未开始 |
+| [04](./04-model-baseline-and-llm-gateway.md) | 本地模型能力基线测评 + LLM 网关抽象      | 已完成 |
 | [05](./05-data-layer-postgres-pgvector.md)   | Docker + PostgreSQL + pgvector + Drizzle | 未开始 |
 
 ### M2 · RAG 知识库与对话助手（第一个可演示成果）

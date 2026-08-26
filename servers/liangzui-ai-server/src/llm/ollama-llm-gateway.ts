@@ -1,0 +1,298 @@
+import { randomUUID } from 'node:crypto';
+import { setTimeout as delay } from 'node:timers/promises';
+import {
+  ChatResponseSchema,
+  EMBEDDING_DIMENSION,
+  LlmStreamEventSchema,
+  type ChatRequest,
+  type ChatResponse,
+  type LlmStreamEvent,
+  type ModelCapability,
+  type ModelId,
+} from '@ai-engine/contracts';
+import { Inject, Injectable, Logger } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { z } from 'zod';
+import type { AppConfig } from '../config/ollama.config';
+import {
+  ContextOverflowError,
+  LlmTimeoutError,
+  ModelNotFoundError,
+  OllamaUnreachableError,
+} from './llm-errors';
+import type { LlmGateway } from './llm-gateway';
+import { getModelCapability } from './model-capabilities';
+
+const ChatResponseBodySchema = z.object({
+  message: z.object({ content: z.string() }),
+  prompt_eval_count: z.number().int().nonnegative().optional(),
+  eval_count: z.number().int().nonnegative().optional(),
+});
+
+const EmbedResponseBodySchema = z.object({
+  embeddings: z.array(z.array(z.number())),
+});
+
+const GenerateResponseBodySchema = z.object({
+  prompt_eval_count: z.number().int().nonnegative(),
+});
+
+const StreamChunkSchema = z.object({
+  done: z.boolean().optional(),
+  message: z.object({ content: z.string() }).optional(),
+  done_reason: z.string().optional(),
+});
+
+// chat 120s：覆盖 qwen 冷启动总耗时 5.4s。见 2026-08-26 基线 latency 表。
+const CHAT_TIMEOUT_MS = 120_000;
+const EMBED_TIMEOUT_MS = 30_000;
+// 首 token 30s：覆盖 qwen 冷启动首 token 3.0s。不是整段生成超时。
+const FIRST_TOKEN_TIMEOUT_MS = 30_000;
+const MAX_CONNECTION_RETRIES = 2;
+
+class OllamaResponseError extends Error {
+  constructor(
+    readonly status: number,
+    message: string,
+  ) {
+    super(message);
+  }
+}
+
+const responseErrorMessage = async (response: Response): Promise<string> => {
+  try {
+    const body: unknown = await response.json();
+    if (
+      typeof body === 'object' &&
+      body !== null &&
+      'error' in body &&
+      typeof body.error === 'string'
+    ) {
+      return body.error;
+    }
+  } catch {
+    // 非 JSON 错误体只保留状态码，不把上游正文写入日志。
+  }
+  return `HTTP ${response.status}`;
+};
+
+@Injectable()
+export class OllamaLlmGateway implements LlmGateway {
+  private readonly logger = new Logger(OllamaLlmGateway.name);
+
+  constructor(
+    @Inject(ConfigService)
+    private readonly config: ConfigService<AppConfig, true>,
+  ) {}
+
+  async chat(request: ChatRequest, signal?: AbortSignal): Promise<ChatResponse> {
+    const startedAt = performance.now();
+    const body = await this.requestJson(
+      '/api/chat',
+      {
+        model: this.config.get('OLLAMA_MODEL', { infer: true }),
+        messages: [{ role: 'user', content: request.content }],
+        stream: false,
+        think: false,
+        keep_alive: this.config.get('OLLAMA_KEEP_ALIVE', { infer: true }),
+        options: {
+          temperature: this.config.get('OLLAMA_TEMPERATURE', { infer: true }),
+          num_ctx: this.config.get('OLLAMA_NUM_CTX', { infer: true }),
+          num_predict: this.config.get('OLLAMA_NUM_PREDICT', { infer: true }),
+        },
+      },
+      CHAT_TIMEOUT_MS,
+      '模型生成',
+      signal,
+    );
+    const parsed = ChatResponseBodySchema.parse(body);
+    this.logger.debug({
+      operation: 'chat',
+      model: this.config.get('OLLAMA_MODEL', { infer: true }),
+      promptTokens: parsed.prompt_eval_count ?? 0,
+      outputTokens: parsed.eval_count ?? 0,
+      durationMs: Math.round(performance.now() - startedAt),
+    });
+    return ChatResponseSchema.parse({
+      message: {
+        id: randomUUID(),
+        sessionId: request.sessionId,
+        role: 'assistant',
+        parts: [{ type: 'text', id: randomUUID(), text: parsed.message.content }],
+      },
+    });
+  }
+
+  async *stream(request: ChatRequest, signal?: AbortSignal): AsyncIterable<LlmStreamEvent> {
+    const firstTokenController = new AbortController();
+    const timer = setTimeout(() => {
+      firstTokenController.abort(new LlmTimeoutError('首 token'));
+    }, FIRST_TOKEN_TIMEOUT_MS);
+    const combinedSignal = signal
+      ? AbortSignal.any([signal, firstTokenController.signal])
+      : firstTokenController.signal;
+
+    try {
+      const response = await this.fetchWithRetry(
+        '/api/chat',
+        {
+          model: this.config.get('OLLAMA_MODEL', { infer: true }),
+          messages: [{ role: 'user', content: request.content }],
+          stream: true,
+          think: false,
+          keep_alive: this.config.get('OLLAMA_KEEP_ALIVE', { infer: true }),
+          options: {
+            temperature: this.config.get('OLLAMA_TEMPERATURE', { infer: true }),
+            num_ctx: this.config.get('OLLAMA_NUM_CTX', { infer: true }),
+            num_predict: this.config.get('OLLAMA_NUM_PREDICT', { infer: true }),
+          },
+        },
+        combinedSignal,
+      );
+      if (!response.body) throw new OllamaResponseError(response.status, '流式响应没有 body');
+      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
+      let buffer = '';
+      let receivedFirstToken = false;
+      while (true) {
+        const chunk = await reader.read();
+        if (chunk.done) break;
+        buffer += chunk.value;
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+        for (const line of lines) {
+          if (!line.trim()) continue;
+          const parsed = StreamChunkSchema.parse(JSON.parse(line));
+          const text = parsed.message?.content ?? '';
+          if (text) {
+            if (!receivedFirstToken) {
+              receivedFirstToken = true;
+              clearTimeout(timer);
+            }
+            yield LlmStreamEventSchema.parse({ event: 'chunk', data: { text } });
+          }
+          if (parsed.done) {
+            yield LlmStreamEventSchema.parse({
+              event: 'done',
+              data: { finishReason: parsed.done_reason },
+            });
+          }
+        }
+      }
+    } catch (error) {
+      if (signal?.aborted) throw signal.reason;
+      if (firstTokenController.signal.aborted) throw firstTokenController.signal.reason;
+      throw this.classifyError(error);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async embed(texts: string[], signal?: AbortSignal): Promise<number[][]> {
+    const body = await this.requestJson(
+      '/api/embed',
+      {
+        model: this.config.get('OLLAMA_EMBED_MODEL', { infer: true }),
+        input: texts,
+        keep_alive: this.config.get('OLLAMA_KEEP_ALIVE', { infer: true }),
+      },
+      EMBED_TIMEOUT_MS,
+      '向量化',
+      signal,
+    );
+    const parsed = EmbedResponseBodySchema.parse(body);
+    if (
+      parsed.embeddings.length !== texts.length ||
+      parsed.embeddings.some((vector) => vector.length !== EMBEDDING_DIMENSION)
+    ) {
+      throw new Error(`Embedding 维度或数量不符：期望 ${texts.length} × ${EMBEDDING_DIMENSION}`);
+    }
+    return parsed.embeddings;
+  }
+
+  async countTokens(text: string): Promise<number> {
+    const body = await this.requestJson(
+      '/api/generate',
+      {
+        model: this.config.get('OLLAMA_MODEL', { infer: true }),
+        prompt: text,
+        stream: false,
+        keep_alive: this.config.get('OLLAMA_KEEP_ALIVE', { infer: true }),
+        options: { num_predict: 0 },
+      },
+      EMBED_TIMEOUT_MS,
+      'token 计数',
+    );
+    return GenerateResponseBodySchema.parse(body).prompt_eval_count;
+  }
+
+  capabilities(modelId: ModelId): ModelCapability {
+    return getModelCapability(modelId);
+  }
+
+  private async requestJson(
+    endpoint: string,
+    body: Record<string, unknown>,
+    timeoutMs: number,
+    operation: string,
+    signal?: AbortSignal,
+  ): Promise<unknown> {
+    const timeoutSignal = AbortSignal.timeout(timeoutMs);
+    const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+    try {
+      const response = await this.fetchWithRetry(endpoint, body, combinedSignal);
+      return await response.json();
+    } catch (error) {
+      if (signal?.aborted) throw signal.reason;
+      if (timeoutSignal.aborted) throw new LlmTimeoutError(operation, { cause: error });
+      throw this.classifyError(error);
+    }
+  }
+
+  private async fetchWithRetry(
+    endpoint: string,
+    body: Record<string, unknown>,
+    signal: AbortSignal,
+  ): Promise<Response> {
+    const baseUrl = this.config.get('OLLAMA_BASE_URL', { infer: true }).replace(/\/$/u, '');
+    for (let attempt = 0; attempt <= MAX_CONNECTION_RETRIES; attempt += 1) {
+      try {
+        const response = await fetch(`${baseUrl}${endpoint}`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+          signal,
+        });
+        if (!response.ok) {
+          throw new OllamaResponseError(response.status, await responseErrorMessage(response));
+        }
+        return response;
+      } catch (error) {
+        if (!(error instanceof TypeError) || attempt === MAX_CONNECTION_RETRIES) {
+          throw error;
+        }
+        await delay(250 * 2 ** attempt, undefined, { signal });
+      }
+    }
+    throw new OllamaUnreachableError(baseUrl);
+  }
+
+  private classifyError(error: unknown): Error {
+    if (error instanceof OllamaResponseError) {
+      if (error.status === 404 || /model.*not found|pull model/iu.test(error.message)) {
+        return new ModelNotFoundError(this.config.get('OLLAMA_MODEL', { infer: true }), {
+          cause: error,
+        });
+      }
+      if (/context|token.*limit|too long/iu.test(error.message)) {
+        return new ContextOverflowError({ cause: error });
+      }
+      return error;
+    }
+    if (error instanceof TypeError) {
+      return new OllamaUnreachableError(this.config.get('OLLAMA_BASE_URL', { infer: true }), {
+        cause: error,
+      });
+    }
+    return error instanceof Error ? error : new Error('未知 Ollama 错误', { cause: error });
+  }
+}

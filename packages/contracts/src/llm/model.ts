@@ -10,6 +10,11 @@ export const ModelCapabilitySchema = z.object({
   id: ModelIdSchema,
   supportsTools: z.boolean(),
   supportsVision: z.boolean(),
+  supportsJsonMode: z.boolean(),
+  needsToolCallFallback: z.boolean(),
+  maxToolCount: z.number().int().min(0),
+  effectiveContextTokens: z.number().int().positive(),
+  sourceReport: z.string().min(1),
   embeddingDimension: z.number().int().positive().optional(),
 });
 export type ModelCapability = z.infer<typeof ModelCapabilitySchema>;

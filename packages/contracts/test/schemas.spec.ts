@@ -91,6 +91,11 @@ describe('llm', () => {
         id: 'qwen3.5:2b',
         supportsTools: true,
         supportsVision: false,
+        supportsJsonMode: true,
+        needsToolCallFallback: true,
+        maxToolCount: 3,
+        effectiveContextTokens: 8192,
+        sourceReport: 'scripts/model-baseline/reports/2026-08-26-baseline.md',
       }).success,
     ).toBe(true);
     expect(
@@ -98,6 +103,11 @@ describe('llm', () => {
         id: '',
         supportsTools: true,
         supportsVision: false,
+        supportsJsonMode: true,
+        needsToolCallFallback: true,
+        maxToolCount: 3,
+        effectiveContextTokens: 8192,
+        sourceReport: 'report.md',
       }).success,
     ).toBe(false);
   });

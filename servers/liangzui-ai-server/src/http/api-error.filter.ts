@@ -7,6 +7,12 @@ import {
 } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiErrorSchema, type ErrorCode } from '@ai-engine/contracts';
+import {
+  ContextOverflowError,
+  LlmTimeoutError,
+  ModelNotFoundError,
+  OllamaUnreachableError,
+} from '../llm/llm-errors';
 
 const statusToCode = (status: number): ErrorCode => {
   if (status === 400) return 'BAD_REQUEST';
@@ -19,10 +25,36 @@ const statusToCode = (status: number): ErrorCode => {
   return 'INTERNAL';
 };
 
+const mapLlmError = (exception: unknown): { status: number; message: string } | undefined => {
+  if (exception instanceof OllamaUnreachableError) {
+    return { status: HttpStatus.SERVICE_UNAVAILABLE, message: exception.message };
+  }
+  if (exception instanceof LlmTimeoutError) {
+    return { status: HttpStatus.SERVICE_UNAVAILABLE, message: exception.message };
+  }
+  if (exception instanceof ModelNotFoundError) {
+    return { status: HttpStatus.NOT_FOUND, message: exception.message };
+  }
+  if (exception instanceof ContextOverflowError) {
+    return { status: HttpStatus.BAD_REQUEST, message: exception.message };
+  }
+  return undefined;
+};
+
 @Catch()
 export class ApiErrorFilter implements ExceptionFilter {
   catch(exception: unknown, host: ArgumentsHost): void {
     const response = host.switchToHttp().getResponse<Response>();
+    const llmMapped = mapLlmError(exception);
+    if (llmMapped) {
+      response.status(llmMapped.status).json(
+        ApiErrorSchema.parse({
+          code: statusToCode(llmMapped.status),
+          message: llmMapped.message,
+        }),
+      );
+      return;
+    }
 
     if (exception instanceof HttpException) {
       const status = exception.getStatus();

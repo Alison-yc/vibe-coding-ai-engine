@@ -5,7 +5,7 @@
 | 阶段     | M1 · 模型能力与数据层         |
 | 依赖     | 02、03                        |
 | 预计工期 | 3 天（测评 2 天 + 网关 1 天） |
-| 状态     | 未开始                        |
+| 状态     | 已完成                        |
 
 ## 为什么这是整个项目的关键路径
 
@@ -103,6 +103,12 @@ scripts/model-baseline/
 
 ## 第二部分：LLM 网关
 
+### 技术选型增量
+
+- `@nestjs/config`：按服务端规范集中注入 Ollama 配置，禁止业务代码直接读取 `process.env`。
+- `zod`：启动时校验配置和 Ollama HTTP 响应；服务端直接依赖，不借用 contracts 的传递依赖。
+- Ollama 网关使用原生 `fetch`，不新增 HTTP 客户端；LangChain 仅保留现有内存向量存储适配。
+
 ### 目标
 
 把模型调用收敛到一个抽象层，业务代码不直接碰 LangChain 或 Ollama SDK。
@@ -164,14 +170,14 @@ Agent 循环在装配工具列表时读 `maxToolCount` 做裁剪；RAG 在拼上
 
 ## 验收标准（DoD）
 
-- [ ] `pnpm baseline` 能一键跑完六项测评并生成报告
-- [ ] 报告已提交，包含明确的"因此本项目决定 ..."结论段
-- [ ] `capabilities()` 返回的数值有报告出处，能在报告里查到对应的表格
-- [ ] `numCtx` 与 `numPredict` 已替换为实测值，且写明依据
-- [ ] 业务代码中不再出现 `new ChatOllama` / `new OllamaEmbeddings` 直接调用
-- [ ] 关掉 Ollama 后调用接口，返回的错误信息包含"检查 Ollama 是否在 :11434 运行"
-- [ ] 请求进行中断开客户端，服务端日志显示请求已取消（不是继续跑完）
-- [ ] 网关单测覆盖率 ≥ 85%，且不依赖真实 Ollama
+- [x] `pnpm baseline` 能一键跑完六项测评并生成报告
+- [x] 报告已提交，包含明确的"因此本项目决定 ..."结论段
+- [x] `capabilities()` 返回的数值有报告出处，能在报告里查到对应的表格
+- [x] `numCtx` 与 `numPredict` 已替换为实测值，且写明依据
+- [x] 业务代码中不再出现 `new ChatOllama` / `new OllamaEmbeddings` 直接调用
+- [x] 关掉 Ollama 后调用接口，返回的错误信息包含"检查 Ollama 是否在 :11434 运行"
+- [x] 请求进行中断开客户端，服务端日志显示请求已取消（不是继续跑完）
+- [x] 网关单测覆盖率 ≥ 85%，且不依赖真实 Ollama
 
 ## 验证命令
 

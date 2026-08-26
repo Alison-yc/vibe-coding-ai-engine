@@ -1,6 +1,7 @@
 import { type ArgumentsHost, HttpException, HttpStatus } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { ApiErrorFilter } from './api-error.filter';
+import { OllamaUnreachableError } from '../llm/llm-errors';
 
 const createHost = () => {
   const json = vi.fn();
@@ -67,5 +68,15 @@ describe('ApiErrorFilter', () => {
     filter.catch(new Error('boom'), host);
     expect(status).toHaveBeenCalledWith(500);
     expect(json).toHaveBeenCalledWith({ code: 'INTERNAL', message: '服务器内部错误' });
+  });
+
+  it('把 Ollama 不可达映射为 503 并保留排查提示', () => {
+    const { host, json, status } = createHost();
+    filter.catch(new OllamaUnreachableError('http://127.0.0.1:11434'), host);
+    expect(status).toHaveBeenCalledWith(503);
+    expect(json.mock.calls[0]?.[0]).toMatchObject({
+      code: 'SERVICE_UNAVAILABLE',
+    });
+    expect(String(json.mock.calls[0]?.[0]?.message)).toContain(':11434');
   });
 });

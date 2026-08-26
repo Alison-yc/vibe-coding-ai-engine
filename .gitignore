@@ -85,6 +85,7 @@ blob-report/
 # 安全扫描产物
 # ─────────────────────────────────────────────────────────────
 *.sarif
+scripts/model-baseline/reports/.baseline-checkpoint.json
 gitleaks-report.json
 .semgrep/
 .semgrep_logs/

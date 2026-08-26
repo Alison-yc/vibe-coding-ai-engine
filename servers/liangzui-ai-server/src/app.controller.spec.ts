@@ -3,6 +3,8 @@ import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { FakeLlmGateway } from './llm/fake-llm-gateway';
+import { LLM_GATEWAY } from './llm/llm-gateway';
 
 describe('AppController', () => {
   let appController: AppController;
@@ -15,7 +17,7 @@ describe('AppController', () => {
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
       controllers: [AppController],
-      providers: [AppService],
+      providers: [AppService, { provide: LLM_GATEWAY, useValue: new FakeLlmGateway() }],
     }).compile();
 
     appController = app.get<AppController>(AppController);
@@ -34,7 +36,9 @@ describe('AppController', () => {
 
   it('转发 RAG 请求', async () => {
     vi.spyOn(appService, 'ragQuery').mockResolvedValueOnce('北京');
+    const request = { on: vi.fn() };
 
-    await expect(appController.ragQuery('我住哪')).resolves.toBe('北京');
+    await expect(appController.ragQuery(request as never, '我住哪')).resolves.toBe('北京');
+    expect(appService.ragQuery).toHaveBeenCalledWith('我住哪', expect.any(AbortSignal));
   });
 });
