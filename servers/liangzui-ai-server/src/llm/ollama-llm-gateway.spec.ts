@@ -1,6 +1,8 @@
 import { ConfigService } from '@nestjs/config';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { AppConfig } from '../config/ollama.config';
+import { LlmMetricsService } from '../observability/llm-metrics.service';
+import { LlmMetricsStore } from '../observability/llm-metrics.store';
 import { LlmTimeoutError, ModelNotFoundError, OllamaUnreachableError } from './llm-errors';
 import { OllamaLlmGateway } from './ollama-llm-gateway';
 
@@ -9,19 +11,30 @@ const REQUEST = {
   content: '你好',
 };
 
-const createGateway = () =>
-  new OllamaLlmGateway(
-    new ConfigService<AppConfig, true>({
-      OLLAMA_BASE_URL: 'http://127.0.0.1:11434',
-      OLLAMA_MODEL: 'qwen3.5:2b',
-      OLLAMA_MODEL_LARGE: 'gemma4:e2b',
-      OLLAMA_EMBED_MODEL: 'nomic-embed-text:latest',
-      OLLAMA_NUM_CTX: 8192,
-      OLLAMA_NUM_PREDICT: 2048,
-      OLLAMA_TEMPERATURE: 0.2,
-      OLLAMA_KEEP_ALIVE: '10m',
-    }),
-  );
+const createConfig = () =>
+  new ConfigService<AppConfig, true>({
+    OLLAMA_BASE_URL: 'http://127.0.0.1:11434',
+    OLLAMA_MODEL: 'qwen3.5:2b',
+    OLLAMA_MODEL_LARGE: 'gemma4:e2b',
+    OLLAMA_EMBED_MODEL: 'nomic-embed-text:latest',
+    OLLAMA_NUM_CTX: 8192,
+    OLLAMA_NUM_PREDICT: 2048,
+    OLLAMA_TEMPERATURE: 0.2,
+    OLLAMA_KEEP_ALIVE: '10m',
+    NODE_ENV: 'test',
+    LOG_LEVEL: 'silent',
+    RUN_DB_INTEGRATION: false,
+  });
+
+const createGateway = () => {
+  const config = createConfig();
+  return new OllamaLlmGateway(config, new LlmMetricsService(new LlmMetricsStore(), config), {
+    debug: vi.fn(),
+    info: vi.fn(),
+    warn: vi.fn(),
+    error: vi.fn(),
+  } as never);
+};
 
 afterEach(() => {
   vi.useRealTimers();
@@ -47,6 +60,30 @@ describe('OllamaLlmGateway', () => {
       type: 'text',
       text: '你好，我能帮你什么？',
     });
+  });
+
+  it('非流式 chat 记录 Ollama 的 done_reason', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json({
+          message: { content: '截断' },
+          prompt_eval_count: 8,
+          eval_count: 12,
+          done_reason: 'length',
+        }),
+      ),
+    );
+    const config = createConfig();
+    const metrics = new LlmMetricsService(new LlmMetricsStore(), config);
+    const gateway = new OllamaLlmGateway(config, metrics, {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    } as never);
+    await gateway.chat(REQUEST);
+    expect(metrics.snapshot().calls[0]?.finishReason).toBe('length');
   });
 
   it('连接失败只重试两次并返回可操作提示', async () => {
@@ -126,12 +163,22 @@ describe('OllamaLlmGateway', () => {
         ),
     );
 
+    const config = createConfig();
+    const metrics = new LlmMetricsService(new LlmMetricsStore(), config);
+    const gateway = new OllamaLlmGateway(config, metrics, {
+      debug: vi.fn(),
+      info: vi.fn(),
+      warn: vi.fn(),
+      error: vi.fn(),
+    } as never);
     const events = [];
-    for await (const event of createGateway().stream(REQUEST)) events.push(event);
+    for await (const event of gateway.stream(REQUEST)) events.push(event);
     expect(events).toEqual([
       { event: 'chunk', data: { text: '你' } },
       { event: 'chunk', data: { text: '好' } },
       { event: 'done', data: { finishReason: 'stop' } },
     ]);
+    expect(metrics.snapshot().calls[0]?.finishReason).toBe('stop');
+    expect(metrics.snapshot().calls[0]?.operation).toBe('stream');
   });
 });

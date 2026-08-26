@@ -10,10 +10,13 @@ import {
   type ModelCapability,
   type ModelId,
 } from '@ai-engine/contracts';
-import { Inject, Injectable, Logger } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { InjectPinoLogger, PinoLogger } from 'nestjs-pino';
 import { z } from 'zod';
 import type { AppConfig } from '../config/ollama.config';
+import { LlmMetricsService } from '../observability/llm-metrics.service';
+import { summarizeText } from '../observability/log-redaction';
 import {
   ContextOverflowError,
   LlmTimeoutError,
@@ -27,6 +30,7 @@ const ChatResponseBodySchema = z.object({
   message: z.object({ content: z.string() }),
   prompt_eval_count: z.number().int().nonnegative().optional(),
   eval_count: z.number().int().nonnegative().optional(),
+  done_reason: z.string().optional(),
 });
 
 const EmbedResponseBodySchema = z.object({
@@ -78,11 +82,13 @@ const responseErrorMessage = async (response: Response): Promise<string> => {
 
 @Injectable()
 export class OllamaLlmGateway implements LlmGateway {
-  private readonly logger = new Logger(OllamaLlmGateway.name);
-
   constructor(
     @Inject(ConfigService)
     private readonly config: ConfigService<AppConfig, true>,
+    @Inject(LlmMetricsService)
+    private readonly metrics: LlmMetricsService,
+    @InjectPinoLogger(OllamaLlmGateway.name)
+    private readonly logger: PinoLogger,
   ) {}
 
   async chat(request: ChatRequest, signal?: AbortSignal): Promise<ChatResponse> {
@@ -106,12 +112,25 @@ export class OllamaLlmGateway implements LlmGateway {
       signal,
     );
     const parsed = ChatResponseBodySchema.parse(body);
+    const durationMs = Math.round(performance.now() - startedAt);
+    const promptTokens = parsed.prompt_eval_count ?? 0;
+    const completionTokens = parsed.eval_count ?? 0;
     this.logger.debug({
       operation: 'chat',
       model: this.config.get('OLLAMA_MODEL', { infer: true }),
-      promptTokens: parsed.prompt_eval_count ?? 0,
-      outputTokens: parsed.eval_count ?? 0,
-      durationMs: Math.round(performance.now() - startedAt),
+      promptTokens,
+      completionTokens,
+      durationMs,
+      content: summarizeText(parsed.message.content),
+    });
+    this.metrics.record({
+      operation: 'chat',
+      model: this.config.get('OLLAMA_MODEL', { infer: true }),
+      promptTokens,
+      completionTokens,
+      firstTokenMs: durationMs,
+      totalMs: durationMs,
+      finishReason: parsed.done_reason ?? 'stop',
     });
     return ChatResponseSchema.parse({
       message: {
@@ -124,6 +143,10 @@ export class OllamaLlmGateway implements LlmGateway {
   }
 
   async *stream(request: ChatRequest, signal?: AbortSignal): AsyncIterable<LlmStreamEvent> {
+    const startedAt = performance.now();
+    let firstTokenMs: number | null = null;
+    let completionTokens = 0;
+    let finishReason: string | null = null;
     const firstTokenController = new AbortController();
     const timer = setTimeout(() => {
       firstTokenController.abort(new LlmTimeoutError('首 token'));
@@ -166,11 +189,14 @@ export class OllamaLlmGateway implements LlmGateway {
           if (text) {
             if (!receivedFirstToken) {
               receivedFirstToken = true;
+              firstTokenMs = Math.round(performance.now() - startedAt);
               clearTimeout(timer);
             }
+            completionTokens += 1;
             yield LlmStreamEventSchema.parse({ event: 'chunk', data: { text } });
           }
           if (parsed.done) {
+            finishReason = parsed.done_reason ?? 'stop';
             yield LlmStreamEventSchema.parse({
               event: 'done',
               data: { finishReason: parsed.done_reason },
@@ -178,6 +204,25 @@ export class OllamaLlmGateway implements LlmGateway {
           }
         }
       }
+      const totalMs = Math.round(performance.now() - startedAt);
+      this.metrics.record({
+        operation: 'stream',
+        model: this.config.get('OLLAMA_MODEL', { infer: true }),
+        promptTokens: Math.ceil([...request.content].length / 2),
+        completionTokens,
+        firstTokenMs,
+        totalMs,
+        finishReason,
+      });
+      this.logger.debug({
+        operation: 'stream',
+        model: this.config.get('OLLAMA_MODEL', { infer: true }),
+        completionTokens,
+        firstTokenMs,
+        totalMs,
+        finishReason,
+        content: summarizeText(request.content),
+      });
     } catch (error) {
       if (signal?.aborted) throw signal.reason;
       if (firstTokenController.signal.aborted) throw firstTokenController.signal.reason;
@@ -188,6 +233,7 @@ export class OllamaLlmGateway implements LlmGateway {
   }
 
   async embed(texts: string[], signal?: AbortSignal): Promise<number[][]> {
+    const startedAt = performance.now();
     const body = await this.requestJson(
       '/api/embed',
       {
@@ -206,6 +252,22 @@ export class OllamaLlmGateway implements LlmGateway {
     ) {
       throw new Error(`Embedding 维度或数量不符：期望 ${texts.length} × ${EMBEDDING_DIMENSION}`);
     }
+    const totalMs = Math.round(performance.now() - startedAt);
+    this.metrics.record({
+      operation: 'embed',
+      model: this.config.get('OLLAMA_EMBED_MODEL', { infer: true }),
+      promptTokens: 0,
+      completionTokens: 0,
+      firstTokenMs: null,
+      totalMs,
+      finishReason: 'stop',
+    });
+    this.logger.debug({
+      operation: 'embed',
+      model: this.config.get('OLLAMA_EMBED_MODEL', { infer: true }),
+      batchSize: texts.length,
+      totalMs,
+    });
     return parsed.embeddings;
   }
 

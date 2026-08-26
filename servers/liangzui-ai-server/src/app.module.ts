@@ -7,6 +7,8 @@ import { validateEnvironment } from './config/ollama.config';
 import { LLM_GATEWAY } from './llm/llm-gateway';
 import { LlmController } from './llm/llm.controller';
 import { OllamaLlmGateway } from './llm/ollama-llm-gateway';
+import { ObservabilityModule } from './observability/observability.module';
+import { TraceIdModule } from './observability/trace-id.module';
 
 @Module({
   imports: [
@@ -15,6 +17,8 @@ import { OllamaLlmGateway } from './llm/ollama-llm-gateway';
       envFilePath: ['.env', '../../.env'],
       validate: validateEnvironment,
     }),
+    TraceIdModule,
+    ObservabilityModule,
     DatabaseModule,
   ],
   controllers: [AppController, LlmController],
