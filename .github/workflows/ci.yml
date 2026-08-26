@@ -2,9 +2,10 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feature/**", "feat/**", "fix/**"]
   pull_request:
     branches: [main]
+  workflow_dispatch:
 
 # 同一分支的新 push 取消旧的运行，省额度
 concurrency:
@@ -91,13 +92,15 @@ jobs:
       - name: 格式检查
         run: pnpm format:check
 
-      - name: Lint（含架构护栏）
-        if: needs.changes.outputs.code == 'true'
-        run: pnpm lint
-
+      # type-aware ESLint 依赖 workspace 包的 dist/*.d.ts。
+      # typecheck 的 dependsOn 是 ^build，必须先跑，否则干净 checkout 会把未解析模块打成 error type。
       - name: 类型检查
         if: needs.changes.outputs.code == 'true'
         run: pnpm typecheck
+
+      - name: Lint（含架构护栏）
+        if: needs.changes.outputs.code == 'true'
+        run: pnpm lint
 
       - name: 提交信息检查
         if: github.event_name == 'pull_request'

@@ -2,7 +2,7 @@ name: Security
 
 on:
   push:
-    branches: [main]
+    branches: [main, "feature/**", "feat/**", "fix/**"]
     paths-ignore:
       - "**.md"
       - ".plan/**"
@@ -14,6 +14,7 @@ on:
   schedule:
     # 每周一早八点跑一次，捕获新披露的依赖漏洞
     - cron: "0 0 * * 1"
+  workflow_dispatch:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

@@ -19,7 +19,7 @@
     "dev:db:reset": "docker compose -f docker/docker-compose.yml down -v && pnpm dev:db && pnpm db:migrate",
     "build": "turbo run build",
     "clean": "turbo run clean && rimraf coverage .turbo",
-    "lint": "eslint . --max-warnings=0",
+    "lint": "pnpm typecheck && eslint . --max-warnings=0",
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -46,7 +46,7 @@
     "sec:all": "pnpm sec:sast && pnpm sec:sca && pnpm sec:secrets",
     "tauri": "pnpm --filter liangzui-ai-app tauri",
     "tauri:build": "pnpm --filter liangzui-ai-app tauri build",
-    "ci:local": "pnpm format:check && pnpm lint && pnpm typecheck && pnpm test:cov && pnpm sec:sast && pnpm sec:sca && pnpm build",
+    "ci:local": "pnpm format:check && pnpm lint && pnpm test:cov && pnpm sec:sast && pnpm sec:sca && pnpm build",
     "ci:local:full": "pnpm dev:db && pnpm ci:local && pnpm test:integration",
     "prepare": "husky"
   },
