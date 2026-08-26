@@ -78,6 +78,12 @@ export default defineConfig({
           branches: 65,
           statements: 70,
         },
+        'packages/ui/**': {
+          lines: 70,
+          functions: 70,
+          branches: 65,
+          statements: 70,
+        },
         // 装配代码，E2E 覆盖更有效
         'clients/**': {
           lines: 50,
