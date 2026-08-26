@@ -127,6 +127,8 @@ plan 编号表示**主题**，不是严格的执行队列。实际执行顺序�
 - 空库能通过迁移完整重建。
 - 复盘基线数据是否改变 M2～M4 的设计。
 
+已通过（2026-08-27）。未推翻 M2～M4 主方案：Agent 维持 ADR-D01 路线 A（`maxToolCount=6`）；结构化输出必须用 Ollama JSON Schema；默认 `numCtx=8192`。`InMemoryVectorStore` 仅作无库/单测回退。本机空 volume 重建未当面验证，不阻断进入 M2。
+
 ### M2 · RAG 与对话
 
 #### CR-08 · RAG 索引与检索
