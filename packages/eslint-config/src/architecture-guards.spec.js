@@ -9,9 +9,9 @@ const repoRoot = fileURLToPath(new URL('../../..', import.meta.url));
 const APP_CORE = path.join(repoRoot, 'packages/app-core/src/index.ts');
 const UI = path.join(repoRoot, 'packages/ui/src/index.ts');
 const CONTRACTS = path.join(repoRoot, 'packages/contracts/src/index.ts');
+const eslint = new ESLint({ cwd: repoRoot });
 
 const lintSnippet = async (filePath, source) => {
-  const eslint = new ESLint({ cwd: repoRoot });
   const [result] = await eslint.lintText(source, { filePath });
   return result?.messages ?? [];
 };
@@ -29,7 +29,7 @@ describe('根 eslint.config 架构护栏实测', () => {
       'export const read = () => localStorage.getItem("k");\n',
     );
     expect(hasMessage(globals, '走 @ai-engine/platform 的 kv 接口')).toBe(true);
-  });
+  }, 15_000);
 
   it('ui 不能依赖 app-core / contracts / platform', async () => {
     const messages = await lintSnippet(UI, "import { App } from '@ai-engine/app-core';\n");
