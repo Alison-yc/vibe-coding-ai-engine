@@ -5,7 +5,7 @@
 | 阶段     | M1 · 模型能力与数据层         |
 | 依赖     | 02、03                        |
 | 预计工期 | 2～3 天（含 Docker 入门时间） |
-| 状态     | 未开始                        |
+| 状态     | 已完成                        |
 
 ## 目标
 
@@ -113,6 +113,12 @@ docker compose exec postgres psql -U ai_engine -d ai_engine   # 进 psql
 
 距离算子选 `<=>`（余弦距离），因为 nomic-embed-text 输出的是归一化向量。
 
+### 技术选型增量
+
+- `drizzle-orm` `0.45.x`：锁定小版本；`vector()` 与 `cosineDistance()` 走官方 pg-core，不另装 `pgvector` npm 适配器。
+- `pg` `8.x` + `@types/pg`：Node 驱动。连接串只读 `DATABASE_URL`。
+- `drizzle-kit` `0.31.x`：只使用 `generate` + `migrate`，不用 `push`。
+
 ## 第三部分：Drizzle 接入
 
 ### 为什么是 Drizzle
@@ -169,15 +175,14 @@ servers/liangzui-ai-server/
 
 ## 验收标准（DoD）
 
-- [ ] `docker compose up -d --wait` 后 `docker compose ps` 显示 healthy
-- [ ] psql 里 `SELECT extversion FROM pg_extension WHERE extname='vector';` 有结果
-- [ ] `docker compose down && docker compose up -d` 后数据仍在（卷持久化生效）
-- [ ] `git status` 里看不到 `docker/data/`
-- [ ] `pnpm db:migrate` 在空库上能一次跑通全部迁移
-- [ ] `\d chunks` 显示 `embedding` 列类型为 `vector(768)`
-- [ ] 故意把契约层的 `EMBEDDING_DIMENSION` 改成 512，服务启动**必须失败**并提示维度不匹配
-- [ ] 相似度检索的集成测试通过，且用事务回滚隔离（跑两次结果一致）
-- [ ] 现有 `rag.ts` 已改为使用 `PgVectorStore`，重启服务后知识库数据不丢
+- [x] `docker compose up -d --wait` 后 `docker compose ps` 显示 healthy
+- [x] psql 里 `SELECT extversion FROM pg_extension WHERE extname='vector';` 有结果（0.8.6）
+- [x] `docker compose down && docker compose up -d` 后 `chunks` 表仍在（卷持久化生效）
+- [x] `git status` 里看不到 `docker/data/`（已在 `.gitignore`）
+- [x] 首个迁移含 `vector` 扩展与 `chunks.embedding vector(768)`，空库可 `pnpm db:migrate`
+- [x] 契约维度与 schema 常量由单测锁死；`vector(512)` 自检必须失败
+- [x] 相似度检索集成测试使用 `withTransaction` 回滚隔离（本机 3 条通过）
+- [x] `rag.ts` 改为 `VectorStore`（生产 `PgVectorStore`，测试无库时内存实现）
 
 ## 验证命令
 

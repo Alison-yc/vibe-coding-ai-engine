@@ -12,7 +12,7 @@
 | 子阶段 | 内容                                           | 所属批次                 | 状态   |
 | ------ | ---------------------------------------------- | ------------------------ | ------ |
 | 17-A   | 快速门禁、测试、构建、安全 job、缓存、变更检测 | CR-04                    | 已完成 |
-| 17-B   | Postgres service container 与数据库集成测试    | CR-06                    | 未开始 |
+| 17-B   | Postgres service container 与数据库集成测试    | CR-06                    | 进行中 |
 | 17-C   | tag 触发的 macOS release / dmg artifact        | CR-16（本机 dmg 通过后） | 未开始 |
 
 CI 只接入已经在本地跑通的命令。不要先写一个“看起来完整”的 workflow，再让后续实现迁就它。
@@ -203,8 +203,9 @@ pnpm ci:local
 
 ### 17-B · CR-06 后
 
+- [x] CI workflow 增加 Postgres service container 与 `pnpm db:migrate` + `pnpm test:integration`
 - [ ] 集成测试在 CI 上能连到 Postgres + pgvector 并跑通
-- [ ] 数据库 job 不依赖本地 Docker 数据卷或开发机状态
+- [x] 数据库 job 不依赖本地 Docker 数据卷或开发机状态
 
 ### 17-C · CR-16 后
 
