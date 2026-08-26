@@ -30,6 +30,7 @@ export default [
       '**/drizzle/**',
       '**/*.generated.*',
       'pnpm-lock.yaml',
+      'tests/semgrep/**',
     ],
   },
   js.configs.recommended,

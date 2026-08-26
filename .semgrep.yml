@@ -4,9 +4,9 @@
 #   Agent 文件工具的路径穿越 / code 节点沙箱逃逸 / http 节点 SSRF
 #   模型输出渲染的 XSS / 检索内容的提示词注入 / grep 工具的命令注入
 #
-# ⚠️ 每条规则都必须配一个 test 用例并通过 `semgrep --test --config .semgrep.yml`。
+# ⚠️ 每条规则都必须配测试并通过 `pnpm sec:sast:test`。
 #    没测过的规则等于没有：可能永远不触发，也可能满屏误报。
-#    测试用例放 tests/semgrep/<rule-id>.ts。这是 .plan/16 实施步骤 2 的内容。
+#    测试用例放 tests/semgrep/rules.<rule-id>.ts；自测前会把本文件复制为 tests/semgrep/rules.yml。
 #
 # 需要例外时用 `// nosemgrep: <rule-id>` 并**必须写理由注释**。
 #
@@ -57,6 +57,7 @@ rules:
       include:
         - "/servers/**"
         - "/scripts/**"
+        - "/tests/semgrep/**"
     pattern-either:
       - pattern: $FS.readFile(path.join($ROOT, $INPUT), ...)
       - pattern: $FS.writeFile(path.join($ROOT, $INPUT), ...)
@@ -73,14 +74,15 @@ rules:
       必须先用 fs.realpath 解析真实路径再比较。见 .plan/10 的实现示例。
     paths:
       include:
-        - "**/workspace-path*.ts"
+        - "**/*workspace-path*.ts"
         - "**/*sandbox*.ts"
         - "**/*path-guard*.ts"
     patterns:
-      - pattern-regex: |-
-          \.startsWith\(
-      - pattern-not-regex: |-
-          realpath
+      - pattern: $X.startsWith(...)
+      - pattern-not-inside: |
+          $FS.realpath(...)
+          ...
+          $X.startsWith(...)
 
   # ── XSS ─────────────────────────────────────────────────────
   - id: no-dangerously-set-inner-html
@@ -114,6 +116,7 @@ rules:
     paths:
       include:
         - "/servers/**"
+        - "/tests/semgrep/**"
     pattern-either:
       - pattern-regex: |-
           \.(query|execute|unsafe)\s*\(\s*`[^`]*\$\{
@@ -131,6 +134,7 @@ rules:
       include:
         - "/servers/**/workflow/**"
         - "/servers/**/agent/**"
+        - "/tests/semgrep/**"
     patterns:
       - pattern-either:
           - pattern: fetch($URL, ...)
@@ -164,6 +168,7 @@ rules:
     paths:
       include:
         - "/servers/*/src/**"
+        - "/tests/semgrep/**"
       exclude:
         - "/servers/*/src/config/**"
         - "/servers/*/src/main.ts"
@@ -179,6 +184,7 @@ rules:
     paths:
       include:
         - "/servers/**"
+        - "/tests/semgrep/**"
     pattern-either:
       - pattern-regex: |-
           logger\.\w+\([^)]*\b(content|prompt|fileContent|userInput|rawText)\b\s*[,)]

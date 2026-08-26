@@ -116,7 +116,7 @@ expect(result.citations.every((c) => c.docId in knownDocs)).toBe(true);
 ## 提交前
 
 ```bash
-pnpm ci:local    # format:check + lint + typecheck + test:cov + sec:sast + build
+pnpm ci:local    # format:check + lint + typecheck + test:cov + sec:sast + sec:sca + build
 ```
 
 提交信息用 conventional commits，scope 取值见 `commitlint.config.js`：

@@ -88,6 +88,7 @@ blob-report/
 gitleaks-report.json
 .semgrep/
 .semgrep_logs/
+tests/semgrep/rules.yml
 
 # ─────────────────────────────────────────────────────────────
 # 缓存

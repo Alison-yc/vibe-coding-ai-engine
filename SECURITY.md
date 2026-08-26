@@ -84,9 +84,20 @@
 
 如果发现自己想 disable 架构护栏（`no-restricted-imports`），那说明设计需要调整，不是护栏需要绕过。
 
+传递依赖漏洞用根 `pnpm-workspace.yaml` 的 `overrides` 钉到已修复版本，而不是关审计。当前钉住 `ansi-regex@4/5` 与 `tmp`（来自 ESLint / Nest CLI 传递依赖，不在本项目直接调用路径上）。
+
+Cargo 侧当前命中的是 Tauri 传递的 GTK3 / unic「停止维护」咨询和 glib medium（CVSS 6.9），记录在仓库根目录 `osv-scanner.toml`，复查日期 2026-11-26。新的 critical/high 仍会让 `pnpm sec:sca` 失败。
+
 ## 报告问题
 
 个人学习项目，发现问题直接开 issue 即可。
+
+## 已知限制
+
+- 本机无法确认 GitHub Code Scanning、分支保护、Dependabot PR 是否已启用。这些属于仓库设置，要在 GitHub 上核对。
+- 私有仓库若没有 GitHub Advanced Security，SARIF 无法出现在 Security 标签页；CI 仍会把报告当 artifact 或允许 upload-sarif 失败而不阻断。
+- pre-commit 在未安装 Gitleaks 时只警告。要满足「假密钥必须拒绝提交」，本机必须安装 Gitleaks。
+- 16-B 的针对性攻击测试随对应功能批次补，本阶段不预造。
 
 ## 使用者须知
 

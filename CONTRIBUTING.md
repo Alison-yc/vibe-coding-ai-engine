@@ -15,8 +15,9 @@ corepack enable
 可选但建议装的两个工具（不装 CI 也会跑，只是本地少一层保护）：
 
 ```bash
-brew install gitleaks   # 提交前密钥扫描
-brew install semgrep    # 本地跑 SAST
+brew install gitleaks      # 提交前密钥扫描
+brew install semgrep       # 本地跑 SAST
+brew install osv-scanner   # 本地 SCA（npm + Cargo）
 ```
 
 ## 工作流程
