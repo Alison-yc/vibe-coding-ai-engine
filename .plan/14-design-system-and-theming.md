@@ -5,16 +5,28 @@
 | 阶段     | M0 起步（令牌层），随功能增量补组件 |
 | 依赖     | 14-A：02、12-A；14-B：对应功能 plan |
 | 预计工期 | 令牌层 1～2 天；组件随功能开发      |
-| 状态     | 未开始                              |
+| 状态     | 进行中                              |
 
 ## 子阶段状态
 
 | 子阶段 | 内容                                                | 所属批次                   | 状态   |
 | ------ | --------------------------------------------------- | -------------------------- | ------ |
-| 14-A   | 共享 UI 包、Tailwind 跨包扫描、主题令牌、令牌展示页 | CR-03                      | 未开始 |
+| 14-A   | 共享 UI 包、Tailwind 跨包扫描、主题令牌、令牌展示页 | CR-03                      | 已完成 |
 | 14-B   | 按真实页面需求增量补 shadcn/业务组合组件            | CR-10、CR-12、CR-13、CR-15 | 未开始 |
 
 14-B 不建立单独的大批次。组件必须跟使用它的功能一起 Review，避免预造没有调用方的抽象。
+
+## 技术选型（14-A）
+
+| 工具                     | 版本    | 说明                             |
+| ------------------------ | ------- | -------------------------------- |
+| Tailwind CSS             | 4.3.x   | 壳与 UI 包共用，跨包用 `@source` |
+| class-variance-authority | 0.7.x   | shadcn 变体                      |
+| clsx + tailwind-merge    | 2.x/3.x | `cn()`                           |
+| @radix-ui/react-slot     | 1.x     | Button `asChild`                 |
+| lucide-react             | 1.x     | 图标，尺寸只用 16/20/24          |
+
+不在本批次批量安装 shadcn 全家桶。
 
 ## 目标
 
@@ -185,13 +197,13 @@ packages/ui/src/
 
 ### 14-A
 
-- [ ] `packages/ui` 能被两个壳正常引入，样式不丢失
-- [ ] 跨包 class 生效验证：在 `packages/app-core` 写一个只在那里用过的 class（如 `bg-accent`），构建后样式存在
-- [ ] 四套主题 × 明暗 = 8 种组合，令牌与当前组件在 `/dev/tokens` 显示正常
-- [ ] 切换主题无闪烁，刷新页面主题保持
-- [ ] 「跟随系统」模式下，改系统外观，应用实时跟随
-- [ ] `packages/ui` 的组件不 import `app-core` 或 `contracts`（ESLint 护栏）
-- [ ] Playwright 的主题 smoke 在 Web 壳通过
+- [x] `packages/ui` 能被两个壳正常引入，样式不丢失
+- [x] 跨包 class 生效验证：在 `packages/app-core` 写一个只在那里用过的 class（如 `bg-accent`），构建后样式存在
+- [x] 四套主题 × 明暗 = 8 种组合，令牌与当前组件在 `/dev/tokens` 显示正常
+- [x] 切换主题无闪烁，刷新页面主题保持
+- [x] 「跟随系统」模式下，改系统外观，应用实时跟随
+- [x] `packages/ui` 的组件不 import `app-core` 或 `contracts`（ESLint 护栏）
+- [x] Playwright 的主题 smoke 在 Web 壳通过
 
 ### 14-B / 项目收尾
 
