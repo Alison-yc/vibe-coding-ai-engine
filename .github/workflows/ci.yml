@@ -38,12 +38,20 @@ jobs:
               - 'clients/**'
               - 'frontend/**'
               - 'scripts/**'
+              - 'e2e/**'
+              - 'tests/**'
+              - '.github/**'
+              - '.semgrep.yml'
               - 'package.json'
               - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
               - 'tsconfig.base.json'
               - 'eslint.config.js'
               - 'vitest.config.ts'
+              - 'playwright.config.ts'
               - 'turbo.json'
+              - 'osv-scanner.toml'
+              - '.semgrepignore'
             rust:
               - 'clients/**/src-tauri/**'
             frontend:
@@ -52,8 +60,10 @@ jobs:
               - 'packages/app-core/**'
 
   # ── ① 快速门禁（最先跑，失败则后续不执行） ────────────────────
+  # 只改文档 / .plan 时只跑 format:check，不进 lint/typecheck/测试/构建。
   quality:
     name: 快速门禁
+    needs: [changes]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -82,9 +92,11 @@ jobs:
         run: pnpm format:check
 
       - name: Lint（含架构护栏）
+        if: needs.changes.outputs.code == 'true'
         run: pnpm lint
 
       - name: 类型检查
+        if: needs.changes.outputs.code == 'true'
         run: pnpm typecheck
 
       - name: 提交信息检查
@@ -95,32 +107,12 @@ jobs:
             --to ${{ github.event.pull_request.head.sha }} \
             --verbose
 
-  # ── ② 测试与覆盖率门禁 ──────────────────────────────────────
+  # ── ② 测试与覆盖率门禁（17-A 不接数据库；Postgres 在 17-B / CR-06）
   test:
     name: 测试与覆盖率
     needs: [changes, quality]
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
-
-    services:
-      postgres:
-        image: pgvector/pgvector:pg17
-        env:
-          POSTGRES_USER: ai_engine
-          POSTGRES_PASSWORD: ai_engine_ci
-          POSTGRES_DB: ai_engine_test
-        ports:
-          - 5432:5432
-        options: >-
-          --health-cmd "pg_isready -U ai_engine -d ai_engine_test"
-          --health-interval 5s
-          --health-timeout 5s
-          --health-retries 10
-
-    env:
-      DATABASE_URL: postgresql://ai_engine:ai_engine_ci@localhost:5432/ai_engine_test
-      NODE_ENV: test
-
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4
@@ -138,16 +130,6 @@ jobs:
           key: turbo-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: |
             turbo-${{ runner.os }}-${{ github.ref_name }}-
-
-      # service container 不支持挂载初始化脚本目录，所以扩展在这里装
-      - name: 安装 pgvector 扩展
-        run: |
-          PGPASSWORD=ai_engine_ci psql -h localhost -U ai_engine -d ai_engine_test \
-            -c 'CREATE EXTENSION IF NOT EXISTS vector; CREATE EXTENSION IF NOT EXISTS pgcrypto;'
-
-      - name: 数据库迁移
-        run: pnpm db:migrate
-        continue-on-error: true # M1 之前还没有迁移文件
 
       - name: 测试与覆盖率门禁
         run: pnpm test:cov
@@ -183,10 +165,20 @@ jobs:
       - name: 构建全部包
         run: pnpm build
 
+      - name: 安装 Playwright Chromium
+        if: needs.changes.outputs.frontend == 'true'
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Web smoke
+        if: needs.changes.outputs.frontend == 'true'
+        env:
+          CI: true
+        run: pnpm exec playwright test e2e/web-smoke.spec.ts
+
   # ── ④ Rust 检查 ────────────────────────────────────────────
   rust:
     name: Rust 检查
-    needs: changes
+    needs: [changes, quality]
     if: needs.changes.outputs.rust == 'true'
     runs-on: ubuntu-latest
     steps:
