@@ -1,0 +1,35 @@
+{
+  "name": "@ai-engine/eslint-config",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./base": "./src/base.js",
+    "./cross-package": "./src/cross-package.js",
+    "./node": "./src/node.js",
+    "./react": "./src/react.js",
+    "./test": "./src/test.js"
+  },
+  "files": [
+    "src"
+  ],
+  "scripts": {
+    "clean": "rimraf .eslintcache",
+    "lint": "eslint src --max-warnings=0",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "node --check src/base.js && node --check src/cross-package.js && node --check src/node.js && node --check src/react.js && node --check src/test.js"
+  },
+  "dependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.11.0",
+    "typescript-eslint": "^8.67.0"
+  },
+  "peerDependencies": {
+    "eslint": "^9.39.5"
+  },
+  "devDependencies": {
+    "eslint": "^9.39.5"
+  }
+}

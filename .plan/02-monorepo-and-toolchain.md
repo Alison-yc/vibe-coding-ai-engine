@@ -5,7 +5,7 @@
 | 阶段     | M0 · 工程底座   |
 | 依赖     | 无              |
 | 预计工期 | 2～3 天         |
-| 状态     | 待开发（CR-01） |
+| 状态     | 已完成（CR-01） |
 
 ## 目标
 
@@ -217,16 +217,16 @@ projects: ['packages/*', 'servers/*', 'frontend/*']
 
 ## 验收标准（DoD）
 
-- [ ] `pnpm install` 在干净 clone 上无警告通过
-- [ ] `pnpm typecheck` 全绿
-- [ ] `pnpm lint` 全绿
-- [ ] `pnpm format:check` 全绿
-- [ ] `pnpm test` 能跑（此时只有示例测试）
-- [ ] `pnpm ci:local` 一条命令跑完全部门禁
-- [ ] 故意在 `packages/app-core` 写一行 `import { invoke } from '@tauri-apps/api/core'`，`pnpm lint` **必须报错**
-- [ ] 故意提交 `git commit -m "update"`，commit-msg hook **必须拒绝**
-- [ ] `pnpm turbo build --dry=json` 输出的依赖图与步骤 6 描述一致
-- [ ] 第二次 `pnpm build` 命中 turbo 缓存（输出 `FULL TURBO`）
+- [x] `pnpm install` 在干净 clone 上无警告通过
+- [x] `pnpm typecheck` 全绿
+- [x] `pnpm lint` 全绿
+- [x] `pnpm format:check` 全绿
+- [x] `pnpm test` 能跑（此时只有示例测试）
+- [x] `pnpm ci:local` 一条命令跑完全部门禁
+- [x] 故意在 `packages/app-core` 写一行 `import { invoke } from '@tauri-apps/api/core'`，`pnpm lint` **必须报错**
+- [x] 以 `update` 手动调用 commit-msg hook（不创建空提交），hook **必须拒绝**
+- [x] `pnpm turbo build --dry=json` 输出的依赖图与步骤 6 描述一致
+- [x] 第二次 `pnpm build` 命中 turbo 缓存（输出 `FULL TURBO`）
 
 ## 验证命令
 

@@ -58,7 +58,7 @@ export default {
     // 中文 subject 不适用大小写规则，关掉
     'subject-case': [0],
     'subject-full-stop': [2, 'never', '。'],
-    'header-max-length': [2, 'always', 100],
+    'header-max-length': [2, 'always', 72],
     'body-leading-blank': [2, 'always'],
     'footer-leading-blank': [2, 'always'],
   },

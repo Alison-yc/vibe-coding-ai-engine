@@ -24,10 +24,10 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "typecheck": "turbo run typecheck",
-    "test": "vitest run",
+    "test": "turbo run build && vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
-    "test:cov": "vitest run --coverage",
+    "test:cov": "turbo run build && vitest run --coverage",
     "test:integration": "vitest run --project server -t integration",
     "test:e2e": "playwright test",
     "test:security": "vitest run --dir e2e/security",
@@ -50,6 +50,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@ai-engine/eslint-config": "workspace:*",
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
     "@eslint/js": "^9.39.5",
@@ -70,11 +71,5 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.67.0",
     "vitest": "^4.1.11"
-  },
-  "pnpm": {
-    "overrides": {},
-    "peerDependencyRules": {
-      "ignoreMissing": []
-    }
   }
 }

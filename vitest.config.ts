@@ -11,15 +11,16 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
-    projects: ['packages/*', 'servers/*', 'frontend/*', 'clients/*'],
+    projects: ['packages/*/vitest.config.ts', 'servers/*/vitest.config.ts'],
 
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov', 'json-summary'],
       reportsDirectory: './coverage',
       reportOnFailure: true,
+      all: true,
+      include: ['packages/*/src/**/*.{ts,tsx}', 'servers/*/src/**/*.{ts,tsx}'],
 
-      include: ['**/src/**/*.{ts,tsx}'],
       exclude: [
         // 只排除没有可测逻辑的文件。不允许为了达标排除业务代码。
         '**/*.d.ts',

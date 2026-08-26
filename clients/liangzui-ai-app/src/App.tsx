@@ -1,21 +1,19 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import { invoke } from "@tauri-apps/api/core";
-import { Button } from "@/components/ui/button";
+import { useState } from 'react';
+import reactLogo from './assets/react.svg';
+import { invoke } from '@tauri-apps/api/core';
+import { Button } from '@/components/ui/button';
 
 function App() {
-  const [greetMsg, setGreetMsg] = useState("");
-  const [name, setName] = useState("");
+  const [greetMsg, setGreetMsg] = useState('');
+  const [name, setName] = useState('');
 
   async function greet() {
-    setGreetMsg(await invoke("greet", { name }));
+    setGreetMsg(await invoke('greet', { name }));
   }
 
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center gap-6 p-8">
-      <h1 className="text-3xl font-bold tracking-tight">
-        Welcome to Tauri + React
-      </h1>
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 p-8">
+      <h1 className="text-3xl font-bold tracking-tight">Welcome to Tauri + React</h1>
 
       <div className="flex items-center gap-6">
         <a href="https://vite.dev" target="_blank">
@@ -37,12 +35,12 @@ function App() {
         className="flex items-center gap-2"
         onSubmit={(e) => {
           e.preventDefault();
-          greet();
+          void greet();
         }}
       >
         <input
           id="greet-input"
-          className="flex h-9 w-64 rounded-md border border-input bg-background px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+          className="border-input bg-background placeholder:text-muted-foreground focus-visible:ring-ring flex h-9 w-64 rounded-md border px-3 py-1 text-sm shadow-sm transition-colors focus-visible:ring-1 focus-visible:outline-none"
           value={name}
           onChange={(e) => setName(e.currentTarget.value)}
           placeholder="Enter a name..."

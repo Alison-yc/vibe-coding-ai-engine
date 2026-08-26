@@ -5,9 +5,7 @@ const llm = createChatOllama();
 
 export const translate = async (text: string) => {
   const conversation = [
-    new SystemMessage(
-      'Translate the following text to English. Output only the translation.',
-    ),
+    new SystemMessage('Translate the following text to English. Output only the translation.'),
     new HumanMessage(text),
   ];
   const res = await llm.invoke(conversation);

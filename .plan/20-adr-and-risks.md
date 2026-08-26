@@ -227,6 +227,12 @@
 
 **判据**：两天内用 `unplugin-swc` + `reflect-metadata` 搞不定则暂留 Jest，但需设计 lcov 覆盖率合并方案。
 
+**状态**：已关闭（2026-08-26）。
+
+**结论**：迁移到 Vitest。默认 esbuild 转换能运行测试，但实测不会生成 `design:paramtypes`；接入
+`unplugin-swc` 后，元数据回归测试、Nest TestingModule 单测与 HTTP e2e 共 3 条均通过。服务端统一使用
+Vitest，不保留 Jest 或覆盖率合并链路。
+
 ---
 
 ### ADR-D04 · 桌面端是否改用 SQLite + sqlite-vec 以实现"双击即用"

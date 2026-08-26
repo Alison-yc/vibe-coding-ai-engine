@@ -1,4 +1,5 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { readOllamaConfig } from './config/ollama.config';
 import { ragQuery as ragQueryFundamentals } from './fundamentals/rag';
 import { translate as translateFundamentals } from './fundamentals/translate';
 
@@ -16,10 +17,9 @@ export class AppService {
     try {
       return await translateFundamentals(text);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Ollama request failed';
+      const message = error instanceof Error ? error.message : 'Ollama request failed';
       throw new ServiceUnavailableException(
-        `Translation failed: ${message}. Check Ollama is running at ${process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434'}.`,
+        `Translation failed: ${message}. Check Ollama is running at ${readOllamaConfig().baseUrl}.`,
       );
     }
   }
@@ -28,10 +28,9 @@ export class AppService {
     try {
       return await ragQueryFundamentals(question);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Ollama request failed';
+      const message = error instanceof Error ? error.message : 'Ollama request failed';
       throw new ServiceUnavailableException(
-        `RAG query failed: ${message}. Check Ollama is running at ${process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434'}.`,
+        `RAG query failed: ${message}. Check Ollama is running at ${readOllamaConfig().baseUrl}.`,
       );
     }
   }

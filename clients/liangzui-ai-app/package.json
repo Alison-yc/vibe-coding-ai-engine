@@ -6,7 +6,10 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "lint": "eslint src vite.config.ts --max-warnings=0",
     "preview": "vite preview",
+    "test": "vitest run --passWithNoTests",
+    "typecheck": "tsc --noEmit",
     "tauri": "tauri"
   },
   "dependencies": {
@@ -23,6 +26,7 @@
     "tailwindcss": "^4.3.3"
   },
   "devDependencies": {
+    "@ai-engine/tsconfig": "workspace:*",
     "@tauri-apps/cli": "^2",
     "@types/node": "^26.2.0",
     "@types/react": "^19.1.8",
