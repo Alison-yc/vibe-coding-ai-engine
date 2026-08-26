@@ -11,6 +11,7 @@ export const createWebPlatform = (): Platform => ({
     nativeDirectoryPicker: false,
     windowControls: false,
     routerMode: 'history',
+    devTools: import.meta.env.DEV,
   },
   pickDirectory: () => Promise.resolve(window.prompt('请输入目录路径')),
   pickFiles: () => Promise.reject(new NotImplementedError('pickFiles')),
@@ -50,5 +51,9 @@ export const createWebPlatform = (): Platform => ({
     minimize: () => Promise.resolve(),
     maximize: () => Promise.resolve(),
     close: () => Promise.resolve(),
+    reload: () => {
+      window.location.reload();
+      return Promise.resolve();
+    },
   },
 });

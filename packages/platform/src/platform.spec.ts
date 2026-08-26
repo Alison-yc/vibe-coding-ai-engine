@@ -11,6 +11,7 @@ const stubPlatform = {
     nativeDirectoryPicker: false,
     windowControls: false,
     routerMode: 'history' as const,
+    devTools: true,
   },
   pickDirectory: async () => null,
   pickFiles: async () => [],
@@ -24,6 +25,7 @@ const stubPlatform = {
     minimize: async () => undefined,
     maximize: async () => undefined,
     close: async () => undefined,
+    reload: async () => undefined,
   },
 } satisfies Platform;
 

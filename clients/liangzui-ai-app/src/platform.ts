@@ -34,6 +34,7 @@ export const createTauriPlatform = (): Platform => ({
     nativeDirectoryPicker: false,
     windowControls: false,
     routerMode: 'hash',
+    devTools: import.meta.env.DEV,
   },
   pickDirectory: () => Promise.reject(new NotImplementedError('pickDirectory')),
   pickFiles: () => Promise.reject(new NotImplementedError('pickFiles')),
@@ -60,5 +61,9 @@ export const createTauriPlatform = (): Platform => ({
     minimize: () => Promise.reject(new NotImplementedError('window.minimize')),
     maximize: () => Promise.reject(new NotImplementedError('window.maximize')),
     close: () => Promise.reject(new NotImplementedError('window.close')),
+    reload: () => {
+      window.location.reload();
+      return Promise.resolve();
+    },
   },
 });

@@ -8,6 +8,7 @@ export type PlatformCapabilities = {
   nativeDirectoryPicker: boolean;
   windowControls: boolean;
   routerMode: 'hash' | 'history';
+  devTools: boolean;
 };
 
 export type KeyValueStore = {
@@ -27,6 +28,7 @@ export type PlatformWindow = {
   minimize: () => Promise<void>;
   maximize: () => Promise<void>;
   close: () => Promise<void>;
+  reload: () => Promise<void>;
 };
 
 export type Platform = {
