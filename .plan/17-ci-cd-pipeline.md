@@ -165,7 +165,8 @@ pnpm ci:local
   ├─ test:cov（含阈值门禁）
   ├─ sec:sast
   ├─ sec:sca
-  └─ build
+  ├─ build
+  └─ rust:check（rustfmt + clippy）
 ```
 
 与 CI 的差异只有：不跑集成测试（需要数据库，用 `pnpm ci:local:full` 包含）、不跑 SARIF 上传。
