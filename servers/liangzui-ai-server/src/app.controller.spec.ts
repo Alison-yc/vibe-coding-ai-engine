@@ -32,11 +32,9 @@ describe('AppController', () => {
     expect(appController.prompt('Cursor')).toBe('Hello, Cursor!');
   });
 
-  it('转发翻译与 RAG 请求', async () => {
-    vi.spyOn(appService, 'translate').mockResolvedValueOnce('Hello');
+  it('转发 RAG 请求', async () => {
     vi.spyOn(appService, 'ragQuery').mockResolvedValueOnce('北京');
 
-    await expect(appController.translate('你好')).resolves.toBe('Hello');
     await expect(appController.ragQuery('我住哪')).resolves.toBe('北京');
   });
 });

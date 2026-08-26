@@ -9,7 +9,22 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./chat": {
+      "types": "./dist/chat/index.d.ts",
+      "import": "./dist/chat/index.js"
+    },
+    "./common": {
+      "types": "./dist/common/index.d.ts",
+      "import": "./dist/common/index.js"
+    },
+    "./llm": {
+      "types": "./dist/llm/index.d.ts",
+      "import": "./dist/llm/index.js"
     }
+  },
+  "dependencies": {
+    "zod": "4.4.3"
   },
   "files": [
     "dist"
@@ -18,7 +33,7 @@
     "build": "tsc -p tsconfig.json",
     "clean": "rimraf dist tsconfig.tsbuildinfo",
     "lint": "eslint src --max-warnings=0",
-    "test": "vitest run --passWithNoTests",
+    "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "devDependencies": {

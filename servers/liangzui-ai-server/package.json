@@ -20,6 +20,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
+    "@ai-engine/contracts": "workspace:*",
     "@langchain/classic": "^1.0.42",
     "@langchain/core": "^1.2.7",
     "@langchain/ollama": "^1.3.0",

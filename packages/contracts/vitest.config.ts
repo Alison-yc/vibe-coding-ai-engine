@@ -4,6 +4,6 @@ export default defineProject({
   test: {
     name: 'contracts',
     environment: 'node',
-    passWithNoTests: true,
+    passWithNoTests: false,
   },
 });

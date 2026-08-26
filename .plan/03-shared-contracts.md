@@ -5,7 +5,7 @@
 | 阶段     | M0 · 工程底座              |
 | 依赖     | 02                         |
 | 预计工期 | 2 天（后续随功能增量扩展） |
-| 状态     | 未开始                     |
+| 状态     | 已完成（CR-02）            |
 
 ## 目标
 
@@ -147,12 +147,12 @@ export const EMBEDDING_DIMENSION = 768; // nomic-embed-text
 
 ## 验收标准（DoD）
 
-- [ ] `packages/contracts` 的 `dependencies` 只有 `zod`
-- [ ] `pnpm build --filter @ai-engine/contracts` 产出 `.d.ts`
-- [ ] 现有 translate 接口已改为 POST + 契约校验，前后端都从 contracts 取类型
-- [ ] 故意给 translate 接口传 `{ text: 123 }`，返回 400 且错误体符合 `common/errors.ts` 的结构
-- [ ] 故意在 contracts 里给 `ChatRequestSchema` 加一个必填字段，前端调用处 `pnpm typecheck` **必须报错**
-- [ ] 契约测试覆盖率 ≥ 90%（这个包全是纯函数和 schema，达标不难，也最该达标）
+- [x] `packages/contracts` 的 `dependencies` 只有 `zod`
+- [x] `pnpm build --filter @ai-engine/contracts` 产出 `.d.ts`
+- [x] 现有 translate 接口已改为 POST + 契约校验，前后端都从 contracts 取类型
+- [x] 故意给 translate 接口传 `{ text: 123 }`，返回 400 且错误体符合 `common/errors.ts` 的结构
+- [x] 故意在 contracts 里给 `ChatRequestSchema` 加一个必填字段，前端调用处 `pnpm typecheck` **必须报错**
+- [x] 契约测试覆盖率 ≥ 90%（这个包全是纯函数和 schema，达标不难，也最该达标）
 
 ## 验证命令
 
