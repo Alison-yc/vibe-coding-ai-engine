@@ -15,3 +15,9 @@ allowBuilds:
 
 minimumReleaseAgeExclude:
   - "@langchain/core@1.2.7"
+
+# 钉死传递依赖的已修复版本，见 SECURITY.md。不关审计。
+overrides:
+  "ansi-regex@4": "4.1.1"
+  "ansi-regex@5": "5.0.1"
+  tmp: ">=0.2.6"
