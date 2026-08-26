@@ -5,18 +5,29 @@
 | 阶段     | 贯穿全程（工具在 M0 接入） |
 | 依赖     | 02                         |
 | 预计工期 | 2～3 天                    |
-| 状态     | 未开始                     |
+| 状态     | 进行中                     |
 
 ## 子阶段状态
 
 | 子阶段 | 内容                                        | 所属批次     | 状态   |
 | ------ | ------------------------------------------- | ------------ | ------ |
-| 16-A   | Semgrep 规则自测、SCA、Gitleaks、SARIF 基础 | CR-04        | 未开始 |
+| 16-A   | Semgrep 规则自测、SCA、Gitleaks、SARIF 基础 | CR-04        | 已完成 |
 | 16-B1  | RAG 提示词注入与输出安全测试                | CR-08、CR-10 | 未开始 |
 | 16-B2  | code 沙箱、资源耗尽、SSRF 测试              | CR-11        | 未开始 |
 | 16-B3  | 路径穿越、符号链接逃逸、审批绕过测试        | CR-13        | 未开始 |
 
 安全测试跟攻击面实现同批次提交，不允许等到项目收尾统一补。
+
+## 技术选型（16-A）
+
+| 工具        | 版本             | 说明                                                                   |
+| ----------- | ---------------- | ---------------------------------------------------------------------- |
+| Semgrep     | 本机 CLI         | `.semgrep.yml` + `p/typescript` / `p/nodejs` / `p/react` / `p/secrets` |
+| pnpm audit  | 内置             | `high` 及以上失败                                                      |
+| OSV-Scanner | brew / Action v2 | 同时扫 `pnpm-lock.yaml` 与 `Cargo.lock`                                |
+| Gitleaks    | brew / Action v2 | pre-commit 扫暂存区；CI 扫完整历史并上传 SARIF                         |
+
+OSV-Scanner 需本机安装（`brew install osv-scanner`）。未安装时 `pnpm sec:sca` 仍会用 npmjs 跑 `pnpm audit` 并确认 `Cargo.lock` 存在，Cargo 漏洞由 CI 的 OSV-Scanner job 强制扫描。`pnpm audit` 必须指定 `https://registry.npmjs.org`，因为国内镜像通常没有 audit 端点。
 
 ## 先明确术语
 
@@ -192,15 +203,15 @@ Gitleaks，扫两个范围：
 
 ### 16-A
 
-- [ ] `semgrep --test --config .semgrep.yml` 全部规则测试通过
-- [ ] `pnpm sec:sast` 在当前代码上跑通并输出 SARIF
-- [ ] 故意写一行 `exec(\`ls ${userInput}\`)`，`pnpm sec:sast` **必须报出来**
-- [ ] 故意写一行 `path.join(root, req.body.path)` 后跟 `fs.readFile`，**必须报出来**
-- [ ] `pnpm sec:sca` 同时覆盖 `pnpm-lock.yaml` 与 `Cargo.lock`
-- [ ] 故意在文件里写一个假的 AWS key 格式字符串，pre-commit **必须拒绝**
-- [ ] SARIF 上传到 GitHub 后，能在 Security 标签页看到结果
-- [ ] `SECURITY.md` 存在且写明了威胁模型与已知限制
-- [ ] critical/high 漏洞数为 0，或每个都有豁免理由
+- [x] `pnpm sec:sast:test`（`semgrep --test tests/semgrep`）全部规则测试通过
+- [x] `pnpm sec:sast` 在当前代码上跑通并输出 SARIF
+- [x] 故意写一行 `exec(\`ls ${userInput}\`)`，自定义规则 **必须报出来**
+- [x] 故意写一行 `path.join(root, req.body.path)` 后跟 `fs.readFile`，**必须报出来**
+- [x] `pnpm sec:sca` 同时覆盖 `pnpm-lock.yaml` 与 `Cargo.lock`（本机 osv-scanner 2.2.3；GTK/unic unmaintained 与 glib medium 记在 `osv-scanner.toml`，复查 2026-11-26）
+- [x] 故意写入假的 AWS 凭证对，`gitleaks protect --staged` **拒绝**（仅 AKIA 单行在 gitleaks 8.30.1 不会命中；access key + secret 组合会命中）
+- [ ] SARIF 上传到 GitHub 后，能在 Security 标签页看到结果（需远端）
+- [x] `SECURITY.md` 存在且写明了威胁模型与已知限制
+- [x] npm critical/high 漏洞数为 0（用 `pnpm-workspace.yaml` overrides 钉死传递依赖）
 
 ### 16-B / 项目整体
 
@@ -209,8 +220,8 @@ Gitleaks，扫两个范围：
 ## 验证命令
 
 ```bash
-# Semgrep 规则自测（最重要的一步）
-semgrep --test --config .semgrep.yml
+# Semgrep 规则自测（规则文件与测试必须同目录，见 pnpm sec:sast:test）
+pnpm sec:sast:test
 
 # 全量 SAST
 pnpm sec:sast
