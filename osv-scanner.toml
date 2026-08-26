@@ -4,6 +4,11 @@
 # 默认交付是 macOS，不走 Linux GTK3 绑定。
 
 [[IgnoredVulns]]
+id = "GHSA-67mh-4wv8-2f99"
+reason = "drizzle-kit 传递依赖 esbuild 0.18.20，只用于本地生成迁移 CLI，不进入 Nest 运行时。CVSS 5.3 medium。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
 id = "RUSTSEC-2024-0413"
 reason = "gtk-rs GTK3 绑定已停止维护；Tauri Linux 传递依赖，默认 macOS 交付不在该路径。复查 2026-11-26"
 ignoreUntil = 2026-11-26
