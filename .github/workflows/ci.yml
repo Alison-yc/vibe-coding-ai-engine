@@ -41,6 +41,7 @@ jobs:
               - 'scripts/**'
               - 'e2e/**'
               - 'tests/**'
+              - 'docker/**'
               - '.github/**'
               - '.semgrep.yml'
               - 'package.json'
@@ -144,6 +145,43 @@ jobs:
           name: coverage
           path: coverage/
           retention-days: 7
+
+  # ── ②b Postgres 集成测试（17-B） ────────────────────────────
+  integration:
+    name: 数据库集成测试
+    needs: [changes, quality]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: ai_engine
+          POSTGRES_PASSWORD: ai_engine_dev_only
+          POSTGRES_DB: ai_engine
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ai_engine -d ai_engine"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://ai_engine:ai_engine_dev_only@localhost:5432/ai_engine
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: 构建契约包
+        run: pnpm --filter @ai-engine/contracts build
+      - name: 应用迁移
+        run: pnpm db:migrate
+      - name: 集成测试
+        run: pnpm test:integration
 
   # ── ③ 构建 ─────────────────────────────────────────────────
   build:
