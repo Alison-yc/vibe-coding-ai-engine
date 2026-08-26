@@ -56,8 +56,8 @@ push / PR
     │
     ├── ① 快速门禁（并行，~2 分钟）      失败则不进入后续
     │     ├─ format:check
+    │     ├─ typecheck（先产出 packages/*/dist，type-aware lint 才能解析 workspace 包）
     │     ├─ lint
-    │     ├─ typecheck
     │     └─ commitlint（仅 PR，检查全部提交信息）
     │
     ├── ② 测试（~5 分钟）
@@ -161,8 +161,7 @@ Vitest 的 `coverage.thresholds` 不达标会自己退出非零，不需要额�
 ```
 pnpm ci:local
   ├─ format:check
-  ├─ lint
-  ├─ typecheck
+  ├─ lint（内部先 typecheck，再 eslint）
   ├─ test:cov（含阈值门禁）
   ├─ sec:sast
   ├─ sec:sca

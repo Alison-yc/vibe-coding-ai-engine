@@ -16,8 +16,8 @@
 | ---------- | -------------------------------------------------------------------- |
 | 当前里程碑 | M0 · 工程底座                                                        |
 | 当前批次   | M0 集成 Review                                                       |
-| 当前状态   | `待开发`                                                             |
-| 下一动作   | 执行 M0 集成 Review：核对跨包护栏与远端 CI，不进入 M1 / CR-05        |
+| 当前状态   | `待 CR`                                                              |
+| 下一动作   | 本地 `pnpm clean && pnpm lint` 与远端 CI 核对后再通过 M0 Review      |
 | 批次详情   | [19 · M0 集成 Review](./19-roadmap-and-milestones.md#m0-集成-review) |
 
 更新规则：
@@ -66,7 +66,7 @@
 | [00](./00-vision-and-scope.md)      | 做什么、不做什么           | 已完成 |
 | [01](./01-architecture-overview.md) | 分层、数据流、端口、处置表 | 已完成 |
 
-下一步执行 **M0 集成 Review**：`pnpm ci:local`、六包依赖方向、架构护栏、远端 Actions。通过后才能进入 M1。
+下一步仍是 **M0 集成 Review**：阻塞项（干净仓库 type-aware lint 依赖 `dist`）已修。请 `pnpm clean && pnpm lint` 后 push，看 Actions 的 CI 是否整条绿。通过后才能进入 M1。
 
 ### M0 · 工程底座（做完才能安心写业务）
 

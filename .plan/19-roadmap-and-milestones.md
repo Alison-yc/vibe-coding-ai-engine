@@ -96,6 +96,10 @@ plan 编号表示**主题**，不是严格的执行队列。实际执行顺序�
 - CI 在远端真实运行，不能只做 YAML 静态检查。
 - 通过后才能进入 M1。
 
+本地自检（2026-08-26）：`packages/` 六包依赖方向符合分层（contracts 仅 zod；tsconfig 无运行时依赖；platform/ui 不依赖业务包；app-core 依赖 contracts + platform + ui）。护栏由根 `eslint.config.js` 与 `packages/eslint-config/src/architecture-guards.spec.js` 实测。workflow 已扩大到 `feature/**` / `feat/**` / `fix/**` 并支持 `workflow_dispatch`。
+
+阻塞修复：type-aware ESLint 必须在 workspace 包 `dist` 存在之后运行。干净 checkout 上先 lint 会把未解析的 `@ai-engine/*` 打成 error type（约 116 条 `no-unsafe-*`）。CI 与 `pnpm lint` 改为先 `typecheck`（`^build` 产出 `dist`）再 eslint。远端是否整条绿：push 后看 GitHub Actions。
+
 ### M1 · 模型能力与数据层
 
 #### CR-05 · 模型基线与 LLM 网关（决策门禁）
