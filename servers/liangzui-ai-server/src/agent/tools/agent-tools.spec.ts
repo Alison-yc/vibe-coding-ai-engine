@@ -2,7 +2,7 @@ import { access, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promi
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { rgPath } from '@vscode/ripgrep';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { EditTool } from './edit.tool';
 import { GlobTool } from './glob.tool';
 import { GrepTool } from './grep.tool';
@@ -18,6 +18,7 @@ beforeEach(async () => {
 });
 
 afterEach(async () => {
+  vi.unstubAllEnvs();
   await rm(root, { recursive: true, force: true });
 });
 
@@ -95,15 +96,10 @@ describe('agent file tools', () => {
         resource: 'source.txt',
       }),
     );
-    const originalPath = process.env.PATH;
-    process.env.PATH = '';
-    try {
-      await expect(tool.execute({ pattern: 'safe', path: '.' }, context())).resolves.toContain(
-        'safe content',
-      );
-    } finally {
-      process.env.PATH = originalPath;
-    }
+    vi.stubEnv('PATH', '');
+    await expect(tool.execute({ pattern: 'safe', path: '.' }, context())).resolves.toContain(
+      'safe content',
+    );
     await expect(tool.execute({ pattern: 'safe' }, context())).resolves.toContain('safe content');
     await expect(tool.execute({ pattern: 'hidden-value', path: '.' }, context())).resolves.toBe('');
     await expect(tool.prepare({ pattern: 'safe' }, context())).resolves.toEqual(

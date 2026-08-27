@@ -11,7 +11,10 @@ import { AGENT_REPOSITORY, createAgentRepository } from './agent.repository';
 import { AgentController } from './agent.controller';
 import { AGENT_TOOL_REGISTRY, AgentService } from './agent.service';
 import { ApprovalCoordinator } from './approval-coordinator';
+import { CalculateTool } from './tools/calculate.tool';
+import { DatetimeTool } from './tools/datetime.tool';
 import { EditTool } from './tools/edit.tool';
+import { GenerateUuidTool } from './tools/generate-uuid.tool';
 import { GlobTool } from './tools/glob.tool';
 import { GrepTool } from './tools/grep.tool';
 import { ReadTool } from './tools/read.tool';
@@ -37,6 +40,9 @@ import { WriteTool } from './tools/write.tool';
         registry.register(new EditTool());
         registry.register(new GlobTool());
         registry.register(new GrepTool());
+        registry.register(new DatetimeTool());
+        registry.register(new CalculateTool());
+        registry.register(new GenerateUuidTool());
         return registry;
       },
     },

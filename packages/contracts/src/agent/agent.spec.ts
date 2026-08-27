@@ -3,7 +3,10 @@ import {
   AgentModelRequestSchema,
   AgentStreamEventSchema,
   AgentStreamRequestSchema,
+  CalculateToolInputSchema,
+  DatetimeToolInputSchema,
   EditToolInputSchema,
+  GenerateUuidToolInputSchema,
   PermissionResponseRequestSchema,
 } from './index.js';
 
@@ -35,6 +38,14 @@ describe('Agent contracts', () => {
     expect(
       EditToolInputSchema.safeParse({ path: 'a.ts', oldString: '', newString: 'x' }).success,
     ).toBe(false);
+  });
+
+  it('校验通用工具的扁平参数与数量边界', () => {
+    expect(DatetimeToolInputSchema.parse({})).toEqual({});
+    expect(CalculateToolInputSchema.safeParse({ expression: '2 * (3 + 4)' }).success).toBe(true);
+    expect(CalculateToolInputSchema.safeParse({ expression: 'x'.repeat(257) }).success).toBe(false);
+    expect(GenerateUuidToolInputSchema.parse({})).toEqual({});
+    expect(GenerateUuidToolInputSchema.safeParse({ count: 11 }).success).toBe(false);
   });
 
   it('允许带 server 前缀的 MCP 工具名', () => {

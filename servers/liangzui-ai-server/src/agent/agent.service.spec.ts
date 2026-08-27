@@ -16,7 +16,10 @@ import {
   wrapToolResult,
 } from './agent.service';
 import { ApprovalCoordinator } from './approval-coordinator';
+import { CalculateTool } from './tools/calculate.tool';
+import { DatetimeTool } from './tools/datetime.tool';
 import { EditTool } from './tools/edit.tool';
+import { GenerateUuidTool } from './tools/generate-uuid.tool';
 import { GlobTool } from './tools/glob.tool';
 import { GrepTool } from './tools/grep.tool';
 import { ReadTool } from './tools/read.tool';
@@ -49,6 +52,9 @@ beforeEach(async () => {
   tools.register(new EditTool());
   tools.register(new GlobTool());
   tools.register(new GrepTool());
+  tools.register(new DatetimeTool());
+  tools.register(new CalculateTool());
+  tools.register(new GenerateUuidTool());
   const environment = validateEnvironment({
     NODE_ENV: 'test',
     AGENT_WORKSPACE_ROOTS: root,
@@ -659,6 +665,107 @@ describe('AgentService', () => {
       expect.objectContaining({ text: '第一条' }),
       expect.objectContaining({ text: '第二条' }),
     ]);
+  });
+
+  it('日期意图会把 datetime 放入六工具候选并完成调用', async () => {
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [{ id: 'datetime-1', name: 'datetime', arguments: { timezone: 'Asia/Shanghai' } }],
+    });
+    gateway.enqueueAgentResponse({ content: '当前时间已查询。', toolCalls: [] });
+
+    await run('上海现在几点？', []);
+
+    const firstCall = gateway.calls.find((call) => call.method === 'agentChat');
+    if (firstCall?.method !== 'agentChat') throw new Error('missing agent call');
+    expect(firstCall.request.tools.map((tool) => tool.name)).toContain('datetime');
+    expect(firstCall.request.tools.length).toBeLessThanOrEqual(6);
+  });
+
+  it('天气 MCP 未连接时直接说明不可用且不调用模型', async () => {
+    const events: AgentStreamEvent[] = [];
+    await run('北京今天天气怎么样？', events);
+
+    expect(gateway.calls.filter((call) => call.method === 'agentChat')).toHaveLength(0);
+    expect(
+      events.some(
+        (event) =>
+          event.event === 'message.delta' &&
+          event.data.text.includes('当前未连接可用的天气 MCP 工具'),
+      ),
+    ).toBe(true);
+  });
+
+  it('天气知识类问题不被误判为实时查询', async () => {
+    gateway.enqueueAgentResponse({ content: '天气由多种大气过程形成。', toolCalls: [] });
+    await run('解释天气形成原理', []);
+    expect(gateway.calls.filter((call) => call.method === 'agentChat')).toHaveLength(1);
+  });
+
+  it('天气意图优先暴露单个天气 MCP 工具并按 execute 请求审批', async () => {
+    const registry = new AgentToolRegistry();
+    registry.register(new ReadTool());
+    registry.register(new WriteTool());
+    registry.register(new EditTool());
+    registry.register(new GlobTool());
+    registry.register(new GrepTool());
+    registry.register(new DatetimeTool());
+    registry.register(new CalculateTool());
+    registry.register(new GenerateUuidTool());
+    service = new AgentService(
+      agentRepository,
+      chat,
+      gateway,
+      registry,
+      new ApprovalCoordinator(),
+      new ConfigService(
+        validateEnvironment({ NODE_ENV: 'test', AGENT_WORKSPACE_ROOTS: root, AGENT_MAX_STEPS: 3 }),
+      ),
+      {
+        listModelTools: () => [
+          {
+            name: 'get_weather_summary',
+            description: 'Get current weather and forecast for a city',
+            inputSchema: { type: 'object' },
+          },
+        ],
+        get: (name: string) =>
+          name === 'get_weather_summary'
+            ? {
+                model: {
+                  name,
+                  description: 'Get current weather and forecast for a city',
+                  inputSchema: { type: 'object' },
+                },
+                permission: 'execute' as const,
+                parse: (input: unknown) => input,
+                prepare: async () => ({ resource: 'weather:Beijing' }),
+                execute: async () => 'Beijing: 28°C',
+              }
+            : null,
+      },
+    );
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [
+        { id: 'weather-1', name: 'get_weather_summary', arguments: { city_name: 'Beijing' } },
+      ],
+    });
+    gateway.enqueueAgentResponse({ content: '北京当前 28°C。', toolCalls: [] });
+    const events: AgentStreamEvent[] = [];
+    const pending = run('查询北京天气', events);
+
+    await vi.waitFor(() => {
+      expect(events.some((event) => event.event === 'permission.asked')).toBe(true);
+    });
+    const firstCall = gateway.calls.find((call) => call.method === 'agentChat');
+    if (firstCall?.method !== 'agentChat') throw new Error('missing agent call');
+    expect(firstCall.request.tools[0]?.name).toBe('get_weather_summary');
+    expect(firstCall.request.tools).toHaveLength(6);
+    const approval = events.find((event) => event.event === 'permission.asked');
+    if (approval?.event !== 'permission.asked') throw new Error('missing approval');
+    service.respondPermission(sessionId, approval.data.id, 'allow-once');
+    await pending;
   });
 
   it('列出暴露工具时内置优先并标记 MCP 来源', async () => {

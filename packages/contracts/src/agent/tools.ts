@@ -26,8 +26,23 @@ export const GrepToolInputSchema = z.object({
   path: z.string().min(1).max(4096).optional(),
 });
 
+export const DatetimeToolInputSchema = z.object({
+  timezone: z.string().min(1).max(100).optional(),
+});
+
+export const CalculateToolInputSchema = z.object({
+  expression: z.string().min(1).max(256),
+});
+
+export const GenerateUuidToolInputSchema = z.object({
+  count: z.number().int().min(1).max(10).optional(),
+});
+
 export type ReadToolInput = z.infer<typeof ReadToolInputSchema>;
 export type WriteToolInput = z.infer<typeof WriteToolInputSchema>;
 export type EditToolInput = z.infer<typeof EditToolInputSchema>;
 export type GlobToolInput = z.infer<typeof GlobToolInputSchema>;
 export type GrepToolInput = z.infer<typeof GrepToolInputSchema>;
+export type DatetimeToolInput = z.infer<typeof DatetimeToolInputSchema>;
+export type CalculateToolInput = z.infer<typeof CalculateToolInputSchema>;
+export type GenerateUuidToolInput = z.infer<typeof GenerateUuidToolInputSchema>;

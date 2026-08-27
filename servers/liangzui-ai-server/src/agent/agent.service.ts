@@ -23,7 +23,7 @@ import { ApprovalCoordinator } from './approval-coordinator';
 import { evaluatePermission } from './permission-engine';
 import { assertAllowedWorkspaceRoot } from './workspace-path';
 import { AgentToolRegistry } from './tools/tool';
-import { mergeAndTrimTools } from '../mcp/merge-tools';
+import { isLiveWeatherQuery, selectToolsForInput } from '../mcp/merge-tools';
 import { MCP_TOOL_CATALOG, type McpToolCatalog } from '../mcp/mcp-tool-catalog';
 
 export const AGENT_TOOL_REGISTRY = Symbol('AGENT_TOOL_REGISTRY');
@@ -35,6 +35,8 @@ const AGENT_SYSTEM_PROMPT = `你是本地文件助手。只在完成任务确实
 2. 用户要修改已有文件 → 先 read，再用 edit；全量覆盖已有文件时也要先 read 再 write。
 3. 用户要查找文件名 → 用 glob；搜索文件内容 → 用 grep。
 4. 「如 xxx.md」「例如 xxx.md」表示文件名示例，直接当作目标文件名使用。
+5. 日期时间必须调用 datetime；算术必须调用 calculate；UUID 必须调用 generate_uuid。
+6. 实时天气只能来自名称或描述含 weather/天气的 MCP 工具；没有该工具时必须说明未连接，绝不编造。
 完成工具操作后，用简体中文简要说明结果。`;
 
 const buildSystemPrompt = (mode: AgentInput['mode']): string => {
@@ -222,9 +224,10 @@ export class AgentService implements OnModuleInit {
     if (!modelId) throw new Error('未配置对话模型');
     const capability = this.gateway.capabilities(modelId);
     const builtin = this.tools.list();
-    const merged = mergeAndTrimTools(
+    const merged = selectToolsForInput(
       builtin,
       this.mcpTools.listModelTools('edit'),
+      '',
       capability.maxToolCount,
     );
     const builtinNames = new Set(builtin.map((tool) => tool.name));
@@ -256,12 +259,27 @@ export class AgentService implements OnModuleInit {
       });
       const history = await this.chatRepository.listMessages(input.sessionId);
       const capability = this.gateway.capabilities(modelId);
-      const merged = mergeAndTrimTools(
+      const merged = selectToolsForInput(
         this.tools.list(),
         this.mcpTools.listModelTools(input.mode),
+        input.content,
         capability.maxToolCount,
       );
       const selectedTools = merged.tools;
+      if (isLiveWeatherQuery(input.content) && !merged.weatherAvailable) {
+        const content =
+          '当前未连接可用的天气 MCP 工具，无法获取实时天气。请先在 MCP 设置中启用天气服务后重试。';
+        const message = await this.chatRepository.appendMessage({
+          sessionId: input.sessionId,
+          role: 'assistant',
+          parts: [{ type: 'text', id: randomUUID(), text: content }],
+        });
+        emit({ event: 'message.start', data: { messageId: message.id } });
+        emit({ event: 'message.delta', data: { messageId: message.id, text: content } });
+        emit({ event: 'done', data: { messageId: message.id, status: 'complete' } });
+        await this.agentRepository.completeInput(input.id, 'completed');
+        return;
+      }
       if (merged.dropped.length > 0) {
         const message = `工具数量超过上限 ${capability.maxToolCount}，已裁剪：${merged.dropped.join('、')}`;
         this.logger.warn(message);
