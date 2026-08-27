@@ -336,7 +336,7 @@ describe('AgentService', () => {
     expect(calls).toHaveLength(1);
   });
 
-  it('相同成功工具调用重复时提前停止', async () => {
+  it('相同成功工具调用重复时先纠正再给一次机会，连续重复才停止', async () => {
     await writeFile(path.join(root, 'README.md'), 'hello');
     gateway.enqueueAgentResponse({
       content: '',
@@ -346,16 +346,29 @@ describe('AgentService', () => {
       content: '',
       toolCalls: [{ id: 'read-2', name: 'read', arguments: { path: 'README.md' } }],
     });
-    gateway.enqueueAgentResponse({ content: '不应再被调用', toolCalls: [] });
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [{ id: 'write-1', name: 'write', arguments: { path: 'ccc.md', content: 'ok' } }],
+    });
+    gateway.enqueueAgentResponse({ content: '已写入。', toolCalls: [] });
     const events: AgentStreamEvent[] = [];
-    await run('反复读取', events);
-    expect(events.some((event) => event.event === 'warning')).toBe(true);
+    await service.stream(
+      sessionId,
+      { content: '写 ccc.md', workspaceRoot: root, mode: 'edit' },
+      new AbortController().signal,
+      (event) => {
+        events.push(event);
+        if (event.event === 'permission.asked') {
+          service.respondPermission(sessionId, event.data.id, 'allow-once');
+        }
+      },
+    );
     expect(
       events.some(
-        (event) =>
-          event.event === 'message.delta' && event.data.text.includes('相同工具调用已重复'),
+        (event) => event.event === 'warning' && event.data.message.includes('已跳过重复工具调用'),
       ),
     ).toBe(true);
+    await expect(readFile(path.join(root, 'ccc.md'), 'utf8')).resolves.toBe('ok');
     const completedReads = events.filter(
       (event) =>
         event.event === 'tool.update' &&
@@ -364,6 +377,35 @@ describe('AgentService', () => {
         event.data.part.state === 'completed',
     );
     expect(completedReads).toHaveLength(1);
+  });
+
+  it('连续两轮完全重复工具调用才硬停止', async () => {
+    await writeFile(path.join(root, 'README.md'), 'hello');
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [{ id: 'read-1', name: 'read', arguments: { path: 'README.md' } }],
+    });
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [{ id: 'read-2', name: 'read', arguments: { path: 'README.md' } }],
+    });
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [{ id: 'read-3', name: 'read', arguments: { path: 'README.md' } }],
+    });
+    gateway.enqueueAgentResponse({ content: '不应再被调用', toolCalls: [] });
+    const events: AgentStreamEvent[] = [];
+    await run('反复读取', events);
+    expect(
+      events.some(
+        (event) => event.event === 'warning' && event.data.message.includes('连续重复工具调用'),
+      ),
+    ).toBe(true);
+    expect(
+      events.some(
+        (event) => event.event === 'message.delta' && event.data.text.includes('连续重复'),
+      ),
+    ).toBe(true);
   });
 
   it('最后一步强制禁用工具并输出文本', async () => {

@@ -273,6 +273,7 @@ export class AgentService implements OnModuleInit {
       ];
       let parseRetries = 0;
       let lastSuccessFingerprint: string | null = null;
+      let consecutiveDuplicateSteps = 0;
       const maxSteps = this.config.get('AGENT_MAX_STEPS', { infer: true });
       for (let step = 1; step <= maxSteps; step += 1) {
         const finalStep = step === maxSteps;
@@ -318,28 +319,62 @@ export class AgentService implements OnModuleInit {
             });
           }
         }
-        const repeated =
-          !finalStep &&
-          lastSuccessFingerprint !== null &&
-          toolCalls.some((call) => toolCallFingerprint(call) === lastSuccessFingerprint);
-        if (repeated) {
-          emit({
-            event: 'warning',
-            data: { message: '检测到重复工具调用，已停止继续执行' },
-          });
-          toolCalls = [];
-          toolCallFailed = true;
+        if (!finalStep && toolCalls.length > 0) {
+          const seen = new Set<string>();
+          const novelCalls: AgentToolCall[] = [];
+          for (const call of toolCalls) {
+            const fingerprint = toolCallFingerprint(call);
+            if (fingerprint === lastSuccessFingerprint || seen.has(fingerprint)) continue;
+            seen.add(fingerprint);
+            novelCalls.push(call);
+          }
+          if (novelCalls.length < toolCalls.length) {
+            if (novelCalls.length === 0) {
+              consecutiveDuplicateSteps += 1;
+              messages.push(
+                { role: 'assistant', content: response.content, toolCalls },
+                {
+                  role: 'user',
+                  content:
+                    '刚才的工具参数已成功执行过，不要重复调用同一工具。请改用其他工具完成用户请求；若需要创建或修改文件，请调用 write 或 edit。',
+                },
+              );
+              if (consecutiveDuplicateSteps >= 2) {
+                emit({
+                  event: 'warning',
+                  data: { message: '检测到连续重复工具调用，已停止继续执行' },
+                });
+                const content = '相同工具调用连续重复，任务已停止。请换一种说法重新发送。';
+                const message = await this.chatRepository.appendMessage({
+                  sessionId: input.sessionId,
+                  role: 'assistant',
+                  parts: [{ type: 'text', id: randomUUID(), text: content }],
+                });
+                emit({ event: 'message.start', data: { messageId: message.id } });
+                emit({ event: 'message.delta', data: { messageId: message.id, text: content } });
+                emit({ event: 'done', data: { messageId: message.id, status: 'complete' } });
+                await this.agentRepository.completeInput(input.id, 'completed');
+                return;
+              }
+              emit({
+                event: 'warning',
+                data: { message: '已跳过重复工具调用，正在继续完成任务' },
+              });
+              // 纠正回合不消耗 maxSteps，否则写入等后续工具会被最后一步 toolChoice=none 误杀。
+              step -= 1;
+              continue;
+            }
+            toolCalls = novelCalls;
+            consecutiveDuplicateSteps = 0;
+          } else {
+            consecutiveDuplicateSteps = 0;
+          }
         }
         if (toolCalls.length === 0) {
           const reply =
             response.content.trim() ||
-            (repeated
-              ? '相同工具调用已重复，任务已停止。'
-              : finalStep
-                ? '已达到最大执行步数，Agent 已停止继续调用工具。'
-                : '任务已完成。');
-          const content =
-            toolCallFailed && !repeated ? `模型未能正确调用工具。\n\n${reply}` : reply;
+            (finalStep ? '已达到最大执行步数，Agent 已停止继续调用工具。' : '任务已完成。');
+          const content = toolCallFailed ? `模型未能正确调用工具。\n\n${reply}` : reply;
           const message = await this.chatRepository.appendMessage({
             sessionId: input.sessionId,
             role: 'assistant',
