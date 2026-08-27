@@ -1,6 +1,13 @@
 import { z } from 'zod';
 
-export const AgentToolNameSchema = z.enum(['read', 'write', 'edit', 'glob', 'grep']);
+export const AgentBuiltinToolNameSchema = z.enum(['read', 'write', 'edit', 'glob', 'grep']);
+export type AgentBuiltinToolName = z.infer<typeof AgentBuiltinToolNameSchema>;
+
+export const AgentToolNameSchema = z
+  .string()
+  .min(1)
+  .max(128)
+  .regex(/^[a-zA-Z][a-zA-Z0-9_]*$/);
 export type AgentToolName = z.infer<typeof AgentToolNameSchema>;
 
 export const AgentToolCallSchema = z.object({

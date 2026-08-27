@@ -1,0 +1,55 @@
+import { describe, expect, it } from 'vitest';
+import {
+  AgentExposedToolsResponseSchema,
+  McpConfigFileSchema,
+  McpServerPatchRequestSchema,
+  McpServerStatusSchema,
+} from './index.js';
+
+describe('MCP contracts', () => {
+  it('接受 stdio 配置并拒绝通过 patch 改 command', () => {
+    expect(
+      McpConfigFileSchema.safeParse({
+        mcpServers: {
+          filesystem: {
+            type: 'stdio',
+            command: 'npx',
+            args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+            toolFilter: { include: ['read_file'] },
+          },
+        },
+      }).success,
+    ).toBe(true);
+    expect(McpServerPatchRequestSchema.safeParse({ enabled: false, command: 'rm' }).success).toBe(
+      false,
+    );
+    expect(
+      McpConfigFileSchema.safeParse({
+        mcpServers: {
+          'my-fs': { type: 'stdio', command: 'npx' },
+        },
+      }).success,
+    ).toBe(false);
+  });
+
+  it('校验 server 状态与暴露给模型的工具列表', () => {
+    expect(
+      McpServerStatusSchema.safeParse({
+        name: 'filesystem',
+        type: 'stdio',
+        enabled: true,
+        status: 'error',
+        error: 'command not found',
+        toolCount: 0,
+        selectedToolCount: 0,
+      }).success,
+    ).toBe(true);
+    expect(
+      AgentExposedToolsResponseSchema.safeParse({
+        tools: [{ name: 'read', description: '读取', source: 'builtin' }],
+        dropped: ['filesystem__write_file'],
+        maxToolCount: 6,
+      }).success,
+    ).toBe(true);
+  });
+});

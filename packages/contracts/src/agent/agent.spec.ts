@@ -37,6 +37,21 @@ describe('Agent contracts', () => {
     ).toBe(false);
   });
 
+  it('允许带 server 前缀的 MCP 工具名', () => {
+    expect(
+      AgentModelRequestSchema.safeParse({
+        messages: [{ role: 'user', content: '列出文件' }],
+        tools: [
+          {
+            name: 'filesystem__read_file',
+            description: 'MCP 读取',
+            inputSchema: { type: 'object' },
+          },
+        ],
+      }).success,
+    ).toBe(true);
+  });
+
   it('校验审批 SSE 事件', () => {
     expect(
       AgentStreamEventSchema.safeParse({
