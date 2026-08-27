@@ -1,4 +1,4 @@
-import { Button, ThemeToggle } from '@ai-engine/ui';
+import { Button, Textarea, ThemeToggle } from '@ai-engine/ui';
 import { useTheme } from '../theme-provider';
 
 const SWATCHES = [
@@ -57,6 +57,11 @@ export const TokenGalleryPage = () => {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base">输入</h2>
+        <Textarea readOnly value="多行输入使用语义令牌，不写硬编码色值。" />
       </section>
 
       <section className="flex flex-col gap-3">

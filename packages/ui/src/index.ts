@@ -1,4 +1,5 @@
 export { Button, buttonVariants, type ButtonProps } from './components/ui/button';
+export { Textarea, type TextareaProps } from './components/ui/textarea';
 export { ThemeToggle } from './components/theme-toggle';
 export { cn } from './lib/utils';
 export {
