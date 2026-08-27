@@ -11,7 +11,11 @@ import { defineConfig } from 'vitest/config';
  */
 export default defineConfig({
   test: {
-    projects: ['packages/*/vitest.config.ts', 'servers/*/vitest.config.ts'],
+    projects: [
+      'packages/*/vitest.config.ts',
+      'servers/*/vitest.config.ts',
+      'scripts/rag-eval/vitest.config.ts',
+    ],
 
     coverage: {
       provider: 'v8',

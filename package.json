@@ -35,7 +35,8 @@
     "db:migrate": "pnpm --filter liangzui-ai-server db:migrate",
     "db:studio": "pnpm --filter liangzui-ai-server db:studio",
     "baseline": "node --env-file=.env.example --env-file-if-exists=.env --import tsx scripts/model-baseline/index.ts",
-    "rag-eval": "tsx scripts/rag-eval/index.ts",
+    "rag-eval": "node --env-file=.env.example --env-file-if-exists=.env --import tsx scripts/rag-eval/index.ts",
+    "rag-eval:compare": "node --env-file=.env.example --env-file-if-exists=.env --import tsx scripts/rag-eval/index.ts --compare",
     "gen-tests": "tsx scripts/gen-tests/index.ts",
     "gen-tests:verify": "tsx scripts/gen-tests/verify.ts",
     "gen-tests:mutate": "tsx scripts/gen-tests/mutate.ts",
@@ -52,6 +53,7 @@
     "prepare": "husky"
   },
   "devDependencies": {
+    "@ai-engine/contracts": "workspace:*",
     "@ai-engine/eslint-config": "workspace:*",
     "@commitlint/cli": "^21.2.2",
     "@commitlint/config-conventional": "^21.2.2",
