@@ -21,6 +21,7 @@ const toSession = (row: {
   id: string;
   title: string;
   modelId: string;
+  agentType: string;
   datasetIds: unknown;
   createdAt: Date;
   updatedAt: Date;
@@ -29,6 +30,7 @@ const toSession = (row: {
     id: row.id,
     title: row.title,
     modelId: row.modelId,
+    agentType: row.agentType,
     datasetIds: parseDatasetIds(row.datasetIds),
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -59,6 +61,7 @@ export type NewSessionInput = {
   title: string;
   modelId: string;
   datasetIds: string[];
+  agentType?: ChatSession['agentType'];
 };
 
 export interface ChatRepository {
@@ -96,6 +99,7 @@ export class InMemoryChatRepository implements ChatRepository {
       title: input.title,
       modelId: input.modelId,
       datasetIds: input.datasetIds,
+      agentType: input.agentType ?? 'chat',
       createdAt: now,
       updatedAt: now,
     });
@@ -198,7 +202,7 @@ export class DrizzleChatRepository implements ChatRepository {
       .insert(chatSessions)
       .values({
         title: input.title,
-        agentType: 'chat',
+        agentType: input.agentType ?? 'chat',
         modelId: input.modelId,
         datasetIds: input.datasetIds,
       })

@@ -58,6 +58,9 @@ rules:
         - "/servers/**"
         - "/scripts/**"
         - "/tests/semgrep/**"
+      exclude:
+        - "**/*.spec.ts"
+        - "**/*.test.ts"
     pattern-either:
       - pattern: $FS.readFile(path.join($ROOT, $INPUT), ...)
       - pattern: $FS.writeFile(path.join($ROOT, $INPUT), ...)

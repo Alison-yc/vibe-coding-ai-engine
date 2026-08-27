@@ -59,17 +59,27 @@ export const ToolCard = ({
   state,
   output,
   error,
+  input,
 }: {
   name: string;
   state: string;
   output?: string;
   error?: string;
+  input?: unknown;
 }): ReactNode => (
   <article className="border-border bg-card rounded-md border p-3 text-sm">
     <p>
       工具 {name} · {state}
     </p>
-    {output ? <p className="text-muted-foreground mt-1">{output}</p> : null}
+    {input !== undefined ? (
+      <details className="mt-2">
+        <summary className="text-muted-foreground cursor-pointer">查看参数</summary>
+        <pre className="bg-muted mt-1 max-h-48 overflow-auto rounded p-2 text-xs">
+          {JSON.stringify(input, null, 2)}
+        </pre>
+      </details>
+    ) : null}
+    {output ? <p className="text-muted-foreground mt-1 whitespace-pre-wrap">{output}</p> : null}
     {error ? <p className="text-destructive mt-1">{error}</p> : null}
   </article>
 );
@@ -110,6 +120,7 @@ export const MessageParts = ({ parts }: { parts: MessagePart[] }) => (
               state={part.state}
               output={part.output}
               error={part.error}
+              input={part.input}
             />
           );
         case 'citation':

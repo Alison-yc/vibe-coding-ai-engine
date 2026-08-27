@@ -6,6 +6,7 @@ export const ChatSessionSchema = z.object({
   title: z.string().min(1).max(200),
   modelId: z.string().min(1),
   datasetIds: z.array(UuidSchema),
+  agentType: z.enum(['chat', 'agent']).default('chat'),
   createdAt: TimestampSchema,
   updatedAt: TimestampSchema,
 });
@@ -14,6 +15,7 @@ export type ChatSession = z.infer<typeof ChatSessionSchema>;
 export const CreateChatSessionRequestSchema = z.object({
   title: z.string().trim().min(1).max(200).optional(),
   datasetIds: z.array(UuidSchema).max(8).optional(),
+  agentType: z.enum(['chat', 'agent']).optional(),
 });
 export type CreateChatSessionRequest = z.infer<typeof CreateChatSessionRequestSchema>;
 

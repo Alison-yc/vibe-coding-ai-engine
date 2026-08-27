@@ -10,6 +10,7 @@ import { LlmController } from './llm/llm.controller';
 import { ObservabilityModule } from './observability/observability.module';
 import { TraceIdModule } from './observability/trace-id.module';
 import { WorkflowModule } from './workflow/workflow.module';
+import { AgentModule } from './agent/agent.module';
 
 @Module({
   imports: [
@@ -24,6 +25,7 @@ import { WorkflowModule } from './workflow/workflow.module';
     KnowledgeModule,
     ChatModule,
     WorkflowModule,
+    AgentModule,
   ],
   controllers: [AppController, LlmController],
   providers: [AppService],

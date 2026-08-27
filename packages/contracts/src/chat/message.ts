@@ -29,6 +29,13 @@ export const MessagePartSchema = z.discriminatedUnion('type', [
     input: z.unknown().optional(),
     output: z.string().optional(),
     error: z.string().optional(),
+    permission: z
+      .object({
+        id: UuidSchema,
+        resource: z.string().min(1),
+        diff: z.string(),
+      })
+      .optional(),
   }),
   z.object({
     type: z.literal('citation'),

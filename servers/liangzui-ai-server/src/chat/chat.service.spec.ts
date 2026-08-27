@@ -70,6 +70,20 @@ describe('ChatService', () => {
     expect((await service.getSession(session.id)).title).toBe('问候');
   });
 
+  it('普通对话接口拒绝文件助手会话', async () => {
+    const { repository, service } = setup();
+    const session = await repository.createSession({
+      title: '文件助手',
+      modelId: 'qwen3.5:2b',
+      datasetIds: [],
+      agentType: 'agent',
+    });
+    await expect(collect(service, session.id, '错误入口')).rejects.toThrow(
+      'NOT_FOUND:对话会话不存在',
+    );
+    expect(await repository.listMessages(session.id)).toEqual([]);
+  });
+
   it('中断时保留已生成文本并标记 interrupted', async () => {
     const { gateway, service } = setup();
     const controller = new AbortController();

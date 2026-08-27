@@ -50,6 +50,7 @@ export class ChatService {
       title: request.title ?? '新对话',
       modelId: this.config.get('OLLAMA_MODEL', { infer: true }),
       datasetIds: request.datasetIds ?? [],
+      agentType: request.agentType ?? 'chat',
     });
   }
 
@@ -91,6 +92,7 @@ export class ChatService {
       emit(ChatStreamEventSchema.parse(event));
     };
     const session = await this.getSession(sessionId);
+    if (session.agentType !== 'chat') throw new Error('NOT_FOUND:对话会话不存在');
     const datasetIds = request.datasetIds ?? session.datasetIds;
     if (request.datasetIds) {
       await this.repository.updateSession(sessionId, { datasetIds: request.datasetIds });

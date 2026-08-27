@@ -1,7 +1,10 @@
 import { randomUUID } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import {
+  AgentModelResponseSchema,
   ChatResponseSchema,
+  type AgentModelRequest,
+  type AgentModelResponse,
   EMBEDDING_DIMENSION,
   LlmStreamEventSchema,
   type ChatRequest,
@@ -33,9 +36,41 @@ const ChatResponseBodySchema = z.object({
   done_reason: z.string().optional(),
 });
 
+const AgentChatResponseBodySchema = z.object({
+  message: z.object({
+    content: z.string().default(''),
+    tool_calls: z
+      .array(
+        z.object({
+          function: z.object({
+            name: z.unknown(),
+            arguments: z.unknown().optional(),
+          }),
+        }),
+      )
+      .default([]),
+  }),
+  prompt_eval_count: z.number().int().nonnegative().optional(),
+  eval_count: z.number().int().nonnegative().optional(),
+  done_reason: z.string().optional(),
+});
+
 const EmbedResponseBodySchema = z.object({
   embeddings: z.array(z.array(z.number())),
 });
+
+const parseToolArguments = (input: unknown): Record<string, unknown> => {
+  let candidate = input;
+  if (typeof input === 'string') {
+    try {
+      candidate = JSON.parse(input) as unknown;
+    } catch {
+      return {};
+    }
+  }
+  const parsed = z.record(z.string(), z.unknown()).safeParse(candidate);
+  return parsed.success ? parsed.data : {};
+};
 
 const GenerateResponseBodySchema = z.object({
   prompt_eval_count: z.number().int().nonnegative(),
@@ -95,6 +130,76 @@ export class OllamaLlmGateway implements LlmGateway {
     @InjectPinoLogger(OllamaLlmGateway.name)
     private readonly logger: PinoLogger,
   ) {}
+
+  async agentChat(request: AgentModelRequest, signal?: AbortSignal): Promise<AgentModelResponse> {
+    const startedAt = performance.now();
+    const body = await this.requestJson(
+      '/api/chat',
+      {
+        model: this.config.get('OLLAMA_MODEL', { infer: true }),
+        messages: request.messages.map((message) => ({
+          role: message.role,
+          content: message.content,
+          ...(message.toolName ? { tool_name: message.toolName } : {}),
+          ...(message.toolCalls
+            ? {
+                tool_calls: message.toolCalls.map((call) => ({
+                  function: { name: call.name, arguments: call.arguments },
+                })),
+              }
+            : {}),
+        })),
+        ...(request.toolChoice === 'none'
+          ? {}
+          : {
+              tools: request.tools.map((tool) => ({
+                type: 'function',
+                function: {
+                  name: tool.name,
+                  description: tool.description,
+                  parameters: tool.inputSchema,
+                },
+              })),
+            }),
+        stream: false,
+        think: false,
+        keep_alive: this.config.get('OLLAMA_KEEP_ALIVE', { infer: true }),
+        options: {
+          temperature: this.config.get('OLLAMA_TEMPERATURE', { infer: true }),
+          num_ctx: this.config.get('OLLAMA_NUM_CTX', { infer: true }),
+          num_predict: this.config.get('OLLAMA_NUM_PREDICT', { infer: true }),
+        },
+      },
+      CHAT_TIMEOUT_MS,
+      'Agent 模型生成',
+      signal,
+    );
+    const parsed = AgentChatResponseBodySchema.parse(body);
+    const durationMs = Math.round(performance.now() - startedAt);
+    this.metrics.record({
+      operation: 'chat',
+      model: this.config.get('OLLAMA_MODEL', { infer: true }),
+      promptTokens: parsed.prompt_eval_count ?? 0,
+      completionTokens: parsed.eval_count ?? 0,
+      firstTokenMs: durationMs,
+      totalMs: durationMs,
+      finishReason: parsed.done_reason ?? 'stop',
+    });
+    return AgentModelResponseSchema.parse({
+      content: parsed.message.content,
+      toolCalls: parsed.message.tool_calls.map((call) => {
+        return {
+          id: randomUUID(),
+          name:
+            typeof call.function.name === 'string' && call.function.name
+              ? call.function.name
+              : '__invalid_tool__',
+          arguments: parseToolArguments(call.function.arguments),
+        };
+      }),
+      finishReason: parsed.done_reason,
+    });
+  }
 
   async chat(request: ChatRequest, signal?: AbortSignal): Promise<ChatResponse> {
     const startedAt = performance.now();

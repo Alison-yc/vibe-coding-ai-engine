@@ -1,6 +1,9 @@
 import { randomUUID } from 'node:crypto';
 import {
+  AgentModelResponseSchema,
   ChatResponseSchema,
+  type AgentModelRequest,
+  type AgentModelResponse,
   LlmStreamEventSchema,
   type ChatRequest,
   type ChatResponse,
@@ -12,6 +15,7 @@ import type { LlmGateway } from './llm-gateway';
 import { getModelCapability } from './model-capabilities';
 
 export type FakeLlmCall =
+  | { method: 'agentChat'; request: AgentModelRequest; aborted: boolean }
   | { method: 'chat'; request: ChatRequest; aborted: boolean }
   | { method: 'stream'; request: ChatRequest; aborted: boolean }
   | { method: 'embed'; texts: string[]; aborted: boolean }
@@ -19,6 +23,20 @@ export type FakeLlmCall =
 
 export class FakeLlmGateway implements LlmGateway {
   readonly calls: FakeLlmCall[] = [];
+  private agentReplies: AgentModelResponse[] = [];
+  enqueueAgentResponse(response: AgentModelResponse): void {
+    this.agentReplies.push(AgentModelResponseSchema.parse(response));
+  }
+
+  async agentChat(request: AgentModelRequest, signal?: AbortSignal): Promise<AgentModelResponse> {
+    await Promise.resolve();
+    this.calls.push({ method: 'agentChat', request, aborted: signal?.aborted ?? false });
+    if (signal?.aborted) throw signal.reason;
+    const reply = this.agentReplies.shift();
+    if (!reply) throw new Error('FakeLlmGateway 没有可用的 agentChat 返回值');
+    return reply;
+  }
+
   private chatReplies: ChatResponse[] = [];
   private chatErrors: unknown[] = [];
   private streamReplies: LlmStreamEvent[][] = [];

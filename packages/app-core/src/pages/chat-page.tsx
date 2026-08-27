@@ -46,7 +46,8 @@ export const ChatPage = () => {
     queryFn: () => listDatasets(platform),
   });
 
-  const session = sessionsQuery.data?.find((item) => item.id === sessionId);
+  const chatSessions = (sessionsQuery.data ?? []).filter((item) => item.agentType === 'chat');
+  const session = chatSessions.find((item) => item.id === sessionId);
   const datasetId = session?.datasetIds[0] ?? '';
 
   useEffect(() => {
@@ -122,7 +123,7 @@ export const ChatPage = () => {
         </header>
         <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
           <SessionList
-            sessions={sessionsQuery.data ?? []}
+            sessions={chatSessions}
             currentId={sessionId}
             renameId={renameId}
             renameValue={renameValue}
@@ -153,6 +154,9 @@ export const ChatPage = () => {
             </Button>
             <Button variant="ghost" size="sm" asChild>
               <Link to="/workflow">工作流</Link>
+            </Button>
+            <Button variant="ghost" size="sm" asChild>
+              <Link to="/agent">文件助手</Link>
             </Button>
             <Button variant="ghost" size="sm" asChild>
               <Link to="/settings">设置</Link>
@@ -300,6 +304,7 @@ export const SessionList = ({
   onAskDelete,
   onConfirmDelete,
   onCancelDelete,
+  basePath = '/chat',
 }: {
   sessions: ChatSession[];
   currentId?: string;
@@ -313,6 +318,7 @@ export const SessionList = ({
   onAskDelete: (id: string) => void;
   onConfirmDelete: (id: string) => void;
   onCancelDelete: () => void;
+  basePath?: string;
 }) => {
   if (sessions.length === 0) {
     return (
@@ -346,7 +352,7 @@ export const SessionList = ({
           ) : (
             <>
               <Link
-                to={`/chat/${item.id}`}
+                to={`${basePath}/${item.id}`}
                 className={cn('block truncate text-sm', item.id === currentId && 'font-semibold')}
               >
                 {item.title}

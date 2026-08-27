@@ -38,6 +38,7 @@ const session = {
   title: '新对话',
   modelId: 'qwen3.5:2b',
   datasetIds: [],
+  agentType: 'chat',
   createdAt: '2026-08-27T00:00:00.000Z',
   updatedAt: '2026-08-27T00:00:00.000Z',
 };

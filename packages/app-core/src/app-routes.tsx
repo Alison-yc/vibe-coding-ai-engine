@@ -13,6 +13,9 @@ const WorkflowListPage = lazy(async () => ({
 const WorkflowEditorPage = lazy(async () => ({
   default: (await import('./pages/workflow-editor-page')).WorkflowEditorPage,
 }));
+const AgentPage = lazy(async () => ({
+  default: (await import('./pages/agent-page')).AgentPage,
+}));
 
 const LazyPage = ({ children }: { children: ReactNode }) => (
   <Suspense fallback={<main className="bg-background text-foreground min-h-dvh p-6">加载中…</main>}>
@@ -50,8 +53,22 @@ export const AppRoutes = () => (
         </LazyPage>
       }
     />
-    <Route path="/agent" element={<PlaceholderPage title="文件助手" />} />
-    <Route path="/agent/:sessionId" element={<PlaceholderPage title="文件助手" />} />
+    <Route
+      path="/agent"
+      element={
+        <LazyPage>
+          <AgentPage />
+        </LazyPage>
+      }
+    />
+    <Route
+      path="/agent/:sessionId"
+      element={
+        <LazyPage>
+          <AgentPage />
+        </LazyPage>
+      }
+    />
     <Route path="/settings" element={<PlaceholderPage title="设置" />} />
     <Route path="/dev/tokens" element={<TokenGalleryPage />} />
     <Route

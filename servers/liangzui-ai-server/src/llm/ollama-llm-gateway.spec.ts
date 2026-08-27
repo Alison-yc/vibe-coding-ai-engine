@@ -42,6 +42,63 @@ afterEach(() => {
 });
 
 describe('OllamaLlmGateway', () => {
+  it('解析 Ollama 标准 function calling 响应', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json({
+          message: {
+            content: '',
+            tool_calls: [{ function: { name: 'read', arguments: { path: 'README.md' } } }],
+          },
+          prompt_eval_count: 10,
+          eval_count: 5,
+          done_reason: 'stop',
+        }),
+      ),
+    );
+    const response = await createGateway().agentChat({
+      messages: [{ role: 'user', content: '读取 README' }],
+      tools: [
+        {
+          name: 'read',
+          description: '读取文件',
+          inputSchema: { type: 'object' },
+        },
+      ],
+      toolChoice: 'auto',
+    });
+    expect(response.toolCalls).toEqual([
+      expect.objectContaining({
+        name: 'read',
+        arguments: { path: 'README.md' },
+      }),
+    ]);
+  });
+
+  it('兼容 Ollama 返回 JSON 字符串形式的工具参数', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        Response.json({
+          message: {
+            content: '',
+            tool_calls: [
+              { function: { name: 'read', arguments: '{"path":"README.md"}' } },
+              { function: { name: 'read', arguments: '{invalid}' } },
+            ],
+          },
+        }),
+      ),
+    );
+    const response = await createGateway().agentChat({
+      messages: [{ role: 'user', content: '读取 README' }],
+      tools: [],
+      toolChoice: 'auto',
+    });
+    expect(response.toolCalls.map((call) => call.arguments)).toEqual([{ path: 'README.md' }, {}]);
+  });
+
   it('把非流式响应转换为共享 ChatResponse 契约', async () => {
     vi.stubGlobal(
       'fetch',

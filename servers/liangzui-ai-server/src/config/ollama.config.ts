@@ -22,6 +22,8 @@ const EnvironmentSchema = z.object({
     .string()
     .optional()
     .transform((value) => value === 'true' || value === '1'),
+  AGENT_WORKSPACE_ROOTS: z.string().default(''),
+  AGENT_MAX_STEPS: z.coerce.number().int().min(2).max(12).default(6),
 });
 
 export type AppConfig = z.infer<typeof EnvironmentSchema>;

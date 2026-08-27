@@ -22,5 +22,6 @@ import { ChatService } from './chat.service';
     },
     ChatService,
   ],
+  exports: [CHAT_REPOSITORY, ChatService],
 })
 export class ChatModule {}
