@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { VariablePool } from '../engine/variable-pool';
 import { QuickJsSandbox } from '../sandbox/quickjs-sandbox';
-import type { AddressResolver } from '../security/safe-http';
+import type { AddressResolver, PinnedRequest } from '../security/safe-http';
 import { CodeNodeRunner } from './code.runner';
 import { HttpRequestNodeRunner } from './http-request.runner';
 
@@ -16,10 +16,12 @@ const publicResolver: AddressResolver = async () => [{ address: '93.184.216.34',
 
 describe('HttpRequestNodeRunner', () => {
   it('渲染请求并返回状态、响应头和正文', async () => {
-    const fetchImpl = vi
-      .fn<typeof fetch>()
-      .mockResolvedValue(new Response('created', { status: 201, headers: { 'x-test': 'ok' } }));
-    const runner = new HttpRequestNodeRunner({ resolve: publicResolver, fetchImpl });
+    const requestImpl = vi.fn<PinnedRequest>().mockResolvedValue({
+      status: 201,
+      headers: { 'x-test': 'ok' },
+      body: 'created',
+    });
+    const runner = new HttpRequestNodeRunner({ resolve: publicResolver, requestImpl });
     const result = await runner.run(
       {
         method: 'POST',
@@ -31,9 +33,9 @@ describe('HttpRequestNodeRunner', () => {
       context,
     );
     expect(result.outputs).toMatchObject({ status: 201, body: 'created' });
-    expect(fetchImpl).toHaveBeenCalledWith(
-      new URL('https://example.com/items'),
+    expect(requestImpl).toHaveBeenCalledWith(
       expect.objectContaining({
+        url: new URL('https://example.com/items'),
         method: 'POST',
         headers: { authorization: 'Bearer secret' },
         body: '{"value":"test"}',

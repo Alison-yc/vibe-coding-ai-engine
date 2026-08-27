@@ -147,6 +147,27 @@ describe('validateWorkflowGraph', () => {
     ).toEqual(expect.arrayContaining(['detached-a', 'detached-b']));
   });
 
+  it('结束节点无法从开始节点到达时校验失败', () => {
+    const graph = validGraph();
+    graph.edges = graph.edges.filter((edge) => edge.target !== 'end');
+    const result = validateWorkflowGraph(graph, registry);
+    expect(result.valid).toBe(false);
+    expect(result.errors.map((item) => item.code)).toContain('unreachable-terminal');
+  });
+
+  it('拒绝节点使用系统变量保留命名空间', () => {
+    const graph = validGraph();
+    const assignNode = graph.nodes.find((node) => node.id === 'assign');
+    if (!assignNode) throw new Error('测试图缺少 assign 节点');
+    assignNode.id = 'sys';
+    for (const edge of graph.edges) {
+      if (edge.source === 'assign') edge.source = 'sys';
+      if (edge.target === 'assign') edge.target = 'sys';
+    }
+    const result = validateWorkflowGraph(graph, registry);
+    expect(result.errors.map((item) => item.code)).toContain('reserved-node-id');
+  });
+
   it('拒绝条件节点缺失分支 handle 的出边', () => {
     const graph = validGraph();
     const assignNode = graph.nodes.find((node) => node.id === 'assign');

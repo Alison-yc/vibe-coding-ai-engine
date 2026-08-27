@@ -47,4 +47,14 @@ describe('QuickJsSandbox', () => {
       new QuickJsSandbox().execute('while (true) {}', {}, controller.signal),
     ).rejects.toThrow('用户停止');
   });
+
+  it('在超大结果复制到宿主前由 WASM 内存上限中止', async () => {
+    await expect(
+      new QuickJsSandbox({ memoryLimitBytes: 1024 * 1024 }).execute(
+        "return { value: 'x'.repeat(10_000_000) };",
+        {},
+        new AbortController().signal,
+      ),
+    ).rejects.toThrow('执行失败');
+  });
 });

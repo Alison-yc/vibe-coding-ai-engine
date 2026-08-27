@@ -16,7 +16,11 @@ import {
 } from '@ai-engine/contracts';
 import type { NodeRegistry } from './nodes/registry';
 import { VariablePool } from './engine/variable-pool';
-import { WorkflowGraphValidationError, type WorkflowEngine } from './engine/workflow-engine';
+import {
+  WorkflowGraphValidationError,
+  WorkflowNodeExecutionError,
+  type WorkflowEngine,
+} from './engine/workflow-engine';
 import {
   WORKFLOW_REPOSITORY,
   type WorkflowRepository,
@@ -27,6 +31,12 @@ import { NODE_REGISTRY, WORKFLOW_ENGINE } from './workflow.tokens';
 import { validateWorkflowGraph } from './engine/graph-validator';
 
 const notFound = (resource: string): Error => new Error(`NOT_FOUND:${resource}不存在`);
+const executionErrorMessage = (error: unknown): string => {
+  if (error instanceof WorkflowNodeExecutionError && error.cause instanceof Error) {
+    return error.cause.message;
+  }
+  return error instanceof Error ? error.message : '工作流执行失败';
+};
 
 const toRunDto = (run: WorkflowRunRecord) => {
   return WorkflowRunSchema.parse({
@@ -172,9 +182,10 @@ export class WorkflowService {
       });
     } catch (error) {
       const stopped = controller.signal.aborted;
+      const message = executionErrorMessage(error);
       await this.repository.updateRun(run.id, {
         status: stopped ? 'stopped' : 'failed',
-        error: stopped ? null : error instanceof Error ? error.message : '工作流执行失败',
+        error: stopped ? null : message,
         finishedAt: new Date(),
       });
       if (!terminalSent) {
@@ -193,7 +204,7 @@ export class WorkflowService {
                 event: 'workflow_failed',
                 data: {
                   runId: run.id,
-                  error: error instanceof Error ? error.message : '工作流执行失败',
+                  error: message,
                 },
               },
         );

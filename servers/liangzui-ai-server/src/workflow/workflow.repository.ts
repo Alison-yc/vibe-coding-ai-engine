@@ -155,6 +155,15 @@ export class InMemoryWorkflowRepository implements WorkflowRepository {
   async deleteWorkflow(id: string): Promise<void> {
     await Promise.resolve();
     this.workflowRecords.delete(id);
+    const runIds = new Set(
+      [...this.runRecords.values()]
+        .filter((record) => record.workflowId === id)
+        .map((record) => record.id),
+    );
+    for (const runId of runIds) this.runRecords.delete(runId);
+    for (const [nodeRunId, record] of this.nodeRunRecords) {
+      if (runIds.has(record.runId)) this.nodeRunRecords.delete(nodeRunId);
+    }
   }
 
   async createRun(

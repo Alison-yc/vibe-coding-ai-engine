@@ -41,6 +41,7 @@ export class WorkflowEngine {
     const pool = new VariablePool(input.inputs);
     const activeEdges = new Set<string>();
     let outputs: Record<string, unknown> = {};
+    let terminalExecuted = false;
     this.emit(input.emit, {
       event: 'workflow_started',
       data: { runId: input.runId, graphSnapshot: input.graph },
@@ -86,7 +87,10 @@ export class WorkflowEngine {
           throw new Error(`节点 ${nodeId} 返回的分支 ${result.nextBranch} 没有匹配出边`);
         }
         pool.set(nodeId, result.outputs);
-        if (runner.role === 'terminal') outputs = result.outputs;
+        if (runner.role === 'terminal') {
+          outputs = result.outputs;
+          terminalExecuted = true;
+        }
         await input.observer?.onNodeFinished?.(nodeId, result.outputs, elapsedMs);
         this.emit(input.emit, {
           event: 'node_finished',
@@ -119,6 +123,14 @@ export class WorkflowEngine {
     }
 
     const totalElapsedMs = Math.max(0, Math.round(performance.now() - startedAt));
+    if (!terminalExecuted) {
+      const error = new Error('工作流未执行到结束节点');
+      this.emit(input.emit, {
+        event: 'workflow_failed',
+        data: { runId: input.runId, error: error.message },
+      });
+      throw error;
+    }
     this.emit(input.emit, {
       event: 'workflow_finished',
       data: { runId: input.runId, outputs, totalElapsedMs, status: 'completed' },

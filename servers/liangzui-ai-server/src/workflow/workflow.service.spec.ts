@@ -166,7 +166,7 @@ describe('WorkflowService', () => {
     );
     expect(await repository.getRun(runId)).toMatchObject({
       status: 'failed',
-      error: '节点 llm 执行失败',
+      error: '模型不可用',
       finishedAt: expect.any(Date),
     });
   });

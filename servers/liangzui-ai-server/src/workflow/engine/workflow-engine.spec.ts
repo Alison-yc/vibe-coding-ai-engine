@@ -189,6 +189,28 @@ describe('WorkflowEngine', () => {
     });
   });
 
+  it('活动分支未抵达结束节点时失败', async () => {
+    const deadEndGraph = structuredClone(graph);
+    deadEndGraph.edges = deadEndGraph.edges.filter((edge) => edge.id !== 'e4');
+    const registry = new NodeRegistry([
+      createRunner('start', async () => ({ outputs: {} }), 'entry'),
+      createRunner('if-else', async () => ({ outputs: {}, nextBranch: 'yes' })),
+      createRunner('variable-assigner', async () => ({ outputs: {} })),
+      createRunner('end', async () => ({ outputs: {} }), 'terminal'),
+    ]);
+    const events: WorkflowRunEvent[] = [];
+    await expect(
+      new WorkflowEngine(registry).execute({
+        runId: '00000000-0000-4000-8000-000000000001',
+        graph: deadEndGraph,
+        inputs: {},
+        signal: new AbortController().signal,
+        emit: (event) => events.push(event),
+      }),
+    ).rejects.toThrow('未执行到结束节点');
+    expect(events.at(-1)).toMatchObject({ event: 'workflow_failed' });
+  });
+
   it('已取消的运行发送 stopped 终止事件', async () => {
     const controller = new AbortController();
     controller.abort();

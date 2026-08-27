@@ -97,6 +97,9 @@ export const validateWorkflowGraph = (
   const runners = new Map<string, ReturnType<NodeRegistry['get']>>();
 
   for (const node of graph.nodes) {
+    if (node.id === 'sys') {
+      errors.push(issue('reserved-node-id', '节点 id 不能使用保留名称 sys', [node.id]));
+    }
     if (nodeIds.has(node.id)) {
       errors.push(issue('duplicate-node', `节点 id 重复：${node.id}`, [node.id]));
     }
@@ -213,7 +216,11 @@ export const validateWorkflowGraph = (
   for (const node of graph.nodes) {
     const runner = runners.get(node.id);
     if (!runner) continue;
-    if (runner.role !== 'entry' && !reachable.has(node.id)) {
+    if (runner.role === 'terminal' && !reachable.has(node.id)) {
+      errors.push(
+        issue('unreachable-terminal', `结束节点 ${node.id} 无法从开始节点到达`, [node.id]),
+      );
+    } else if (runner.role !== 'entry' && !reachable.has(node.id)) {
       warnings.push(issue('isolated-node', `节点 ${node.id} 不可从开始节点到达`, [node.id]));
     }
     if (runner.role !== 'terminal' && !outgoing.has(node.id)) {

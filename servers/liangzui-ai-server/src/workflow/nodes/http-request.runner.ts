@@ -8,7 +8,7 @@ import type { NodeRunContext, NodeRunner, VariablePoolReader } from '../engine/t
 import { safeHttpRequest, type SafeHttpOptions } from '../security/safe-http';
 import { templateSelectors } from './template-selectors';
 
-type HttpRunnerDependencies = Pick<SafeHttpOptions, 'resolve' | 'fetchImpl'>;
+type HttpRunnerDependencies = Pick<SafeHttpOptions, 'resolve' | 'requestImpl'>;
 
 export class HttpRequestNodeRunner implements NodeRunner<HttpRequestNodeConfig> {
   readonly type = 'http-request' as const;
@@ -40,7 +40,7 @@ export class HttpRequestNodeRunner implements NodeRunner<HttpRequestNodeConfig> 
       body: config.body ? pool.render(config.body) : undefined,
       signal: context.signal,
       resolve: this.dependencies.resolve,
-      fetchImpl: this.dependencies.fetchImpl,
+      requestImpl: this.dependencies.requestImpl,
     });
     return { outputs: result };
   }

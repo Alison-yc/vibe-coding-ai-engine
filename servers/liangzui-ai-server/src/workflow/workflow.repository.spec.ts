@@ -133,6 +133,9 @@ describe('InMemoryWorkflowRepository', () => {
     await repository.updateNodeRun('00000000-0000-4000-8000-000000000099', {
       status: 'failed',
     });
+    await repository.deleteWorkflow(workflow.id);
+    expect(await repository.listRuns(workflow.id)).toHaveLength(0);
+    expect(await repository.listNodeRuns(run.id)).toHaveLength(0);
   });
 });
 
