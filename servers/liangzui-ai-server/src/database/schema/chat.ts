@@ -28,6 +28,8 @@ export const chatInputs = pgTable('chat_inputs', {
     .notNull()
     .references(() => chatSessions.id, { onDelete: 'cascade' }),
   content: text('content').notNull(),
+  workspaceRoot: text('workspace_root').notNull().default('.'),
+  mode: text('mode').notNull().default('edit'),
   delivery: text('delivery').notNull(),
   status: text('status').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
