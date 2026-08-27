@@ -310,7 +310,7 @@ describe('AgentService', () => {
         { id: 'call-write', name: 'write', arguments: { path: 'denied.md', content: 'no' } },
       ],
     });
-    gateway.enqueueAgentResponse({ content: '写入被拒绝。', toolCalls: [] });
+    gateway.enqueueAgentResponse({ content: '不应再被调用', toolCalls: [] });
     const events: AgentStreamEvent[] = [];
     await run('写文件', events, 'read-only');
     expect(events.some((event) => event.event === 'permission.asked')).toBe(false);
@@ -320,9 +320,50 @@ describe('AgentService', () => {
         (event) =>
           event.event === 'tool.update' &&
           event.data.part.type === 'tool' &&
-          event.data.part.state === 'error',
+          event.data.part.state === 'error' &&
+          event.data.part.error?.includes('只读模式'),
       ),
     ).toBe(true);
+    expect(
+      events.some(
+        (event) =>
+          event.event === 'message.delta' &&
+          event.data.text.includes('只读模式') &&
+          event.data.text.includes('已停止'),
+      ),
+    ).toBe(true);
+    const calls = gateway.calls.filter((call) => call.method === 'agentChat');
+    expect(calls).toHaveLength(1);
+  });
+
+  it('相同成功工具调用重复时提前停止', async () => {
+    await writeFile(path.join(root, 'README.md'), 'hello');
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [{ id: 'read-1', name: 'read', arguments: { path: 'README.md' } }],
+    });
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [{ id: 'read-2', name: 'read', arguments: { path: 'README.md' } }],
+    });
+    gateway.enqueueAgentResponse({ content: '不应再被调用', toolCalls: [] });
+    const events: AgentStreamEvent[] = [];
+    await run('反复读取', events);
+    expect(events.some((event) => event.event === 'warning')).toBe(true);
+    expect(
+      events.some(
+        (event) =>
+          event.event === 'message.delta' && event.data.text.includes('相同工具调用已重复'),
+      ),
+    ).toBe(true);
+    const completedReads = events.filter(
+      (event) =>
+        event.event === 'tool.update' &&
+        event.data.part.type === 'tool' &&
+        event.data.part.name === 'read' &&
+        event.data.part.state === 'completed',
+    );
+    expect(completedReads).toHaveLength(1);
   });
 
   it('最后一步强制禁用工具并输出文本', async () => {
