@@ -1,7 +1,5 @@
-import { Controller, Get, Inject, Query, Req } from '@nestjs/common';
-import type { Request } from 'express';
+import { Controller, Get, Inject, Query } from '@nestjs/common';
 import { AppService } from './app.service';
-import { abortOnClientClose } from './http/abort-on-client-close';
 
 @Controller()
 export class AppController {
@@ -10,11 +8,6 @@ export class AppController {
   @Get('prompt')
   prompt(@Query('message') message: string): string {
     return this.appService.prompt(message);
-  }
-
-  @Get('rag-query')
-  async ragQuery(@Req() request: Request, @Query('q') q: string): Promise<string> {
-    return await this.appService.ragQuery(q, abortOnClientClose(request));
   }
 
   @Get()

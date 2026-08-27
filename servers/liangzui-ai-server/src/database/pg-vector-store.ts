@@ -1,5 +1,5 @@
 import { EMBEDDING_DIMENSION } from '@ai-engine/contracts';
-import { cosineDistance, eq } from 'drizzle-orm';
+import { and, cosineDistance, eq } from 'drizzle-orm';
 import type { NodePgDatabase } from 'drizzle-orm/node-postgres';
 import type * as schema from './schema';
 import { chunks, datasets, documents } from './schema';
@@ -52,6 +52,8 @@ export class PgVectorStore implements VectorStore {
           }
           return {
             documentId: document.id,
+            documentName: document.name,
+            datasetId: dataset.id,
             content,
             embedding,
             position,
@@ -81,27 +83,72 @@ export class PgVectorStore implements VectorStore {
     );
   }
 
-  async similaritySearch(embedding: number[], limit: number): Promise<VectorSearchHit[]> {
+  async replaceDocumentChunks(documentId: string, items: VectorChunkInsert[]): Promise<void> {
+    for (const item of items) {
+      if (item.documentId !== documentId) {
+        throw new Error('替换切片的 documentId 不一致');
+      }
+      if (item.embedding.length !== EMBEDDING_DIMENSION) {
+        throw new Error(
+          `Embedding 维度不符：期望 ${EMBEDDING_DIMENSION}，实际 ${item.embedding.length}`,
+        );
+      }
+    }
+    await this.db.transaction(async (tx) => {
+      await tx.delete(chunks).where(eq(chunks.documentId, documentId));
+      if (items.length === 0) return;
+      await tx.insert(chunks).values(
+        items.map((item) => ({
+          documentId: item.documentId,
+          content: item.content,
+          embedding: item.embedding,
+          metadata: item.metadata ?? {},
+          position: item.position,
+        })),
+      );
+    });
+  }
+
+  async similaritySearch(
+    embedding: number[],
+    limit: number,
+    datasetId?: string,
+  ): Promise<VectorSearchHit[]> {
     if (embedding.length !== EMBEDDING_DIMENSION) {
       throw new Error(`查询向量维度不符：期望 ${EMBEDDING_DIMENSION}，实际 ${embedding.length}`);
     }
     const distance = cosineDistance(chunks.embedding, embedding);
+    const filters = datasetId ? and(eq(documents.datasetId, datasetId)) : undefined;
     const rows = await this.db
       .select({
         id: chunks.id,
         documentId: chunks.documentId,
+        documentName: documents.name,
         content: chunks.content,
+        metadata: chunks.metadata,
+        position: chunks.position,
         distance,
       })
       .from(chunks)
+      .innerJoin(documents, eq(chunks.documentId, documents.id))
+      .where(filters)
       .orderBy(distance)
       .limit(limit);
 
     return rows.map((row) => ({
       id: row.id,
       documentId: row.documentId,
+      documentName: row.documentName,
       content: row.content,
       score: 1 - Number(row.distance),
+      position: row.position,
+      headingPath:
+        typeof row.metadata === 'object' &&
+        row.metadata !== null &&
+        'headingPath' in row.metadata &&
+        typeof row.metadata.headingPath === 'string'
+          ? row.metadata.headingPath
+          : undefined,
     }));
   }
 

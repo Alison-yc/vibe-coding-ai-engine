@@ -4,9 +4,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DatabaseModule } from './database/database.module';
 import { validateEnvironment } from './config/ollama.config';
-import { LLM_GATEWAY } from './llm/llm-gateway';
+import { KnowledgeModule } from './knowledge/knowledge.module';
 import { LlmController } from './llm/llm.controller';
-import { OllamaLlmGateway } from './llm/ollama-llm-gateway';
 import { ObservabilityModule } from './observability/observability.module';
 import { TraceIdModule } from './observability/trace-id.module';
 
@@ -20,14 +19,9 @@ import { TraceIdModule } from './observability/trace-id.module';
     TraceIdModule,
     ObservabilityModule,
     DatabaseModule,
+    KnowledgeModule,
   ],
   controllers: [AppController, LlmController],
-  providers: [
-    AppService,
-    {
-      provide: LLM_GATEWAY,
-      useClass: OllamaLlmGateway,
-    },
-  ],
+  providers: [AppService],
 })
 export class AppModule {}

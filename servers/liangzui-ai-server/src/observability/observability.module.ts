@@ -7,6 +7,8 @@ import { LlmMetricsService } from './llm-metrics.service';
 import { LlmMetricsStore } from './llm-metrics.store';
 import { ObservabilityController } from './observability.controller';
 import { traceIdLogProps } from './request-context';
+import { LLM_GATEWAY } from '../llm/llm-gateway';
+import { OllamaLlmGateway } from '../llm/ollama-llm-gateway';
 
 @Module({
   imports: [
@@ -50,7 +52,11 @@ import { traceIdLogProps } from './request-context';
     }),
   ],
   controllers: [ObservabilityController],
-  providers: [LlmMetricsStore, LlmMetricsService],
-  exports: [LoggerModule, LlmMetricsService],
+  providers: [
+    LlmMetricsStore,
+    LlmMetricsService,
+    { provide: LLM_GATEWAY, useClass: OllamaLlmGateway },
+  ],
+  exports: [LoggerModule, LlmMetricsService, LLM_GATEWAY],
 })
 export class ObservabilityModule {}

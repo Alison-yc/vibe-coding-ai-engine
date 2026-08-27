@@ -2,8 +2,6 @@ import 'reflect-metadata';
 import { Test, type TestingModule } from '@nestjs/testing';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { AppService } from '../app.service';
-import { InMemoryVectorStore } from '../database/in-memory-vector-store';
-import { VECTOR_STORE } from '../database/vector-store';
 import { FakeLlmGateway } from './fake-llm-gateway';
 import { LLM_GATEWAY } from './llm-gateway';
 import { LlmController } from './llm.controller';
@@ -15,11 +13,7 @@ describe('LlmController', () => {
   beforeEach(async () => {
     const app: TestingModule = await Test.createTestingModule({
       controllers: [LlmController],
-      providers: [
-        AppService,
-        { provide: LLM_GATEWAY, useValue: new FakeLlmGateway() },
-        { provide: VECTOR_STORE, useClass: InMemoryVectorStore },
-      ],
+      providers: [AppService, { provide: LLM_GATEWAY, useValue: new FakeLlmGateway() }],
     }).compile();
 
     controller = app.get(LlmController);

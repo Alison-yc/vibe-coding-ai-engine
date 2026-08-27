@@ -53,12 +53,16 @@ describe('PgVectorStore integration', () => {
       await store.insert([
         {
           documentId: document.id,
+          documentName: document.name,
+          datasetId: dataset.id,
           content: '我住在北京',
           embedding: unit(0),
           position: 0,
         },
         {
           documentId: document.id,
+          documentName: document.name,
+          datasetId: dataset.id,
           content: '我喜欢编程',
           embedding: unit(1),
           position: 1,
@@ -105,6 +109,8 @@ describe('PgVectorStore integration', () => {
         await store.insert([
           {
             documentId: document.id,
+            documentName: document.name,
+            datasetId: dataset.id,
             content: 'bad',
             embedding: [0, 1],
             position: 0,

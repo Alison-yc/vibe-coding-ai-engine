@@ -18,8 +18,10 @@ const cosineSimilarity = (left: number[], right: number[]): number => {
   return denominator === 0 ? 0 : dot / denominator;
 };
 
+type StoredChunk = VectorSearchHit & { embedding: number[]; datasetId: string };
+
 export class InMemoryVectorStore implements VectorStore {
-  private readonly chunks: Array<VectorSearchHit & { embedding: number[]; position: number }> = [];
+  private readonly chunks: StoredChunk[] = [];
 
   async seedIfEmpty(texts: string[], embed: () => Promise<number[][]>): Promise<void> {
     if (this.chunks.length > 0) return;
@@ -28,6 +30,7 @@ export class InMemoryVectorStore implements VectorStore {
       throw new Error(`Embedding 条数不符：期望 ${texts.length}，实际 ${embeddings.length}`);
     }
     const documentId = randomUUID();
+    const datasetId = randomUUID();
     texts.forEach((content, position) => {
       const embedding = embeddings[position];
       if (!embedding) {
@@ -41,6 +44,8 @@ export class InMemoryVectorStore implements VectorStore {
       this.chunks.push({
         id: randomUUID(),
         documentId,
+        documentName: 'demo.txt',
+        datasetId,
         content,
         embedding: [...embedding],
         score: 0,
@@ -57,25 +62,66 @@ export class InMemoryVectorStore implements VectorStore {
           `Embedding 维度不符：期望 ${EMBEDDING_DIMENSION}，实际 ${chunk.embedding.length}`,
         );
       }
+      const headingPath =
+        typeof chunk.metadata?.headingPath === 'string' ? chunk.metadata.headingPath : undefined;
       this.chunks.push({
         id: randomUUID(),
         documentId: chunk.documentId,
+        documentName: chunk.documentName,
+        datasetId: chunk.datasetId,
         content: chunk.content,
         embedding: [...chunk.embedding],
         score: 0,
         position: chunk.position,
+        headingPath,
       });
     }
   }
 
-  async similaritySearch(embedding: number[], limit: number): Promise<VectorSearchHit[]> {
+  async replaceDocumentChunks(documentId: string, chunks: VectorChunkInsert[]): Promise<void> {
+    const replacements = chunks.map((chunk) => {
+      if (chunk.documentId !== documentId) {
+        throw new Error('替换切片的 documentId 不一致');
+      }
+      if (chunk.embedding.length !== EMBEDDING_DIMENSION) {
+        throw new Error(
+          `Embedding 维度不符：期望 ${EMBEDDING_DIMENSION}，实际 ${chunk.embedding.length}`,
+        );
+      }
+      const headingPath =
+        typeof chunk.metadata?.headingPath === 'string' ? chunk.metadata.headingPath : undefined;
+      return {
+        id: randomUUID(),
+        documentId: chunk.documentId,
+        documentName: chunk.documentName,
+        datasetId: chunk.datasetId,
+        content: chunk.content,
+        embedding: [...chunk.embedding],
+        score: 0,
+        position: chunk.position,
+        headingPath,
+      };
+    });
+    await this.deleteByDocumentId(documentId);
+    this.chunks.push(...replacements);
+  }
+
+  async similaritySearch(
+    embedding: number[],
+    limit: number,
+    datasetId?: string,
+  ): Promise<VectorSearchHit[]> {
     await Promise.resolve();
-    return [...this.chunks]
+    return this.chunks
+      .filter((chunk) => !datasetId || chunk.datasetId === datasetId)
       .map((chunk) => ({
         id: chunk.id,
         documentId: chunk.documentId,
+        documentName: chunk.documentName,
         content: chunk.content,
         score: cosineSimilarity(embedding, chunk.embedding),
+        position: chunk.position,
+        headingPath: chunk.headingPath,
       }))
       .sort((left, right) => right.score - left.score)
       .slice(0, limit);

@@ -14,6 +14,7 @@ const EnvironmentSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().url().optional(),
+  OLLAMA_EMBED_BATCH_SIZE: z.coerce.number().int().min(1).max(128).default(32),
   RUN_DB_INTEGRATION: z
     .string()
     .optional()
