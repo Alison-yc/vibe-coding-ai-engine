@@ -25,6 +25,7 @@ drizzle/
 # 报告与扫描结果
 *.sarif
 scripts/*/reports/
+scripts/gen-tests/packs/
 
 # Docker 数据卷
 docker/data/

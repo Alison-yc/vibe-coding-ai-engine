@@ -15,6 +15,7 @@ export default defineConfig({
       'packages/*/vitest.config.ts',
       'servers/*/vitest.config.ts',
       'scripts/rag-eval/vitest.config.ts',
+      'scripts/gen-tests/vitest.config.ts',
     ],
 
     coverage: {

@@ -75,6 +75,8 @@ blob-report/
 .playwright/
 **/.auth/
 
+scripts/gen-tests/.tmp/
+
 # LLM 生成但未经人工审核的测试草稿。审核通过后要改名去掉 .generated
 # 才能入库，见 .plan/15
 **/*.generated.spec.ts
