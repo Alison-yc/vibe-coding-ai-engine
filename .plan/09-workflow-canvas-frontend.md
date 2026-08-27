@@ -5,7 +5,7 @@
 | 阶段     | M3 · 工作流编排             |
 | 依赖     | 03、08、14                  |
 | 预计工期 | 6～7 天（最耗时的前端模块） |
-| 状态     | 未开始                      |
+| 状态     | 已完成                      |
 
 ## 目标
 
@@ -19,6 +19,9 @@
 | 状态       | zustand slice + React Flow 内部 store | 节点坐标/选中态由 React Flow 管，业务态（配置、运行状态、面板开合）走 zustand                |
 | 表单       | react-hook-form + zod resolver        | 节点配置面板复用 contracts 的 schema 做校验                                                  |
 | 代码编辑器 | CodeMirror 6                          | code 节点与提示词编辑用。比 Monaco 轻得多，Monaco 打包体积对桌面端不友好                     |
+| 日志虚拟化 | `@tanstack/react-virtual`             | 只渲染可视日志条目，避免流式输出拖慢画布                                                     |
+
+前端依赖登记：`@xyflow/react`、`react-hook-form`、`@hookform/resolvers`、`@codemirror/state`、`@codemirror/view`、`@codemirror/lang-javascript`、`@tanstack/react-virtual`。组件交互测试使用 `@testing-library/react`、`@testing-library/user-event` 与 `jsdom`（仅开发依赖）。`@xyflow/react` 的 Zustand 4 传递链固定到旧 `use-sync-external-store`，根 workspace 覆盖为 1.6.x 以匹配 React 19 peer 范围。
 
 ## 核心设计：单 CustomNode + 注册表分发
 
@@ -149,21 +152,21 @@ const nodeTypes = { start: StartNode, llm: LLMNode, ifElse: IfElseNode, ... };
 
 ## 验收标准（DoD）
 
-- [ ] 能拖出 `start → knowledge-retrieval → llm → end` 的图并保存
-- [ ] 刷新页面后图完整恢复，节点位置与配置都在
-- [ ] 变量选择器只显示上游节点的变量，不显示下游或自己的
-- [ ] 删除一个被引用的节点，引用处显示失效标记（红色），不是静默空值
-- [ ] 保存的 graph JSON 里**没有** `_` 开头的运行态字段
-- [ ] 尝试连一条 end → start 的边，被拒绝
-- [ ] 尝试连一条节点到自身的边，被拒绝
-- [ ] 提交一个有环的图，前端在对应节点上显示错误标记
-- [ ] 点击运行，节点依次高亮蓝→绿，LLM 节点的输出在日志里逐字出现
-- [ ] 某节点失败时，该节点变红且日志里有可读的错误信息
-- [ ] 运行中点「停止」，画布状态复位，日志标记为已停止
-- [ ] 单节点调试面板能填入上游变量并独立运行
-- [ ] 画布上放 30 个节点，拖动仍流畅（无明显掉帧）
-- [ ] 在配置面板输入文字时，React DevTools Profiler 显示画布节点**未重渲染**
-- [ ] 切换主题后画布、节点、连线、面板配色全部正确
+- [x] 能拖出 `start → knowledge-retrieval → llm → end` 的图并保存
+- [x] 刷新页面后图完整恢复，节点位置与配置都在
+- [x] 变量选择器只显示上游节点的变量，不显示下游或自己的
+- [x] 删除一个被引用的节点，引用处显示失效标记（红色），不是静默空值
+- [x] 保存的 graph JSON 里**没有** `_` 开头的运行态字段
+- [x] 尝试连一条 end → start 的边，被拒绝
+- [x] 尝试连一条节点到自身的边，被拒绝
+- [x] 提交一个有环的图，前端在对应节点上显示错误标记
+- [x] 点击运行，节点依次高亮蓝→绿，LLM 节点的输出在日志里逐字出现
+- [x] 某节点失败时，该节点变红且日志里有可读的错误信息
+- [x] 运行中点「停止」，画布状态复位，日志标记为已停止
+- [x] 单节点调试面板能填入上游变量并独立运行
+- [x] 画布上放 30 个节点，拖动仍流畅（无明显掉帧）
+- [x] 在配置面板输入文字时，React DevTools Profiler 显示画布节点**未重渲染**
+- [x] 切换主题后画布、节点、连线、面板配色全部正确
 
 ## 验证命令
 
