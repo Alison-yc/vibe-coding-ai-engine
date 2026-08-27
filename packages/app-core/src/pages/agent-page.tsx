@@ -2,7 +2,7 @@ import type { AgentMode, ChatMessage, PermissionDecision } from '@ai-engine/cont
 import { usePlatform } from '@ai-engine/platform';
 import { Button, Input, Label, Select, Textarea, ThemeToggle, cn } from '@ai-engine/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type FormEvent, useEffect, useRef, useState } from 'react';
+import { type FormEvent, type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router';
 import { respondAgentPermission, streamAgent } from '../agent/agent-api';
 import { shouldHydrateAgentMessages, useAgentStore } from '../agent/agent-store';
@@ -130,6 +130,13 @@ export const AgentPage = () => {
     if (!selected) return;
     setWorkspaceRoot(selected);
     await platform.kv.set('agent.workspaceRoot', selected);
+  };
+
+  const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      if (!busy) void send();
+    }
   };
 
   const send = async (event?: FormEvent) => {
@@ -268,8 +275,9 @@ export const AgentPage = () => {
             aria-label="文件助手消息"
             value={content}
             disabled={!currentSession || busy}
-            placeholder="例如：读取 README.md 并总结"
+            placeholder="例如：读取 README.md 并总结。Enter 发送，Shift+Enter 换行"
             onChange={(event) => setContent(event.target.value)}
+            onKeyDown={onKeyDown}
           />
           <div className="flex justify-end gap-2">
             {streaming ? (
