@@ -26,6 +26,8 @@
 | @radix-ui/react-slot     | 1.x     | Button `asChild`                 |
 | lucide-react             | 1.x     | 图标，尺寸只用 16/20/24          |
 
+`Select` 不使用系统原生下拉（macOS 会遮住触发按钮）。用自绘 listbox：触发按钮 + `absolute top-full` 面板，API 仍兼容 `<option>` 与 `onChange(event.target.value)`。
+
 不在本批次批量安装 shadcn 全家桶。
 
 ## 目标

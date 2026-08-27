@@ -136,6 +136,7 @@ describe('表单与内容原语', () => {
     expect(html).toContain('知识库');
     expect(html).toContain('正文');
     expect(html).toContain('递归');
+    expect(html).toContain('aria-haspopup="listbox"');
     expect(html).toContain('上传文档');
     expect(html).toContain('尚未选择');
     expect(html).toContain('accept=".md"');
