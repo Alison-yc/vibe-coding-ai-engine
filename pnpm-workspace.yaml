@@ -21,3 +21,4 @@ overrides:
   "ansi-regex@4": "4.1.1"
   "ansi-regex@5": "5.0.1"
   tmp: ">=0.2.6"
+  use-sync-external-store: "^1.6.0"
