@@ -15,7 +15,8 @@ export class GlobTool implements AgentTool<GlobToolInput, string[]> {
   readonly name = 'glob' as const;
   readonly permission = 'read' as const;
   readonly input = GlobToolInputSchema;
-  readonly description = '按文件名模式查找工作区文件。适合寻找文件，不用于搜索文件内容。';
+  readonly description =
+    '按文件名模式查找已有文件。不要用于创建文件；用户已给出要创建的文件名时禁止调用本工具。';
 
   async prepare(input: GlobToolInput, context: ToolContext) {
     assertSafePattern(input.pattern);

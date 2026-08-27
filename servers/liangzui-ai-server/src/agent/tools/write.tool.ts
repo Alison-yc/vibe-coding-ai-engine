@@ -12,7 +12,7 @@ export class WriteTool implements AgentTool<WriteToolInput, { bytesWritten: numb
   readonly permission = 'write' as const;
   readonly input = WriteToolInputSchema;
   readonly description =
-    '创建或完整覆盖工作区内的文件。仅在用户要求落盘时使用；已有文件必须先 read，再调用 write。';
+    '创建或完整覆盖工作区内的文件。用户给出新文件名要求创建时直接调用本工具，不要先 glob。覆盖已有文件前应先 read。';
 
   async prepare(input: WriteToolInput, context: ToolContext) {
     const target = await resolveWorkspacePath(context.workspaceRoot, input.path, {
