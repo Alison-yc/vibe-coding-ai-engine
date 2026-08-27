@@ -176,6 +176,18 @@ describe('AppRoutes', () => {
     expect(html).toContain('可观测性');
     expect(html).toContain('加载指标');
   });
+
+  it('在 /knowledge 渲染知识库列表', () => {
+    const html = renderToStaticMarkup(
+      createElement(
+        PlatformProvider,
+        { value: stubPlatform },
+        createElement(MemoryRouter, { initialEntries: ['/knowledge'] }, createElement(AppRoutes)),
+      ),
+    );
+    expect(html).toContain('知识库');
+    expect(html).toContain('加载知识库');
+  });
 });
 
 describe('useTheme', () => {
