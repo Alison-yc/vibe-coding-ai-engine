@@ -23,4 +23,8 @@ describe('Ollama 配置', () => {
     ).toMatchObject({ OLLAMA_NUM_CTX: 4096, OLLAMA_NUM_PREDICT: 512 });
     expect(() => validateEnvironment({ OLLAMA_BASE_URL: 'not-a-url' })).toThrow();
   });
+
+  it('允许用空 DATABASE_URL 显式启用内存回退', () => {
+    expect(validateEnvironment({ DATABASE_URL: '' }).DATABASE_URL).toBeUndefined();
+  });
 });

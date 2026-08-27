@@ -18,7 +18,15 @@ export class ObservabilityController {
 
   @Get('health')
   health(): HealthResponse {
-    return HealthResponseSchema.parse({ status: 'ok' });
+    return HealthResponseSchema.parse({
+      status: 'ok',
+      chatModel: this.config.get('OLLAMA_MODEL', { infer: true }),
+      embeddingModel: this.config.get('OLLAMA_EMBED_MODEL', { infer: true }),
+      numCtx: this.config.get('OLLAMA_NUM_CTX', { infer: true }),
+      numPredict: this.config.get('OLLAMA_NUM_PREDICT', { infer: true }),
+      temperature: this.config.get('OLLAMA_TEMPERATURE', { infer: true }),
+      vectorStore: this.config.get('DATABASE_URL', { infer: true }) ? 'postgres' : 'memory',
+    });
   }
 
   @Get('dev/observability/metrics')

@@ -30,7 +30,11 @@ const createController = (nodeEnv: AppConfig['NODE_ENV']) => {
 describe('ObservabilityController', () => {
   it('health 返回 ok', () => {
     const { controller } = createController('development');
-    expect(controller.health()).toEqual({ status: 'ok' });
+    expect(controller.health()).toMatchObject({
+      status: 'ok',
+      chatModel: 'qwen3.5:2b',
+      vectorStore: 'memory',
+    });
   });
 
   it('开发环境可读取指标快照', () => {
