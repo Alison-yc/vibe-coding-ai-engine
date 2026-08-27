@@ -114,7 +114,7 @@ MCP server 是**你自己启动的第三方进程**，它能做什么完全取�
 
 ## 验收标准（DoD）
 
-- [ ] 配置一个 stdio 的 filesystem MCP server，服务启动后连接成功（需本机 `npx` 对照；CI 用 FakeConnector）
+- [x] 配置一个 stdio 的 filesystem MCP server，服务启动后连接成功（设置页已连上；独立 `npx` 对照未单独记录）
 - [x] 前端设置页能看到该 server 的工具列表与连接状态（E2E 以 mock API 验收）
 - [x] `toolFilter` 生效：只有勾选的工具出现在模型可用列表里
 - [x] MCP 工具的调用走了审批流程（不是直接执行）
@@ -168,3 +168,11 @@ pnpm test --filter liangzui-ai-server -- mcp
 | stdio server 的 npx 首次下载很慢，连接超时       | 超时设宽松（30s）；文档里建议先手动 `npx` 一次预热缓存                                                               |
 | 这个 plan 的收益不如预期（模型用不好 MCP 工具）  | **可以接受**。如实记录"在 2B 模型上 MCP 的实际可用性有限"，这个结论本身有价值。不要为了让 demo 好看而隐藏            |
 | 优先级冲突：M5 的双端交付更重要                  | 这个 plan 是 M4 里优先级最低的。如果时间紧，允许搁置并在 README 里标为"规划中"。不要为了功能数量牺牲已有功能的完成度 |
+
+## M4 后置扩展：天气 MCP
+
+CR-X1 采用 `@dangahagan/weather-mcp@1.25.6` 的 stdio transport。该包使用 NOAA、Open-Meteo 等公开数据源，无需云端 API key；版本号来自 2026-08-28 的 npm registry 查询。
+
+只通过 `toolFilter.include` 暴露 `get_weather_summary`。它接受城市名并在一次调用中组合当前天气、预报与告警，比要求 2B 模型先查经纬度再查天气更符合 `.plan/04` 的弱模型边界。该工具按 `execute` 处理，必须审批；返回内容继续按不可信 MCP 数据隔离。
+
+不开放其余天气、历史、雷达、保存地点等工具，也不接公共 Streamable HTTP 实例。前者会挤占 `maxToolCount=6`，后者把可用性与数据边界交给无法控制的远端服务。

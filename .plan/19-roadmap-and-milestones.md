@@ -213,6 +213,29 @@ plan 编号表示**主题**，不是严格的执行队列。实际执行顺序�
 - 真实模型下验证选工具、参数缺失、非法工具名、dangling tool call 等失败路径。
 - Agent 重启后状态一致，文件写入必须经过审批。
 
+集成 Review 已通过（2026-08-28）。用户确认手测完成。证据：内置五工具可走通；`grep` 走 `@vscode/ripgrep` 自带二进制；写入走审批；拒绝/超时本轮收尾不再连弹；只读仍暴露 `write`/`edit` 但权限 deny 并立即收尾；配 `DATABASE_URL` 后 durable inbox 落 Postgres，重启刷新为中断而非永久 running；MCP filesystem 可连接，5 内置 + 勾选 MCP 超 `maxToolCount=6` 时内置优先裁 MCP。
+
+残留（不阻塞 M4）：停服后 `ps` 无 MCP 子进程未当面确认；非法工具名 / dangling / JSON 兜底以单测为主，真实模型未逐条观测；2B 仍可能先 `glob` 再反问；`mcp.json` 尚无 `env` 字段。联网天气 MCP 与本地 `datetime` 不在 M4 范围，按用户指令作为范围外扩展，通过后再进 CR-15。
+
+#### CR-X1 · 通用 Agent 实用工具扩展
+
+- **性质**：用户指定的 M4 后置扩展；M4 已通过，不回写原里程碑结论。
+- **包含**：
+  - 内置 `datetime`：返回指定 IANA 时区的当前日期、时间、星期与 UTC 偏移。
+  - 内置 `calculate`：解析基础算术表达式，不使用 `eval` / `new Function`。
+  - 内置 `generate_uuid`：一次生成 1～10 个 UUID v4。
+  - 天气 MCP：示例配置固定 `@dangahagan/weather-mcp@1.25.6`，只暴露单调用即可完成常见查询的 `get_weather_summary`。
+  - 基于当前用户输入的确定性工具选择：命中日期、计算、UUID 或天气意图时优先放入对应工具，再补文件工具；任何请求仍不得超过 `capabilities().maxToolCount = 6`。
+- **不包含**：任意 URL `webfetch`、Shell/命令执行、长期记忆、提醒/定时任务、多个天气工具、多 MCP 并行编排、修改第三方 MCP server。
+- **Review 重点**：工具选择不能依赖另一次 LLM 调用；普通文件任务不能回归；天气 MCP 默认按 `execute` 走审批；时间输出可测试且不依赖机器本地时区；计算器不存在代码执行或资源耗尽路径。
+- **通过条件**：
+  - 日期/时间支持有效 IANA 时区并明确拒绝非法时区。
+  - 计算器支持括号及 `+ - * / % ^`，拒绝非有限结果、超长表达式和非算术字符。
+  - UUID 输出全部通过 UUID schema，数量边界生效。
+  - “北京天气”只需向模型暴露一个天气 MCP 工具且总数不超过 6；未连接天气 MCP 时 Agent 能文本说明不可用，不伪造实时天气。
+  - 定向单测、contracts 测试、lint、typecheck、构建与安全扫描通过。
+- **提交边界**：规划提交；contracts + 内置工具；意图选择 + Agent 接入；天气 MCP 示例；进度更新。
+
 ### M5 · 双端与打包
 
 #### CR-15 · 双端业务装配
