@@ -159,6 +159,16 @@ plan 编号表示**主题**，不是严格的执行队列。实际执行顺序�
 - LLM 测试生成闭环已在真实文件上验证。
 - 录制第一个可演示版本后再进入 M3。
 
+集成 Review 已通过（2026-08-27）。代码与测试门禁完成；本机已跑通带 Ollama/Postgres 的上传→索引→检索→对话→引用链路，并完成 2 分钟演示视频。
+
+垂直链路在代码中已接通：`extract.ts` 白名单 txt/md/pdf → `IndexingRunner` 五阶段与断点续跑 → `KnowledgeService.retrieve`（只 embed + 向量库）→ `ChatService.stream` 的 `collectCitations` / `assembleRagPrompt` → SSE `message.citations` → `CitationList`。前端有知识库详情「检索测试（不经过 LLM）」和对话页单库挂载。本会话抽测 39 条相关单测通过（knowledge / pipeline / chat.service / message-parts / chat-event-reducer / gen-tests verify）。
+
+评测报告 `scripts/rag-eval/reports/20260827-0941-baseline.md` 与代码默认值一致的项：`qwen3.5:2b`、`nomic-embed-text:latest`、`numCtx=8192`、`numPredict=2048`、`temperature=0.2`、`recursive` / `chunkSize=500` / `overlap=50`、`topK=5`、`scoreThreshold=0.3`、`promptVersion=rag-v1-delimiter-escaped`。不一致：报告 `vectorBackend=memory`（评测当时 `/health` 无 `DATABASE_URL`）；有库时 `health.vectorStore` 为 `postgres`。引用准确率 0.10 是因为指标只认正文 `[#n]`，与 API 下发 citations 不是同一件事。
+
+15-D：真实目标 `servers/liangzui-ai-server/src/chat/context-window.ts` 已审核入库；`*.generated.spec.ts` 在 `.gitignore`；弱测试会被变异门禁淘汰。
+
+非阻塞缺口：失败文档需调 `reindex`（调度器不自动重试 failed），前端无 reindex 按钮；对话 UI 只挂载一个知识库；E2E `e2e/chat.spec.ts` 仅为页面 smoke。`.plan/07` 若干联调项仍未勾。
+
 ### M3 · 工作流
 
 #### CR-11 · 工作流后端微内核（决策门禁）
