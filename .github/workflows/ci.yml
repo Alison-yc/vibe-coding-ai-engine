@@ -214,7 +214,7 @@ jobs:
         if: needs.changes.outputs.frontend == 'true'
         env:
           CI: true
-        run: pnpm exec playwright test e2e/web-smoke.spec.ts e2e/agent.spec.ts
+        run: pnpm exec playwright test e2e/web-smoke.spec.ts e2e/agent.spec.ts e2e/mcp.spec.ts
 
   # ── ④ Rust 检查 ────────────────────────────────────────────
   rust:
