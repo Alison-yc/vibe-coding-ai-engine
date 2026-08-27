@@ -8,6 +8,7 @@ import { respondAgentPermission, streamAgent } from '../agent/agent-api';
 import { shouldHydrateAgentMessages, useAgentStore } from '../agent/agent-store';
 import { createChatSession, listChatMessages, listChatSessions } from '../chat/chat-api';
 import { MessageParts, StreamMarkdown } from '../chat/message-parts';
+import { useStickToBottom } from '../chat/use-stick-to-bottom';
 import { useTheme } from '../theme-provider';
 
 const AgentBubble = ({ message }: { message: ChatMessage }) => {
@@ -81,6 +82,7 @@ export const AgentPage = () => {
     ),
   );
   const busy = streaming || Boolean(approval) || activeTool;
+  const { containerRef, bottomRef, onScroll, stickNow } = useStickToBottom(visibleMessages);
 
   useEffect(() => {
     void platform.kv.get('agent.workspaceRoot').then((value) => {
@@ -99,12 +101,13 @@ export const AgentPage = () => {
     const state = useAgentStore.getState();
     if (state.sessionId !== sessionId) state.reset(sessionId);
     streamBaselineDataUpdatedAt.current = -1;
+    stickNow();
     return () => {
       controller.current?.abort();
       controller.current = null;
       useAgentStore.getState().stop();
     };
-  }, [sessionId]);
+  }, [sessionId, stickNow]);
 
   const createSession = useMutation({
     mutationFn: () => createChatSession(platform, { title: '新文件任务', agentType: 'agent' }),
@@ -145,6 +148,7 @@ export const AgentPage = () => {
     const activeSessionId = currentSession.id;
     const value = content.trim();
     setContent('');
+    stickNow();
     await platform.kv.set('agent.workspaceRoot', workspaceRoot.trim());
     streamBaselineDataUpdatedAt.current = messageQuery.dataUpdatedAt;
     useAgentStore.getState().begin(activeSessionId, value);
@@ -248,7 +252,11 @@ export const AgentPage = () => {
           </div>
         </header>
 
-        <section className="min-w-0 flex-1 overflow-y-auto p-4 md:p-8">
+        <section
+          ref={containerRef}
+          className="min-w-0 flex-1 overflow-y-auto p-4 md:p-8"
+          onScroll={onScroll}
+        >
           {!currentSession ? (
             <p className="text-muted-foreground flex h-full items-center justify-center text-sm">
               新建或选择一个文件助手会话。
@@ -264,6 +272,7 @@ export const AgentPage = () => {
               ))}
             </ol>
           )}
+          <div ref={bottomRef} aria-hidden className="h-px w-full shrink-0" />
         </section>
 
         {error ? <p className="text-destructive mx-4 text-sm">{error}</p> : null}

@@ -14,6 +14,7 @@ import {
 import { useChatStreamStore, shouldHydrateMessages } from '../chat/chat-stream-store';
 import { MessageParts, StreamMarkdown } from '../chat/message-parts';
 import { useChatStream } from '../chat/use-chat-stream';
+import { useStickToBottom } from '../chat/use-stick-to-bottom';
 import { listDatasets } from '../knowledge/knowledge-api';
 import { useTheme } from '../theme-provider';
 
@@ -31,6 +32,7 @@ export const ChatPage = () => {
   const error = useChatStreamStore((state) => state.error);
   const messages = useChatStreamStore((state) => state.messages);
   const { send, stop } = useChatStream(platform, sessionId);
+  const { containerRef, bottomRef, onScroll, stickNow } = useStickToBottom(messages);
 
   const sessionsQuery = useQuery({
     queryKey: ['chat-sessions'],
@@ -56,6 +58,10 @@ export const ChatPage = () => {
     if (!shouldHydrateMessages(sessionId, local)) return;
     useChatStreamStore.getState().hydrate(sessionId, messagesQuery.data);
   }, [sessionId, messagesQuery.data, streaming]);
+
+  useEffect(() => {
+    stickNow();
+  }, [sessionId, stickNow]);
 
   const createMutation = useMutation({
     mutationFn: () => createChatSession(platform, {}),
@@ -104,6 +110,7 @@ export const ChatPage = () => {
     const datasetIds = datasetId ? [datasetId] : undefined;
     const content = input;
     setInput('');
+    stickNow();
     await send(content, datasetIds);
   };
 
@@ -194,7 +201,11 @@ export const ChatPage = () => {
           </div>
         </header>
 
-        <div className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-8 md:px-8">
+        <div
+          ref={containerRef}
+          className="min-w-0 flex-1 overflow-x-hidden overflow-y-auto px-4 py-8 md:px-8"
+          onScroll={onScroll}
+        >
           {!sessionId ? (
             <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
               从左侧新建或选择一个会话。
@@ -210,6 +221,7 @@ export const ChatPage = () => {
               ))}
             </ol>
           )}
+          <div ref={bottomRef} aria-hidden className="h-px w-full shrink-0" />
         </div>
 
         {error ? (
