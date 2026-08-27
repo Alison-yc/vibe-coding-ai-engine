@@ -25,4 +25,24 @@ describe('上下文窗口', () => {
     );
     expect(trimmed.map((item) => item.content)).toEqual(['bbbbbbbb', 'cccccccc']);
   });
+
+  it('跳过 system 与空文本，空历史返回空数组', async () => {
+    expect(toLlmMessages([])).toEqual([]);
+    expect(
+      toLlmMessages([
+        message('system', '系统提示', 0),
+        message('user', '   ', 1),
+        message('user', '有效问题', 2),
+      ]),
+    ).toEqual([{ role: 'user', content: '有效问题' }]);
+  });
+
+  it('即使最新一轮超过预算也保留它', async () => {
+    const trimmed = await trimToBudget(
+      [{ role: 'user', content: 'abcdefghij' }],
+      3,
+      async (text) => text.length,
+    );
+    expect(trimmed).toEqual([{ role: 'user', content: 'abcdefghij' }]);
+  });
 });
