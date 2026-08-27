@@ -1,6 +1,7 @@
 import { access, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { rgPath } from '@vscode/ripgrep';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { EditTool } from './edit.tool';
 import { GlobTool } from './glob.tool';
@@ -79,11 +80,12 @@ describe('agent file tools', () => {
     );
   });
 
-  it('grep 将恶意 pattern 作为参数而不是 shell 命令执行', async () => {
+  it('grep 使用项目自带二进制并将恶意 pattern 作为普通参数', async () => {
     await writeFile(path.join(root, 'source.txt'), 'safe content');
     await writeFile(path.join(root, '.env'), 'SECRET=hidden-value');
     const marker = path.join(root, 'owned');
     const tool = new GrepTool();
+    expect(path.isAbsolute(rgPath)).toBe(true);
     await expect(
       tool.execute({ pattern: `safe; touch ${marker}`, path: '.' }, context()),
     ).resolves.toBe('');
@@ -93,9 +95,15 @@ describe('agent file tools', () => {
         resource: 'source.txt',
       }),
     );
-    await expect(tool.execute({ pattern: 'safe', path: '.' }, context())).resolves.toContain(
-      'safe content',
-    );
+    const originalPath = process.env.PATH;
+    process.env.PATH = '';
+    try {
+      await expect(tool.execute({ pattern: 'safe', path: '.' }, context())).resolves.toContain(
+        'safe content',
+      );
+    } finally {
+      process.env.PATH = originalPath;
+    }
     await expect(tool.execute({ pattern: 'safe' }, context())).resolves.toContain('safe content');
     await expect(tool.execute({ pattern: 'hidden-value', path: '.' }, context())).resolves.toBe('');
     await expect(tool.prepare({ pattern: 'safe' }, context())).resolves.toEqual(

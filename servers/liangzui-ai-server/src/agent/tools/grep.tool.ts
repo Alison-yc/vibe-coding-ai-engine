@@ -1,6 +1,7 @@
 import { execFile } from 'node:child_process';
 import { stat } from 'node:fs/promises';
 import { GrepToolInputSchema, type GrepToolInput } from '@ai-engine/contracts';
+import { rgPath } from '@vscode/ripgrep';
 import { relativeResource, resolveWorkspacePath } from '../workspace-path';
 import { assertPreparedPath, type AgentTool, type PreparedTool, type ToolContext } from './tool';
 import { truncateToolOutput } from './tool-output';
@@ -17,7 +18,7 @@ const runRipgrep = (
       ? ['--glob', '!**/.env', '--glob', '!**/.env.*', '--glob', '!**/*.key', '--glob', '!**/*.pem']
       : [];
     execFile(
-      'rg',
+      rgPath,
       [
         '--line-number',
         '--color',

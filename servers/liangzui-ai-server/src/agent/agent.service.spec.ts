@@ -429,12 +429,17 @@ describe('AgentService', () => {
     await expect(agentRepository.listPermissionRules(sessionId)).resolves.toHaveLength(1);
   });
 
-  it('拒绝审批后把错误反馈给模型并继续收尾', async () => {
+  it('拒绝审批后立即确定性收尾且不允许模型换参数重试', async () => {
     gateway.enqueueAgentResponse({
       content: '',
       toolCalls: [{ id: 'denied', name: 'write', arguments: { path: 'denied.md', content: 'no' } }],
     });
-    gateway.enqueueAgentResponse({ content: '操作已取消。', toolCalls: [] });
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [
+        { id: 'retry', name: 'write', arguments: { path: 'another.md', content: 'retry' } },
+      ],
+    });
     const events: AgentStreamEvent[] = [];
     await service.stream(
       sessionId,
@@ -447,6 +452,9 @@ describe('AgentService', () => {
         }
       },
     );
+    const calls = gateway.calls.filter((call) => call.method === 'agentChat');
+    expect(calls).toHaveLength(1);
+    expect(events.filter((event) => event.event === 'permission.asked')).toHaveLength(1);
     expect(
       events.some(
         (event) =>
@@ -455,6 +463,50 @@ describe('AgentService', () => {
           event.data.part.error?.includes('用户拒绝'),
       ),
     ).toBe(true);
+    expect(
+      events.some(
+        (event) =>
+          event.event === 'message.delta' &&
+          event.data.text.includes('本次任务已停止，未继续调用其他工具'),
+      ),
+    ).toBe(true);
+    await expect(access(path.join(root, 'denied.md'))).rejects.toThrow();
+    await expect(access(path.join(root, 'another.md'))).rejects.toThrow();
+  });
+
+  it('同一模型响应的首个审批被拒绝后跳过剩余工具', async () => {
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [
+        { id: 'denied-first', name: 'write', arguments: { path: 'first.md', content: 'no' } },
+        { id: 'skipped-second', name: 'write', arguments: { path: 'second.md', content: 'no' } },
+      ],
+    });
+    const events: AgentStreamEvent[] = [];
+    await service.stream(
+      sessionId,
+      { content: '写两个文件', workspaceRoot: root, mode: 'edit' },
+      new AbortController().signal,
+      (event) => {
+        events.push(event);
+        if (event.event === 'permission.asked') {
+          service.respondPermission(sessionId, event.data.id, 'deny');
+        }
+      },
+    );
+    expect(events.filter((event) => event.event === 'permission.asked')).toHaveLength(1);
+    expect(
+      events.some(
+        (event) =>
+          event.event === 'tool.update' &&
+          event.data.part.type === 'tool' &&
+          event.data.part.id === 'skipped-second' &&
+          event.data.part.state === 'error' &&
+          event.data.part.error?.includes('未继续执行'),
+      ),
+    ).toBe(true);
+    await expect(access(path.join(root, 'first.md'))).rejects.toThrow();
+    await expect(access(path.join(root, 'second.md'))).rejects.toThrow();
   });
 
   it('页面在审批期间断开后允许操作仍可在后台安全收尾', async () => {

@@ -319,7 +319,7 @@ export class AgentService implements OnModuleInit {
           await this.agentRepository.completeInput(input.id, 'completed');
           return;
         }
-        const detached = await this.executeToolCalls(
+        const outcome = await this.executeToolCalls(
           input,
           messages,
           response.content,
@@ -328,7 +328,20 @@ export class AgentService implements OnModuleInit {
           activeSignal,
           emit,
         );
-        if (detached) activeSignal = new AbortController().signal;
+        if (outcome.userDenied) {
+          const content = '操作已被你拒绝或审批已超时，本次任务已停止，未继续调用其他工具。';
+          const message = await this.chatRepository.appendMessage({
+            sessionId: input.sessionId,
+            role: 'assistant',
+            parts: [{ type: 'text', id: randomUUID(), text: content }],
+          });
+          emit({ event: 'message.start', data: { messageId: message.id } });
+          emit({ event: 'message.delta', data: { messageId: message.id, text: content } });
+          emit({ event: 'done', data: { messageId: message.id, status: 'complete' } });
+          await this.agentRepository.completeInput(input.id, 'completed');
+          return;
+        }
+        if (outcome.detached) activeSignal = new AbortController().signal;
       }
     } catch (error) {
       await this.agentRepository.completeInput(input.id, 'error');
@@ -379,7 +392,7 @@ export class AgentService implements OnModuleInit {
     allowedToolNames: ReadonlySet<string>,
     signal: AbortSignal,
     emit: (event: AgentStreamEvent) => void,
-  ): Promise<boolean> {
+  ): Promise<{ detached: boolean; userDenied: boolean }> {
     const parts: MessagePart[] = [
       ...(content ? [{ type: 'text' as const, id: randomUUID(), text: content }] : []),
       ...toolCalls.map((call) => ({
@@ -404,7 +417,7 @@ export class AgentService implements OnModuleInit {
     messages.push({ role: 'assistant', content, toolCalls });
 
     let detached = false;
-    for (const call of toolCalls) {
+    for (const [callIndex, call] of toolCalls.entries()) {
       const result = await this.executeOneTool(
         input,
         message.id,
@@ -423,8 +436,31 @@ export class AgentService implements OnModuleInit {
           : undefined,
         content: wrapToolResult(result.output),
       });
+      if (result.userDenied) {
+        const skipped = new Set(
+          toolCalls.slice(callIndex + 1).map((pendingCall) => pendingCall.id),
+        );
+        const skippedParts = parts.flatMap((part) => {
+          if (part.type !== 'tool' || !skipped.has(part.id)) return [];
+          const next = {
+            ...part,
+            state: 'error' as const,
+            error: '用户已拒绝本轮操作，未继续执行后续工具',
+          };
+          const index = parts.findIndex((candidate) => candidate.id === part.id);
+          parts[index] = next;
+          return [next];
+        });
+        if (skippedParts.length > 0) {
+          await this.chatRepository.updateMessage(message.id, { parts });
+          for (const part of skippedParts) {
+            emit({ event: 'tool.update', data: { messageId: message.id, part } });
+          }
+        }
+        return { detached, userDenied: true };
+      }
     }
-    return detached;
+    return { detached, userDenied: false };
   }
 
   private async executeOneTool(
@@ -435,7 +471,7 @@ export class AgentService implements OnModuleInit {
     allowedToolNames: ReadonlySet<string>,
     signal: AbortSignal,
     emit: (event: AgentStreamEvent) => void,
-  ): Promise<{ output: string; detached: boolean }> {
+  ): Promise<{ output: string; detached: boolean; userDenied: boolean }> {
     const updatePart = async (patch: Partial<Extract<MessagePart, { type: 'tool' }>>) => {
       const index = parts.findIndex((part) => part.type === 'tool' && part.id === call.id);
       const current = parts[index];
@@ -445,6 +481,7 @@ export class AgentService implements OnModuleInit {
       await this.chatRepository.updateMessage(messageId, { parts });
       emit({ event: 'tool.update', data: { messageId, part: next } });
     };
+    let userDenied = false;
     try {
       let executionSignal = signal;
       let detached = false;
@@ -483,7 +520,10 @@ export class AgentService implements OnModuleInit {
           },
         });
         const decision = await this.approvals.wait(approval, signal, emit);
-        if (decision === 'deny') throw new Error('用户拒绝了该工具调用或审批已超时');
+        if (decision === 'deny') {
+          userDenied = true;
+          throw new Error('用户拒绝了该工具调用或审批已超时');
+        }
         if (decision === 'allow-session') {
           await this.agentRepository.addSessionPermission(
             input.sessionId,
@@ -506,11 +546,11 @@ export class AgentService implements OnModuleInit {
         prepared,
       );
       await updatePart({ state: 'completed', output });
-      return { output, detached };
+      return { output, detached, userDenied: false };
     } catch (error) {
       const message = error instanceof Error ? error.message : '工具执行失败';
       await updatePart({ state: 'error', error: message });
-      return { output: `工具执行失败：${message}`, detached: false };
+      return { output: `工具执行失败：${message}`, detached: false, userDenied };
     }
   }
 
