@@ -7,6 +7,7 @@ export const chatSessions = pgTable('chat_sessions', {
   modelId: text('model_id').notNull(),
   datasetIds: jsonb('dataset_ids').notNull().default([]),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
 export const chatMessages = pgTable('chat_messages', {
@@ -17,6 +18,7 @@ export const chatMessages = pgTable('chat_messages', {
   role: text('role').notNull(),
   parts: jsonb('parts').notNull(),
   seq: integer('seq').notNull(),
+  status: text('status').notNull().default('complete'),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
 
