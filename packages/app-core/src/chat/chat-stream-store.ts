@@ -10,9 +10,21 @@ type ChatStreamStore = ChatStreamState & {
   markIdle: () => void;
 };
 
+/** 仅在切换会话或本地为空时从服务端灌入，避免流式结束后用旧缓存覆盖 SSE 状态导致闪烁 */
+export const shouldHydrateMessages = (
+  sessionId: string,
+  local: Pick<ChatStreamState, 'sessionId' | 'messages'>,
+): boolean => local.sessionId !== sessionId || local.messages.length === 0;
+
 export const useChatStreamStore = create<ChatStreamStore>((set) => ({
   ...emptyChatStreamState(),
-  hydrate: (sessionId, messages) => set({ sessionId, messages, streaming: false, error: null }),
+  hydrate: (sessionId, messages) =>
+    set((state) => ({
+      sessionId,
+      messages,
+      streaming: false,
+      error: state.error,
+    })),
   applyEvent: (event) => set((state) => applyChatEvent(state, event)),
   appendUser: (message) => set((state) => ({ messages: [...state.messages, message] })),
   clearError: () => set({ error: null }),

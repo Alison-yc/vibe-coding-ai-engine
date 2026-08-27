@@ -1,4 +1,17 @@
-import { Button, Textarea, ThemeToggle } from '@ai-engine/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  FileInput,
+  Input,
+  Label,
+  Textarea,
+  ThemeToggle,
+} from '@ai-engine/ui';
 import { useTheme } from '../theme-provider';
 
 const SWATCHES = [
@@ -61,7 +74,36 @@ export const TokenGalleryPage = () => {
 
       <section className="flex flex-col gap-3">
         <h2 className="text-base">输入</h2>
-        <Textarea readOnly value="多行输入使用语义令牌，不写硬编码色值。" />
+        <div className="grid max-w-md gap-3">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="token-input">单行输入</Label>
+            <Input id="token-input" readOnly value="单行 Input" />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="token-textarea">多行输入</Label>
+            <Textarea id="token-textarea" readOnly value="多行输入使用语义令牌，不写硬编码色值。" />
+          </div>
+          <FileInput buttonLabel="上传示例" disabled />
+        </div>
+      </section>
+
+      <section className="flex flex-col gap-3">
+        <h2 className="text-base">卡片与徽章</h2>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Card>
+            <CardHeader>
+              <CardTitle>Card</CardTitle>
+              <CardDescription>边框 + shadow-sm，用于分区内容。</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              <Badge>默认</Badge>
+              <Badge variant="secondary">次要</Badge>
+              <Badge variant="outline">描边</Badge>
+              <Badge variant="success">成功</Badge>
+              <Badge variant="warning">进行中</Badge>
+            </CardContent>
+          </Card>
+        </div>
       </section>
 
       <section className="flex flex-col gap-3">

@@ -2,7 +2,7 @@ import {
   ObservabilityMetricsResponseSchema,
   type ObservabilityMetricsResponse,
 } from '@ai-engine/contracts';
-import { Button } from '@ai-engine/ui';
+import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@ai-engine/ui';
 import { useCallback, useState } from 'react';
 import { usePlatform, type Platform } from '@ai-engine/platform';
 
@@ -25,9 +25,9 @@ export const ObservabilityMetricsPanel = ({
       <h2 className="text-base">finishReason 分布</h2>
       <div className="flex flex-wrap gap-2">
         {Object.entries(metrics.summary.finishReasonCounts).map(([reason, count]) => (
-          <span key={reason} className="bg-muted rounded-md px-2 py-1 text-xs">
+          <Badge key={reason} variant="secondary">
             {reason}: {count}
-          </span>
+          </Badge>
         ))}
       </div>
     </section>
@@ -36,9 +36,9 @@ export const ObservabilityMetricsPanel = ({
       <h2 className="text-base">阶段平均耗时</h2>
       <div className="flex flex-wrap gap-2">
         {Object.entries(metrics.summary.operationAverageMs).map(([operation, averageMs]) => (
-          <span key={operation} className="bg-muted rounded-md px-2 py-1 text-xs">
+          <Badge key={operation} variant="outline">
             {operation}: {Math.round(averageMs)} ms
-          </span>
+          </Badge>
         ))}
       </div>
     </section>
@@ -155,8 +155,12 @@ export const ObservabilityPage = () => {
 };
 
 const MetricCard = ({ label, value }: { label: string; value: string }) => (
-  <div className="border-border rounded-md border p-4">
-    <p className="text-muted-foreground text-xs">{label}</p>
-    <p className="text-lg">{value}</p>
-  </div>
+  <Card>
+    <CardHeader className="pb-2">
+      <CardTitle className="text-muted-foreground text-xs font-normal">{label}</CardTitle>
+    </CardHeader>
+    <CardContent className="pt-0">
+      <p className="text-lg font-semibold">{value}</p>
+    </CardContent>
+  </Card>
 );

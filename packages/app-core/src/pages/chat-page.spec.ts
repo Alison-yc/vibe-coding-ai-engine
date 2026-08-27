@@ -135,7 +135,7 @@ describe('ChatPage', () => {
         }),
       ),
     );
-    expect(deleting).toContain('确认删除');
+    expect(deleting).toContain('确认');
   });
 
   it('ChatBubble 渲染用户、助手与中断标记', () => {

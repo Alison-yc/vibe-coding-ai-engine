@@ -8,9 +8,9 @@ import { ObservabilityPage } from './pages/observability-page';
 import { TokenGalleryPage } from './pages/token-gallery-page';
 
 const PlaceholderPage = ({ title }: { title: string }) => (
-  <main>
-    <h1>{title}</h1>
-    <p>页面占位，功能在后续批次实现。</p>
+  <main className="bg-background text-foreground mx-auto flex min-h-dvh max-w-5xl flex-col gap-4 p-6">
+    <h1 className="text-lg font-semibold">{title}</h1>
+    <p className="text-muted-foreground text-sm">页面占位，功能在后续批次实现。</p>
   </main>
 );
 

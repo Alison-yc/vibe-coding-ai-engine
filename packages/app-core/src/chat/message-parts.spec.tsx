@@ -30,6 +30,16 @@ describe('StreamMarkdown XSS', () => {
     expect(html.length).toBeGreaterThan(0);
     expect(html).toContain('console');
   });
+
+  it('表格包在横向滚动容器内', () => {
+    const html = renderToStaticMarkup(
+      createElement(StreamMarkdown, {
+        text: '| A | B |\n| --- | --- |\n| 1 | 2 |',
+      }),
+    );
+    expect(html).toContain('overflow-x-auto');
+    expect(html).toContain('<table');
+  });
 });
 
 describe('MessageParts', () => {

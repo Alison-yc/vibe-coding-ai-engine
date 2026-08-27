@@ -52,7 +52,11 @@ describe('KnowledgeListPage', () => {
 describe('KnowledgeDetailPage', () => {
   it('缺少 id 时提示', () => {
     const html = renderToStaticMarkup(
-      createElement(PlatformProvider, { value: stubPlatform }, createElement(KnowledgeDetailPage)),
+      createElement(
+        PlatformProvider,
+        { value: stubPlatform },
+        createElement(MemoryRouter, null, createElement(KnowledgeDetailPage)),
+      ),
     );
     expect(html).toContain('缺少知识库 id');
   });
@@ -76,9 +80,10 @@ describe('KnowledgeDetailPage', () => {
         ),
       ),
     );
-    expect(html).toContain('检索测试（不经过 LLM）');
+    expect(html).toContain('检索测试');
     expect(html).toContain('切分预览');
-    expect(html).toContain('上传 txt / md / pdf');
+    expect(html).toContain('上传文档');
+    expect(html).toContain('上传文件');
   });
 });
 

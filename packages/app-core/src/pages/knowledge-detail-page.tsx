@@ -6,10 +6,23 @@ import {
   type RetrieveHit,
   type SplitPreviewChunk,
 } from '@ai-engine/contracts';
-import { Button } from '@ai-engine/ui';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  FileInput,
+  Input,
+  Label,
+  Select,
+  Textarea,
+} from '@ai-engine/ui';
 import { useState } from 'react';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
+import { AppNavLinks, PageShell } from '../components/page-shell';
 import { createKnowledgeDetailHandlers } from '../knowledge/knowledge-detail-actions';
 import {
   KnowledgeDocumentList,
@@ -37,9 +50,9 @@ export const KnowledgeDetailPage = () => {
 
   if (!id) {
     return (
-      <main className="p-6">
-        <p>缺少知识库 id</p>
-      </main>
+      <PageShell title="知识库详情" nav={<AppNavLinks />}>
+        <p className="text-destructive text-sm">缺少知识库 id</p>
+      </PageShell>
     );
   }
 
@@ -65,111 +78,155 @@ export const KnowledgeDetailPage = () => {
   });
 
   return (
-    <main className="bg-background text-foreground flex flex-col gap-6 p-6">
-      <header className="flex items-center justify-between gap-3">
-        <div>
-          <Link to="/knowledge" className="text-muted-foreground text-sm">
-            返回列表
-          </Link>
-          <h1 className="text-lg">{dataset?.name ?? '知识库详情'}</h1>
-        </div>
+    <PageShell
+      title={dataset?.name ?? '知识库详情'}
+      description="上传文档、预览切分，并在不经过 LLM 的情况下测试检索。"
+      backTo="/knowledge"
+      backLabel="知识库列表"
+      nav={<AppNavLinks />}
+      actions={
         <Button type="button" variant="outline" onClick={handlers.onRefreshClick}>
-          加载详情
+          刷新
         </Button>
-      </header>
+      }
+    >
+      {error ? (
+        <p className="text-destructive bg-destructive/10 rounded-md px-3 py-2 text-sm">{error}</p>
+      ) : null}
 
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-base">粘贴文本</h2>
-        <input
-          className="border-input rounded-md border px-3 py-2 text-sm"
-          value={pasteName}
-          onChange={handlers.onPasteNameChange}
-        />
-        <textarea
-          className="border-input min-h-32 rounded-md border px-3 py-2 text-sm"
-          value={pasteText}
-          onChange={handlers.onPasteTextChange}
-        />
-        <Button type="button" onClick={handlers.onPasteClick}>
-          索引粘贴内容
-        </Button>
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-base">上传 txt / md / pdf</h2>
-        <input type="file" accept=".txt,.md,.pdf" onChange={handlers.onUploadChange} />
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-base">文档</h2>
-        <KnowledgeDocumentList documents={documents} onRemove={handlers.onRemoveClick} />
-      </section>
-
-      <section className="flex flex-col gap-2">
-        <h2 className="text-base">切分预览</h2>
-        <textarea
-          className="border-input min-h-24 rounded-md border px-3 py-2 text-sm"
-          value={previewText}
-          onChange={handlers.onPreviewTextChange}
-        />
-        <div className="flex flex-wrap gap-2 text-sm">
-          <label>
-            策略
-            <select
-              className="border-input ml-2 rounded-md border px-2 py-1"
-              value={strategy}
-              onChange={handlers.onStrategyChange}
-            >
-              <option value="recursive">recursive</option>
-              <option value="fixed">fixed</option>
-              <option value="markdown">markdown</option>
-            </select>
-          </label>
-          <label>
-            chunkSize
-            <input
-              className="border-input ml-2 w-20 rounded-md border px-2 py-1"
-              type="number"
-              value={chunkSize}
-              onChange={handlers.onChunkSizeChange}
+      <Card>
+        <CardHeader>
+          <CardTitle>粘贴文本</CardTitle>
+          <CardDescription>直接粘贴 Markdown 或纯文本，立即进入索引流水线。</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="paste-name">文件名</Label>
+            <Input id="paste-name" value={pasteName} onChange={handlers.onPasteNameChange} />
+          </div>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="paste-text">内容</Label>
+            <Textarea
+              id="paste-text"
+              className="min-h-32"
+              value={pasteText}
+              onChange={handlers.onPasteTextChange}
+              placeholder="粘贴要索引的文本…"
             />
-          </label>
-          <label>
-            overlap
-            <input
-              className="border-input ml-2 w-20 rounded-md border px-2 py-1"
-              type="number"
-              value={overlap}
-              onChange={handlers.onOverlapChange}
-            />
-          </label>
-          <Button type="button" variant="outline" onClick={handlers.onPreviewClick}>
-            预览切分
+          </div>
+          <Button type="button" className="self-start" onClick={handlers.onPasteClick}>
+            索引粘贴内容
           </Button>
-        </div>
-        <KnowledgePreviewBlocks chunks={previewChunks} />
-      </section>
+        </CardContent>
+      </Card>
 
-      <section className="flex flex-col gap-2">
-        <h2 className="text-base">检索测试（不经过 LLM）</h2>
-        <input
-          className="border-input rounded-md border px-3 py-2 text-sm"
-          value={query}
-          onChange={handlers.onQueryChange}
-        />
-        <div className="flex gap-2">
-          <Button type="button" onClick={handlers.onRetrieveClick}>
-            检索
-          </Button>
-          <Button type="button" variant="outline" onClick={handlers.onAnswerClick}>
-            试答
-          </Button>
-        </div>
-        {answer ? <p className="text-sm">{answer}</p> : null}
-        <KnowledgeHitsTable hits={hits} />
-      </section>
-    </main>
+      <Card>
+        <CardHeader>
+          <CardTitle>上传文档</CardTitle>
+          <CardDescription>支持 txt、md、pdf。上传后自动进入五阶段索引。</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <FileInput
+            accept=".txt,.md,.pdf"
+            onChange={handlers.onUploadChange}
+            buttonLabel="上传文件"
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>文档列表</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <KnowledgeDocumentList documents={documents} onRemove={handlers.onRemoveClick} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>切分预览</CardTitle>
+          <CardDescription>调整策略与参数，预览切片结果后再上传正式文档。</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <Textarea
+            value={previewText}
+            onChange={handlers.onPreviewTextChange}
+            placeholder="输入一段文本用于预览切分…"
+          />
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="chunk-strategy">策略</Label>
+              <Select id="chunk-strategy" value={strategy} onChange={handlers.onStrategyChange}>
+                <option value="recursive">recursive</option>
+                <option value="fixed">fixed</option>
+                <option value="markdown">markdown</option>
+              </Select>
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="chunk-size">chunkSize</Label>
+              <Input
+                id="chunk-size"
+                type="number"
+                value={chunkSize}
+                onChange={handlers.onChunkSizeChange}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="chunk-overlap">overlap</Label>
+              <Input
+                id="chunk-overlap"
+                type="number"
+                value={overlap}
+                onChange={handlers.onOverlapChange}
+              />
+            </div>
+            <div className="flex items-end">
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={handlers.onPreviewClick}
+              >
+                预览切分
+              </Button>
+            </div>
+          </div>
+          <KnowledgePreviewBlocks chunks={previewChunks} />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>检索测试</CardTitle>
+          <CardDescription>只走向量检索，不调用 LLM。用于排查召回问题。</CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="retrieve-query">查询</Label>
+            <Input
+              id="retrieve-query"
+              value={query}
+              onChange={handlers.onQueryChange}
+              placeholder="输入要检索的问题…"
+            />
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" onClick={handlers.onRetrieveClick}>
+              检索
+            </Button>
+            <Button type="button" variant="secondary" onClick={handlers.onAnswerClick}>
+              试答
+            </Button>
+          </div>
+          {answer ? (
+            <div className="bg-muted/50 rounded-md border px-4 py-3 text-sm whitespace-pre-wrap">
+              {answer}
+            </div>
+          ) : null}
+          <KnowledgeHitsTable hits={hits} />
+        </CardContent>
+      </Card>
+    </PageShell>
   );
 };
