@@ -1,11 +1,12 @@
 import { z } from 'zod';
-import { UuidSchema } from '../common/primitives.js';
+import { TimestampSchema, UuidSchema } from '../common/primitives.js';
 
 export const CitationChunkSchema = z.object({
-  documentId: z.string().min(1),
-  chunkId: z.string().min(1),
+  documentId: UuidSchema,
+  chunkId: UuidSchema,
+  documentName: z.string().min(1),
   text: z.string().min(1),
-  score: z.number().min(0).max(1).optional(),
+  score: z.number().optional(),
 });
 export type CitationChunk = z.infer<typeof CitationChunkSchema>;
 
@@ -37,10 +38,21 @@ export const MessagePartSchema = z.discriminatedUnion('type', [
 ]);
 export type MessagePart = z.infer<typeof MessagePartSchema>;
 
+export const ChatMessageStatusSchema = z.enum(['complete', 'interrupted']);
+export type ChatMessageStatus = z.infer<typeof ChatMessageStatusSchema>;
+
 export const ChatMessageSchema = z.object({
   id: UuidSchema,
   sessionId: UuidSchema,
   role: z.enum(['user', 'assistant', 'system']),
   parts: z.array(MessagePartSchema).min(1),
+  seq: z.number().int().nonnegative().default(0),
+  status: ChatMessageStatusSchema.default('complete'),
+  createdAt: TimestampSchema.optional(),
 });
 export type ChatMessage = z.infer<typeof ChatMessageSchema>;
+
+export const ChatMessageListResponseSchema = z.object({
+  messages: z.array(ChatMessageSchema),
+});
+export type ChatMessageListResponse = z.infer<typeof ChatMessageListResponseSchema>;

@@ -3,16 +3,33 @@ export {
   ChatRequestSchema,
   ChatResponseSchema,
   ChatStreamEventSchema,
+  ChatStreamRequestSchema,
+  LlmChatMessageSchema,
   type ChatRequest,
   type ChatResponse,
   type ChatStreamEvent,
+  type ChatStreamRequest,
+  type LlmChatMessage,
 } from './api.js';
 export {
+  ChatMessageListResponseSchema,
   ChatMessageSchema,
+  ChatMessageStatusSchema,
   CitationChunkSchema,
   MessagePartSchema,
   type ChatMessage,
+  type ChatMessageListResponse,
+  type ChatMessageStatus,
   type CitationChunk,
   type MessagePart,
 } from './message.js';
-export { ChatSessionSchema, type ChatSession } from './session.js';
+export {
+  ChatSessionListResponseSchema,
+  ChatSessionSchema,
+  CreateChatSessionRequestSchema,
+  UpdateChatSessionRequestSchema,
+  type ChatSession,
+  type ChatSessionListResponse,
+  type CreateChatSessionRequest,
+  type UpdateChatSessionRequest,
+} from './session.js';

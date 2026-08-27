@@ -147,11 +147,11 @@ describe('chat', () => {
     expect(ChatRequestSchema.safeParse({ sessionId: 'abc', content: '你好' }).success).toBe(false);
   });
 
-  it('ChatRequest 内容上限 8000', () => {
-    expect(ChatRequestSchema.safeParse({ sessionId, content: 'a'.repeat(8000) }).success).toBe(
+  it('ChatRequest 内容上限 32000', () => {
+    expect(ChatRequestSchema.safeParse({ sessionId, content: 'a'.repeat(32_000) }).success).toBe(
       true,
     );
-    expect(ChatRequestSchema.safeParse({ sessionId, content: 'a'.repeat(8001) }).success).toBe(
+    expect(ChatRequestSchema.safeParse({ sessionId, content: 'a'.repeat(32_001) }).success).toBe(
       false,
     );
   });
@@ -174,6 +174,8 @@ describe('chat', () => {
       ChatSessionSchema.safeParse({
         id: sessionId,
         title: '新会话',
+        modelId: 'qwen3.5:2b',
+        datasetIds: [],
         createdAt: '2026-08-26T05:00:00.000Z',
         updatedAt: '2026-08-26T05:00:00.000Z',
       }).success,
@@ -200,7 +202,7 @@ describe('chat', () => {
     expect(
       ChatStreamEventSchema.safeParse({
         event: 'done',
-        data: { messageId: 'm1' },
+        data: { messageId: sessionId, status: 'complete' },
       }).success,
     ).toBe(true);
     expect(
