@@ -14,7 +14,7 @@
 | 15-A   | Vitest projects、coverage、NestJS 测试框架实测 | CR-01                            | 已完成 |
 | 15-B   | FakeLlmGateway、事务集成测试辅助               | CR-05、CR-06                     | 已完成 |
 | 15-C   | 单元/集成/契约/E2E 随功能补齐                  | 各功能 CR                        | 进行中 |
-| 15-D   | LLM 上下文包、生成验证、变异测试闭环           | CR-10A，选择 M2 真实低覆盖率目标 | 未开始 |
+| 15-D   | LLM 上下文包、生成验证、变异测试闭环           | CR-10A，选择 M2 真实低覆盖率目标 | 已完成 |
 
 测试不是功能完成后的补票。15-C 必须与对应实现同批次 Review；15-D 只有在已有真实目标文件后才开工。
 
@@ -261,9 +261,9 @@ Vitest 的 `coverage.thresholds` 支持 glob 级别的配置，可以直接表�
 
 ### 15-D
 
-- [ ] `pnpm gen-tests --target <file>` 能输出完整的上下文包
-- [ ] 变异测试验证器能正确淘汰一个"永远通过"的假测试（用一个故意写的假测试验证）
-- [ ] `.generated.spec.ts` 在 `.gitignore` 里
+- [x] `pnpm gen-tests --target <file>` 能输出完整的上下文包
+- [x] 变异测试验证器能正确淘汰一个"永远通过"的假测试（用一个故意写的假测试验证）
+- [x] `.generated.spec.ts` 在 `.gitignore` 里
 
 ## 验证命令
 
