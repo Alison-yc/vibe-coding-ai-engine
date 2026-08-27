@@ -15,11 +15,26 @@ describe('MCP contracts', () => {
             type: 'stdio',
             command: 'npx',
             args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
-            toolFilter: { include: ['read_file'] },
+            toolFilter: {
+              include: ['read_file'],
+              inputParams: { read_file: ['path'] },
+              requiredParams: { read_file: ['path'] },
+            },
           },
         },
       }).success,
     ).toBe(true);
+    expect(
+      McpConfigFileSchema.safeParse({
+        mcpServers: {
+          weather: {
+            type: 'stdio',
+            command: 'npx',
+            toolFilter: { include: ['get_weather'], inputParams: { get_weather: [] } },
+          },
+        },
+      }).success,
+    ).toBe(false);
     expect(McpServerPatchRequestSchema.safeParse({ enabled: false, command: 'rm' }).success).toBe(
       false,
     );

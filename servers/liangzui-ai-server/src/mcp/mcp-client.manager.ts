@@ -24,7 +24,12 @@ import {
   type McpConnector,
   type McpRemoteToolDefinition,
 } from './mcp-connector';
-import { BUILTIN_TOOL_NAMES, filterMcpToolNames, mcpExposedName } from './merge-tools';
+import {
+  BUILTIN_TOOL_NAMES,
+  filterMcpToolNames,
+  mcpExposedName,
+  projectMcpToolInputSchema,
+} from './merge-tools';
 import type { McpToolCatalog } from './mcp-tool-catalog';
 import { McpToolAdapter } from './mcp-tool.adapter';
 
@@ -136,7 +141,13 @@ export class McpClientManager implements OnModuleInit, OnModuleDestroy, McpToolC
       ...('flattenNames' in patch && patch.flattenNames !== undefined
         ? { flattenNames: patch.flattenNames }
         : {}),
-      ...('toolFilter' in patch ? { toolFilter: patch.toolFilter } : {}),
+      ...('toolFilter' in patch
+        ? {
+            toolFilter: patch.toolFilter
+              ? { ...runtime.config.toolFilter, ...patch.toolFilter }
+              : undefined,
+          }
+        : {}),
     };
     await this.persist();
     if (runtime.config.enabled) {
@@ -260,13 +271,18 @@ export class McpClientManager implements OnModuleInit, OnModuleDestroy, McpToolC
         used.add(exposed);
         const permission = runtime.config.toolPermissions[tool.name];
         const kind: PermissionKind = permission?.kind ?? 'execute';
+        const inputSchema = projectMcpToolInputSchema(
+          tool.inputSchema,
+          runtime.config.toolFilter?.inputParams?.[tool.name],
+          runtime.config.toolFilter?.requiredParams?.[tool.name],
+        );
         const adapter = new McpToolAdapter(
           exposed,
           tool.description,
           kind,
           tool.name,
           permission?.resourceParam,
-          tool.inputSchema,
+          inputSchema,
           (original, args, signal) => {
             const timed = AbortSignal.timeout(runtime.config.timeout);
             const combined = AbortSignal.any([signal, timed]);
@@ -274,7 +290,7 @@ export class McpClientManager implements OnModuleInit, OnModuleDestroy, McpToolC
           },
         );
         const registered = wrapAdapter(adapter);
-        registered.model.inputSchema = tool.inputSchema;
+        registered.model.inputSchema = inputSchema;
         next.set(exposed, registered);
       }
     }

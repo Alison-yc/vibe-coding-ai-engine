@@ -10,6 +10,12 @@ export type McpServerName = z.infer<typeof McpServerNameSchema>;
 
 export const McpToolFilterSchema = z.object({
   include: z.array(z.string().min(1).max(128)).max(32).optional(),
+  inputParams: z
+    .record(z.string().min(1).max(128), z.array(z.string().min(1).max(64)).min(1).max(8))
+    .optional(),
+  requiredParams: z
+    .record(z.string().min(1).max(128), z.array(z.string().min(1).max(64)).min(1).max(8))
+    .optional(),
 });
 export type McpToolFilter = z.infer<typeof McpToolFilterSchema>;
 

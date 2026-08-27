@@ -63,7 +63,11 @@ const createManager = async (connector = new FakeConnector()) => {
         enabled: true,
         timeout: 10_000,
         flattenNames: true,
-        toolFilter: { include: ['read_file', 'write_file', 'read'] },
+        toolFilter: {
+          include: ['read_file', 'write_file', 'read'],
+          inputParams: { read_file: ['path'] },
+          requiredParams: { read_file: ['path'] },
+        },
         toolPermissions: {
           read_file: { kind: 'read', resourceParam: 'path' },
           write_file: { kind: 'write', resourceParam: 'path' },
@@ -108,6 +112,13 @@ describe('McpClientManager', () => {
     expect(names).toContain('read_file');
     expect(names).toContain('filesystem__read');
     expect(names).not.toContain('read');
+    expect(manager.get('read_file')?.model.inputSchema).toEqual({
+      type: 'object',
+      properties: { path: { type: 'string' } },
+      required: ['path'],
+      additionalProperties: false,
+    });
+    expect(() => manager.get('read_file')?.parse({ path: 'a.md', extra: true })).toThrow();
     expect(
       manager
         .listServerTools('filesystem')

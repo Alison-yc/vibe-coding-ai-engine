@@ -46,4 +46,23 @@ describe('mcp config file', () => {
     await mkdir(file);
     await expect(loadMcpConfig(file)).rejects.toThrow();
   });
+
+  it('仓库示例中的天气 MCP 配置可解析且只暴露两个输入参数', async () => {
+    const example = path.resolve(__dirname, '../../mcp.json.example');
+    const loaded = await loadMcpConfig(example);
+    expect(loaded.mcpServers.weather).toEqual(
+      expect.objectContaining({
+        type: 'stdio',
+        command: 'npx',
+        args: ['-y', '@dangahagan/weather-mcp@1.25.6'],
+        enabled: false,
+        timeout: 60_000,
+        toolFilter: {
+          include: ['get_weather_summary'],
+          inputParams: { get_weather_summary: ['city_name', 'units'] },
+          requiredParams: { get_weather_summary: ['city_name'] },
+        },
+      }),
+    );
+  });
 });

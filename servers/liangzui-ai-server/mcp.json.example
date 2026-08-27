@@ -15,6 +15,26 @@
         "write_file": { "kind": "write", "resourceParam": "path" },
         "list_directory": { "kind": "read", "resourceParam": "path" }
       }
+    },
+    "weather": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@dangahagan/weather-mcp@1.25.6"],
+      "enabled": false,
+      "timeout": 60000,
+      "flattenNames": true,
+      "toolFilter": {
+        "include": ["get_weather_summary"],
+        "inputParams": {
+          "get_weather_summary": ["city_name", "units"]
+        },
+        "requiredParams": {
+          "get_weather_summary": ["city_name"]
+        }
+      },
+      "toolPermissions": {
+        "get_weather_summary": { "kind": "execute" }
+      }
     }
   }
 }

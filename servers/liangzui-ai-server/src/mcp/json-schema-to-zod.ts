@@ -23,5 +23,6 @@ export const jsonSchemaToZod = (
     const field = primitive(properties[key]?.type);
     shape[key] = required.has(key) ? field : field.optional();
   }
-  return z.object(shape).passthrough();
+  const object = z.object(shape);
+  return schema.additionalProperties === false ? object.strict() : object.passthrough();
 };

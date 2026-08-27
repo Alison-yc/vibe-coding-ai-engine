@@ -20,6 +20,16 @@ describe('jsonSchemaToZod', () => {
     expect(jsonSchemaToZod({ type: 'object' }).parse({ a: 1 })).toEqual({ a: 1 });
   });
 
+  it('additionalProperties=false 时拒绝投影范围外参数', () => {
+    const schema = jsonSchemaToZod({
+      type: 'object',
+      properties: { city_name: { type: 'string' } },
+      required: ['city_name'],
+      additionalProperties: false,
+    });
+    expect(schema.safeParse({ city_name: '北京', days: 30 }).success).toBe(false);
+  });
+
   it('覆盖常见 JSON Schema 标量类型', () => {
     const schema = jsonSchemaToZod({
       type: 'object',

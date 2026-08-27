@@ -30,6 +30,9 @@ scripts/gen-tests/packs/
 # Docker 数据卷
 docker/data/
 
+# MCP 本机配置
+**/mcp.json
+
 # 二进制与图标
 *.png
 *.ico
