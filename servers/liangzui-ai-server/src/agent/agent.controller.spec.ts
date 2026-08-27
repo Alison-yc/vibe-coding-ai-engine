@@ -34,6 +34,7 @@ describe('AgentController', () => {
         },
       ),
       respondPermission: vi.fn(),
+      listExposedTools: vi.fn(),
     };
     const controller = new AgentController(agent as never);
     const { response, writes } = responseStub();
@@ -51,6 +52,7 @@ describe('AgentController', () => {
     const agent = {
       stream: vi.fn().mockRejectedValue(new Error('模型失败')),
       respondPermission: vi.fn(),
+      listExposedTools: vi.fn(),
     };
     const controller = new AgentController(agent as never);
     const { response, writes } = responseStub();
@@ -84,6 +86,24 @@ describe('AgentController', () => {
     );
     expect(writes).toEqual([]);
     expect(response.end).not.toHaveBeenCalled();
+  });
+
+  it('列出暴露给模型的工具，非法 sessionId 返回 404', async () => {
+    const agent = {
+      stream: vi.fn(),
+      respondPermission: vi.fn(),
+      listExposedTools: vi.fn().mockResolvedValue({
+        tools: [{ name: 'read', description: '读取', source: 'builtin' }],
+        dropped: [],
+        maxToolCount: 6,
+      }),
+    };
+    const controller = new AgentController(agent as never);
+    await expect(controller.listTools()).resolves.toEqual(
+      expect.objectContaining({ maxToolCount: 6 }),
+    );
+    expect(agent.listExposedTools).toHaveBeenCalledWith(undefined);
+    expect(() => controller.listTools('not-a-uuid')).toThrow(NotFoundException);
   });
 
   it('只接受当前仍在等待的审批', () => {

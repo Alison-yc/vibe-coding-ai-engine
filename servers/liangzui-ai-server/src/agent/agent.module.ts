@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import type { AppConfig } from '../config/ollama.config';
 import { ChatModule } from '../chat/chat.module';
+import { McpModule } from '../mcp/mcp.module';
 import { DRIZZLE } from '../database/database.providers';
 import { DatabaseModule } from '../database/database.module';
 import type { AppDatabase } from '../database/pg-vector-store';
@@ -18,7 +19,7 @@ import { AgentToolRegistry } from './tools/tool';
 import { WriteTool } from './tools/write.tool';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule, ChatModule, ObservabilityModule],
+  imports: [ConfigModule, DatabaseModule, ChatModule, ObservabilityModule, McpModule],
   controllers: [AgentController],
   providers: [
     {

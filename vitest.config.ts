@@ -69,6 +69,12 @@ export default defineConfig({
           branches: 90,
           statements: 90,
         },
+        'servers/*/src/mcp/**': {
+          lines: 90,
+          functions: 90,
+          branches: 90,
+          statements: 90,
+        },
         // 阶段多、边界情况多
         'servers/*/src/knowledge/**': {
           lines: 85,

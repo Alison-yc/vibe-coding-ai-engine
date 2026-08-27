@@ -5,7 +5,18 @@ import {
   type AgentStreamRequest,
   type PermissionResponseRequest,
 } from '@ai-engine/contracts';
-import { Body, Controller, Inject, NotFoundException, Param, Post, Req, Res } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Inject,
+  NotFoundException,
+  Param,
+  Post,
+  Query,
+  Req,
+  Res,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { abortOnClientClose } from '../http/abort-on-client-close';
 import { ZodValidationPipe } from '../http/zod-validation.pipe';
@@ -14,6 +25,13 @@ import { AgentService } from './agent.service';
 @Controller('agent')
 export class AgentController {
   constructor(@Inject(AgentService) private readonly agent: AgentService) {}
+
+  @Get('tools')
+  listTools(@Query('sessionId') sessionId?: string) {
+    const parsed = sessionId ? UuidSchema.safeParse(sessionId) : undefined;
+    if (parsed && !parsed.success) throw new NotFoundException('会话不存在');
+    return this.agent.listExposedTools(parsed?.data);
+  }
 
   @Post(':sessionId/stream')
   async stream(

@@ -8,11 +8,11 @@ import {
   type AgentStreamEvent,
   type AgentStreamRequest,
   type AgentToolCall,
-  type AgentToolName,
   type ChatMessage,
+  type AgentExposedToolsResponse,
   type MessagePart,
 } from '@ai-engine/contracts';
-import { Inject, Injectable, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, type OnModuleInit } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AppConfig } from '../config/ollama.config';
 import { CHAT_REPOSITORY, type ChatRepository } from '../chat/chat.repository';
@@ -23,6 +23,8 @@ import { ApprovalCoordinator } from './approval-coordinator';
 import { evaluatePermission } from './permission-engine';
 import { assertAllowedWorkspaceRoot } from './workspace-path';
 import { AgentToolRegistry } from './tools/tool';
+import { mergeAndTrimTools } from '../mcp/merge-tools';
+import { MCP_TOOL_CATALOG, type McpToolCatalog } from '../mcp/mcp-tool-catalog';
 
 export const AGENT_TOOL_REGISTRY = Symbol('AGENT_TOOL_REGISTRY');
 
@@ -68,7 +70,7 @@ export const historyToModelMessages = (history: ChatMessage[]): AgentModelMessag
       messages.push({
         role: 'tool',
         toolCallId: part.id,
-        toolName: part.name as AgentToolName,
+        toolName: part.name,
         content: wrapToolResult(part.output ?? part.error ?? '工具执行失败'),
       });
     }
@@ -135,6 +137,7 @@ export const wrapToolResult = (output: string): string =>
 @Injectable()
 export class AgentService implements OnModuleInit {
   private readonly sessionLocks = new Map<string, Promise<void>>();
+  private readonly logger = new Logger(AgentService.name);
 
   constructor(
     @Inject(AGENT_REPOSITORY) private readonly agentRepository: AgentRepository,
@@ -143,6 +146,7 @@ export class AgentService implements OnModuleInit {
     @Inject(AGENT_TOOL_REGISTRY) private readonly tools: AgentToolRegistry,
     @Inject(ApprovalCoordinator) private readonly approvals: ApprovalCoordinator,
     @Inject(ConfigService) private readonly config: ConfigService<AppConfig, true>,
+    @Inject(MCP_TOOL_CATALOG) private readonly mcpTools: McpToolCatalog,
   ) {}
 
   async onModuleInit(): Promise<void> {
@@ -193,6 +197,30 @@ export class AgentService implements OnModuleInit {
     return this.approvals.respond(sessionId, approvalId, decision);
   }
 
+  async listExposedTools(sessionId?: string): Promise<AgentExposedToolsResponse> {
+    const session = sessionId ? await this.chatRepository.getSession(sessionId) : null;
+    const configuredModel = this.config.get('OLLAMA_MODEL', { infer: true });
+    const modelId = session?.modelId ?? configuredModel;
+    if (!modelId) throw new Error('未配置对话模型');
+    const capability = this.gateway.capabilities(modelId);
+    const builtin = this.tools.list();
+    const merged = mergeAndTrimTools(
+      builtin,
+      this.mcpTools.listModelTools('edit'),
+      capability.maxToolCount,
+    );
+    const builtinNames = new Set(builtin.map((tool) => tool.name));
+    return {
+      tools: merged.tools.map((tool) => ({
+        name: tool.name,
+        description: tool.description,
+        source: builtinNames.has(tool.name) ? 'builtin' : 'mcp',
+      })),
+      dropped: merged.dropped,
+      maxToolCount: capability.maxToolCount,
+    };
+  }
+
   private async processInput(
     queuedInput: AgentInput,
     modelId: string,
@@ -210,9 +238,21 @@ export class AgentService implements OnModuleInit {
       });
       const history = await this.chatRepository.listMessages(input.sessionId);
       const capability = this.gateway.capabilities(modelId);
-      const selectedTools = this.tools
-        .list(input.mode === 'read-only' ? ['read', 'glob', 'grep'] : undefined)
-        .slice(0, capability.maxToolCount);
+      const merged = mergeAndTrimTools(
+        this.tools.list(input.mode === 'read-only' ? ['read', 'glob', 'grep'] : undefined),
+        this.mcpTools.listModelTools(input.mode),
+        capability.maxToolCount,
+      );
+      const selectedTools = merged.tools;
+      if (merged.dropped.length > 0) {
+        const message = `工具数量超过上限 ${capability.maxToolCount}，已裁剪：${merged.dropped.join('、')}`;
+        this.logger.warn(message);
+        emit({
+          event: 'warning',
+          data: { message },
+        });
+      }
+      const allowedToolNames = new Set(selectedTools.map((tool) => tool.name));
       const messages: AgentModelMessage[] = [
         { role: 'system', content: AGENT_SYSTEM_PROMPT },
         ...historyToModelMessages(history),
@@ -284,6 +324,7 @@ export class AgentService implements OnModuleInit {
           messages,
           response.content,
           toolCalls,
+          allowedToolNames,
           activeSignal,
           emit,
         );
@@ -335,6 +376,7 @@ export class AgentService implements OnModuleInit {
     messages: AgentModelMessage[],
     content: string,
     toolCalls: AgentToolCall[],
+    allowedToolNames: ReadonlySet<string>,
     signal: AbortSignal,
     emit: (event: AgentStreamEvent) => void,
   ): Promise<boolean> {
@@ -363,13 +405,21 @@ export class AgentService implements OnModuleInit {
 
     let detached = false;
     for (const call of toolCalls) {
-      const result = await this.executeOneTool(input, message.id, parts, call, signal, emit);
+      const result = await this.executeOneTool(
+        input,
+        message.id,
+        parts,
+        call,
+        allowedToolNames,
+        signal,
+        emit,
+      );
       detached ||= result.detached;
       messages.push({
         role: 'tool',
         toolCallId: call.id,
         toolName: AgentToolCallSchema.shape.name.safeParse(call.name).success
-          ? (call.name as AgentToolName)
+          ? call.name
           : undefined,
         content: wrapToolResult(result.output),
       });
@@ -382,6 +432,7 @@ export class AgentService implements OnModuleInit {
     messageId: string,
     parts: MessagePart[],
     call: AgentToolCall,
+    allowedToolNames: ReadonlySet<string>,
     signal: AbortSignal,
     emit: (event: AgentStreamEvent) => void,
   ): Promise<{ output: string; detached: boolean }> {
@@ -397,7 +448,10 @@ export class AgentService implements OnModuleInit {
     try {
       let executionSignal = signal;
       let detached = false;
-      const tool = this.tools.get(call.name);
+      if (!allowedToolNames.has(call.name)) {
+        throw new Error(`本轮未开放该工具：${call.name}`);
+      }
+      const tool = this.tools.get(call.name) ?? this.mcpTools.get(call.name);
       if (!tool) throw new Error(`不存在的工具：${call.name}`);
       const parsedInput = tool.parse(call.arguments);
       const prepared = await tool.prepare(parsedInput, {
@@ -406,17 +460,18 @@ export class AgentService implements OnModuleInit {
       });
       const sessionRules = await this.agentRepository.listPermissionRules(input.sessionId);
       const effect = evaluatePermission(
-        call.name as AgentToolName,
+        call.name,
         prepared.resource,
         input.mode,
         sessionRules,
+        tool.permission,
       );
       if (effect === 'deny') throw new Error('权限规则拒绝了该工具调用');
       if (effect === 'ask') {
         const approval = this.approvals.create({
           sessionId: input.sessionId,
           toolCallId: call.id,
-          tool: call.name as AgentToolName,
+          tool: call.name,
           resource: prepared.resource,
           diff: prepared.diff,
         });
@@ -432,7 +487,7 @@ export class AgentService implements OnModuleInit {
         if (decision === 'allow-session') {
           await this.agentRepository.addSessionPermission(
             input.sessionId,
-            call.name as AgentToolName,
+            call.name,
             prepared.resource,
           );
         }

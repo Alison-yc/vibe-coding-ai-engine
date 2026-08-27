@@ -24,6 +24,7 @@ const EnvironmentSchema = z.object({
     .transform((value) => value === 'true' || value === '1'),
   AGENT_WORKSPACE_ROOTS: z.string().default(''),
   AGENT_MAX_STEPS: z.coerce.number().int().min(2).max(12).default(6),
+  MCP_CONFIG_PATH: z.string().min(1).default('mcp.json'),
 });
 
 export type AppConfig = z.infer<typeof EnvironmentSchema>;

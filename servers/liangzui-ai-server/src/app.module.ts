@@ -11,6 +11,7 @@ import { ObservabilityModule } from './observability/observability.module';
 import { TraceIdModule } from './observability/trace-id.module';
 import { WorkflowModule } from './workflow/workflow.module';
 import { AgentModule } from './agent/agent.module';
+import { McpModule } from './mcp/mcp.module';
 
 @Module({
   imports: [
@@ -26,6 +27,7 @@ import { AgentModule } from './agent/agent.module';
     ChatModule,
     WorkflowModule,
     AgentModule,
+    McpModule,
   ],
   controllers: [AppController, LlmController],
   providers: [AppService],

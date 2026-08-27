@@ -1,0 +1,20 @@
+{
+  "mcpServers": {
+    "filesystem": {
+      "type": "stdio",
+      "command": "npx",
+      "args": ["-y", "@modelcontextprotocol/server-filesystem", "<YOUR_PATH>"],
+      "enabled": false,
+      "timeout": 30000,
+      "flattenNames": true,
+      "toolFilter": {
+        "include": ["read_file", "write_file", "list_directory"]
+      },
+      "toolPermissions": {
+        "read_file": { "kind": "read", "resourceParam": "path" },
+        "write_file": { "kind": "write", "resourceParam": "path" },
+        "list_directory": { "kind": "read", "resourceParam": "path" }
+      }
+    }
+  }
+}

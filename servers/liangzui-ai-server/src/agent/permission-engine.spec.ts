@@ -30,4 +30,10 @@ describe('permission engine', () => {
     expect(matchesResource('**/.env', '.env')).toBe(true);
     expect(matchesResource('file?.ts', 'file1.ts')).toBe(true);
   });
+
+  it('未声明的 MCP 工具默认询问，只读模式拒绝执行类工具', () => {
+    expect(evaluatePermission('filesystem__run', 'query', 'edit', [], 'execute')).toBe('ask');
+    expect(evaluatePermission('filesystem__run', 'query', 'read-only', [], 'execute')).toBe('deny');
+    expect(evaluatePermission('filesystem__read_file', '.env', 'edit', [], 'read')).toBe('ask');
+  });
 });

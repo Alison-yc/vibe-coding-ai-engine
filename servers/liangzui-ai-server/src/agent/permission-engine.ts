@@ -2,6 +2,7 @@ import type {
   AgentMode,
   AgentToolName,
   PermissionEffect,
+  PermissionKind,
   PermissionRule,
 } from '@ai-engine/contracts';
 
@@ -20,6 +21,11 @@ export const DEFAULT_PERMISSION_RULES: PermissionRule[] = [
   { tool: 'grep', resource: '**/.env.*', effect: 'ask' },
   { tool: 'grep', resource: '**/*.key', effect: 'ask' },
   { tool: 'grep', resource: '**/*.pem', effect: 'ask' },
+  { tool: '*', resource: '**/.env', effect: 'ask' },
+  { tool: '*', resource: '**/.env.*', effect: 'ask' },
+  { tool: '*', resource: '**/*.key', effect: 'ask' },
+  { tool: '*', resource: '**/*.pem', effect: 'ask' },
+  { tool: '*', resource: '**/.git/**', effect: 'ask' },
 ];
 
 const escapeRegex = (value: string): string => value.replace(/[.+^${}()|[\]\\]/g, '\\$&');
@@ -47,14 +53,21 @@ export const matchesResource = (pattern: string, resource: string): boolean => {
   return new RegExp(`^${expression}$`).test(resource);
 };
 
+const builtinKind = (tool: AgentToolName): PermissionKind => {
+  if (tool === 'write' || tool === 'edit') return 'write';
+  if (tool === 'read' || tool === 'glob' || tool === 'grep') return 'read';
+  return 'execute';
+};
+
 export const evaluatePermission = (
   tool: AgentToolName,
   resource: string,
   mode: AgentMode,
   sessionRules: PermissionRule[] = [],
+  kind: PermissionKind = builtinKind(tool),
 ): PermissionEffect => {
-  if (mode === 'read-only' && (tool === 'write' || tool === 'edit')) return 'deny';
-  let effect: PermissionEffect = 'deny';
+  if (mode === 'read-only' && kind !== 'read') return 'deny';
+  let effect: PermissionEffect = kind === 'read' ? 'allow' : 'ask';
   for (const rule of [...DEFAULT_PERMISSION_RULES, ...sessionRules]) {
     if ((rule.tool === '*' || rule.tool === tool) && matchesResource(rule.resource, resource)) {
       effect = rule.effect;

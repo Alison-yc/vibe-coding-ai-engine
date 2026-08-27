@@ -31,7 +31,7 @@ export interface AgentTool<I, O> {
   toModelOutput(output: O): string;
 }
 
-type RegisteredTool = {
+export type RegisteredTool = {
   model: AgentModelTool;
   permission: PermissionKind;
   parse: (input: unknown) => unknown;
@@ -64,6 +64,6 @@ export class AgentToolRegistry {
   }
 
   get(name: string): RegisteredTool | null {
-    return this.tools.get(name as AgentToolName) ?? null;
+    return this.tools.get(name) ?? null;
   }
 }

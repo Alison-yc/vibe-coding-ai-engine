@@ -1,0 +1,236 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { ConfigService } from '@nestjs/config';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { validateEnvironment } from '../config/ollama.config';
+import { McpClientManager } from './mcp-client.manager';
+import { saveMcpConfig } from './mcp-config';
+import type { McpConnection, McpConnector } from './mcp-connector';
+
+let dir = '';
+let closed: string[] = [];
+
+const connection = (label: string): McpConnection & { triggerExit: () => void } => {
+  let closedHandler: (() => void) | undefined;
+  return {
+    listTools: async () => [
+      {
+        name: 'read_file',
+        description: '读取文件',
+        inputSchema: { type: 'object', properties: { path: { type: 'string' } } },
+      },
+      {
+        name: 'write_file',
+        description: '写入文件',
+        inputSchema: { type: 'object', properties: { path: { type: 'string' } } },
+      },
+      { name: 'read', description: '与内置冲突', inputSchema: { type: 'object' } },
+    ],
+    callTool: async () => ({ content: [{ type: 'text', text: 'ok' }] }),
+    close: async () => {
+      closed.push(label);
+    },
+    onClosed: (handler) => {
+      closedHandler = handler;
+    },
+    triggerExit: () => closedHandler?.(),
+  };
+};
+
+class FakeConnector implements McpConnector {
+  failStdio = false;
+  last?: ReturnType<typeof connection>;
+  async connectStdio(command: string): Promise<McpConnection> {
+    if (this.failStdio || command === 'missing') throw new Error('command not found');
+    this.last = connection(command);
+    return this.last;
+  }
+  async connectHttp(): Promise<McpConnection> {
+    this.last = connection('http');
+    return this.last;
+  }
+}
+
+const createManager = async (connector = new FakeConnector()) => {
+  const file = path.join(dir, 'mcp.json');
+  await saveMcpConfig(file, {
+    mcpServers: {
+      filesystem: {
+        type: 'stdio',
+        command: 'npx',
+        args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+        enabled: true,
+        timeout: 10_000,
+        flattenNames: true,
+        toolFilter: { include: ['read_file', 'write_file', 'read'] },
+        toolPermissions: {
+          read_file: { kind: 'read', resourceParam: 'path' },
+          write_file: { kind: 'write', resourceParam: 'path' },
+        },
+      },
+      broken: {
+        type: 'stdio',
+        command: 'missing',
+        args: [],
+        enabled: true,
+        timeout: 10_000,
+        flattenNames: false,
+        toolFilter: { include: ['read_file'] },
+        toolPermissions: {},
+      },
+    },
+  });
+  const manager = new McpClientManager(
+    new ConfigService(validateEnvironment({ NODE_ENV: 'test', MCP_CONFIG_PATH: file })),
+    connector,
+  );
+  await manager.bootstrap();
+  return manager;
+};
+
+beforeEach(async () => {
+  dir = await mkdtemp(path.join(tmpdir(), 'mcp-manager-'));
+  closed = [];
+});
+
+afterEach(async () => {
+  await rm(dir, { recursive: true, force: true });
+});
+
+describe('McpClientManager', () => {
+  it('单个失败的 server 不影响其他连接，且未勾选工具不会暴露', async () => {
+    const manager = await createManager();
+    const servers = manager.listServers();
+    expect(servers.find((item) => item.name === 'filesystem')?.status).toBe('connected');
+    expect(servers.find((item) => item.name === 'broken')?.status).toBe('error');
+    const names = manager.listModelTools('edit').map((tool) => tool.name);
+    expect(names).toContain('read_file');
+    expect(names).toContain('filesystem__read');
+    expect(names).not.toContain('read');
+    expect(
+      manager
+        .listServerTools('filesystem')
+        .every((tool) => tool.name !== 'list_directory' || !tool.selected),
+    ).toBe(true);
+  });
+
+  it('与内置工具重名时强制加前缀，写工具在只读模式被隐藏', async () => {
+    const manager = await createManager();
+    expect(manager.listModelTools('edit').map((tool) => tool.name)).toContain('filesystem__read');
+    expect(manager.listModelTools('read-only').every((tool) => tool.name !== 'write_file')).toBe(
+      true,
+    );
+    expect(manager.get('write_file')?.permission).toBe('write');
+    const write = manager.get('write_file');
+    if (!write) throw new Error('missing write_file');
+    const ctx = { workspaceRoot: dir, signal: new AbortController().signal };
+    expect(write.parse({ path: 'out.md' })).toEqual({ path: 'out.md' });
+    const prepared = await write.prepare({ path: 'out.md' }, ctx);
+    await expect(write.execute({ path: 'out.md' }, ctx, prepared)).resolves.toBe('ok');
+    await expect(manager.reconnect('missing')).rejects.toThrow('不存在');
+  });
+
+  it('手动重连能恢复，关闭时释放连接', async () => {
+    const connector = new FakeConnector();
+    connector.failStdio = true;
+    const manager = await createManager(connector);
+    expect(manager.listServers().find((item) => item.name === 'filesystem')?.status).toBe('error');
+    connector.failStdio = false;
+    await expect(manager.reconnect('filesystem')).resolves.toEqual(
+      expect.objectContaining({ status: 'connected' }),
+    );
+    await manager.patch('filesystem', { enabled: false });
+    expect(manager.listServers().find((item) => item.name === 'filesystem')?.enabled).toBe(false);
+    await manager.onModuleDestroy();
+    expect(closed.length).toBeGreaterThan(0);
+  });
+
+  it('HTTP server 可连接，关闭后不再建立新连接', async () => {
+    const file = path.join(dir, 'http.json');
+    await saveMcpConfig(file, {
+      mcpServers: {
+        remote: {
+          type: 'http',
+          url: 'https://example.test/mcp',
+          enabled: true,
+          timeout: 10_000,
+          flattenNames: false,
+          toolFilter: { include: ['read_file'] },
+          toolPermissions: {},
+        },
+      },
+    });
+    const manager = new McpClientManager(
+      new ConfigService(validateEnvironment({ NODE_ENV: 'test', MCP_CONFIG_PATH: file })),
+      new FakeConnector(),
+    );
+    manager.onModuleInit();
+    await vi.waitFor(() => {
+      expect(manager.listServers()[0]?.status).toBe('connected');
+    });
+    expect(manager.listModelTools('edit').map((tool) => tool.name)).toContain('remote__read_file');
+    await manager.patch('remote', { flattenNames: true, toolFilter: { include: ['read_file'] } });
+    expect(manager.listServerTools('remote')[0]?.exposedName).toBe('read_file');
+    await manager.onModuleDestroy();
+    await expect(manager.reconnect('remote')).resolves.toEqual(
+      expect.objectContaining({ status: 'disconnected' }),
+    );
+  });
+
+  it('连接过程中关闭会丢掉刚建立的连接', async () => {
+    let release!: () => void;
+    const gate = new Promise<void>((resolve) => {
+      release = resolve;
+    });
+    class DelayedConnector extends FakeConnector {
+      waiting = false;
+      override async connectStdio(): Promise<McpConnection> {
+        this.waiting = true;
+        await gate;
+        return connection('late');
+      }
+    }
+    const delayed = new DelayedConnector();
+    const file = path.join(dir, 'slow.json');
+    await saveMcpConfig(file, {
+      mcpServers: {
+        filesystem: {
+          type: 'stdio',
+          command: 'npx',
+          args: [],
+          enabled: true,
+          timeout: 10_000,
+          flattenNames: false,
+          toolFilter: { include: ['read_file'] },
+          toolPermissions: {},
+        },
+      },
+    });
+    const manager = new McpClientManager(
+      new ConfigService(validateEnvironment({ NODE_ENV: 'test', MCP_CONFIG_PATH: file })),
+      delayed,
+    );
+    const boot = manager.bootstrap();
+    await vi.waitFor(() => {
+      expect(delayed.waiting).toBe(true);
+    });
+    await manager.onModuleDestroy();
+    release();
+    await boot;
+    expect(closed).toContain('late');
+  });
+
+  it('子进程退出后标记 error 且不再暴露工具', async () => {
+    const connector = new FakeConnector();
+    const manager = await createManager(connector);
+    expect(manager.listServers().find((item) => item.name === 'filesystem')?.status).toBe(
+      'connected',
+    );
+    connector.last?.triggerExit();
+    expect(manager.listServers().find((item) => item.name === 'filesystem')).toEqual(
+      expect.objectContaining({ status: 'error', error: 'MCP 进程已退出' }),
+    );
+    expect(manager.listModelTools('edit')).toEqual([]);
+  });
+});
