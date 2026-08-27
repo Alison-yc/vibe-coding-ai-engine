@@ -22,6 +22,7 @@ export class FakeLlmGateway implements LlmGateway {
   private chatReplies: ChatResponse[] = [];
   private chatErrors: unknown[] = [];
   private streamReplies: LlmStreamEvent[][] = [];
+  private streamErrors: unknown[] = [];
   private embeddingReplies: number[][][] = [];
 
   enqueueText(text: string, sessionId: string = randomUUID()): void {
@@ -39,6 +40,10 @@ export class FakeLlmGateway implements LlmGateway {
 
   enqueueStream(events: LlmStreamEvent[]): void {
     this.streamReplies.push(events.map((event) => LlmStreamEventSchema.parse(event)));
+  }
+
+  enqueueStreamError(error: unknown): void {
+    this.streamErrors.push(error);
   }
 
   enqueueError(error: unknown): void {
@@ -67,6 +72,7 @@ export class FakeLlmGateway implements LlmGateway {
     await Promise.resolve();
     this.calls.push({ method: 'stream', request, aborted: signal?.aborted ?? false });
     if (signal?.aborted) throw signal.reason;
+    if (this.streamErrors.length > 0) throw this.streamErrors.shift();
     const events = this.streamReplies.shift() ?? [];
     for (const event of events) {
       if (signal?.aborted) throw signal.reason;

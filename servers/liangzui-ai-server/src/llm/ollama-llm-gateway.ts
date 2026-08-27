@@ -97,14 +97,14 @@ export class OllamaLlmGateway implements LlmGateway {
       '/api/chat',
       {
         model: this.config.get('OLLAMA_MODEL', { infer: true }),
-        messages: [{ role: 'user', content: request.content }],
+        messages: request.messages ?? [{ role: 'user', content: request.content }],
         stream: false,
         think: false,
         keep_alive: this.config.get('OLLAMA_KEEP_ALIVE', { infer: true }),
         options: {
           temperature: this.config.get('OLLAMA_TEMPERATURE', { infer: true }),
           num_ctx: this.config.get('OLLAMA_NUM_CTX', { infer: true }),
-          num_predict: this.config.get('OLLAMA_NUM_PREDICT', { infer: true }),
+          num_predict: request.numPredict ?? this.config.get('OLLAMA_NUM_PREDICT', { infer: true }),
         },
       },
       CHAT_TIMEOUT_MS,
@@ -160,14 +160,15 @@ export class OllamaLlmGateway implements LlmGateway {
         '/api/chat',
         {
           model: this.config.get('OLLAMA_MODEL', { infer: true }),
-          messages: [{ role: 'user', content: request.content }],
+          messages: request.messages ?? [{ role: 'user', content: request.content }],
           stream: true,
           think: false,
           keep_alive: this.config.get('OLLAMA_KEEP_ALIVE', { infer: true }),
           options: {
             temperature: this.config.get('OLLAMA_TEMPERATURE', { infer: true }),
             num_ctx: this.config.get('OLLAMA_NUM_CTX', { infer: true }),
-            num_predict: this.config.get('OLLAMA_NUM_PREDICT', { infer: true }),
+            num_predict:
+              request.numPredict ?? this.config.get('OLLAMA_NUM_PREDICT', { infer: true }),
           },
         },
         combinedSignal,

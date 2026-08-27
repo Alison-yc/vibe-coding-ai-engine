@@ -26,5 +26,6 @@ import { KnowledgeService } from './knowledge.service';
     IndexingScheduler,
     KnowledgeService,
   ],
+  exports: [KnowledgeService],
 })
 export class KnowledgeModule {}

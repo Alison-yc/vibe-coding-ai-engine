@@ -49,6 +49,10 @@ describe('FakeLlmGateway', () => {
     gateway.enqueueError(new Error('fetch failed'));
     await expect(gateway.chat(REQUEST)).rejects.toThrow('fetch failed');
 
+    gateway.enqueueStreamError(new Error('stream down'));
+    const failing = gateway.stream(REQUEST)[Symbol.asyncIterator]();
+    await expect(failing.next()).rejects.toThrow('stream down');
+
     gateway.enqueueText('```json\n{"name": "not-a-tool"');
     const response = await gateway.chat(REQUEST);
     const text = response.message.parts[0];
