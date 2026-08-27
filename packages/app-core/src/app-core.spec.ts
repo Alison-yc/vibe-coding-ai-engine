@@ -1,4 +1,5 @@
 import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
@@ -138,11 +139,32 @@ describe('App', () => {
 });
 
 describe('AppRoutes', () => {
-  it('在 /chat 渲染对话占位', () => {
+  it('在 /chat 渲染对话页', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        json: async () => (String(url).includes('/knowledge/datasets') ? [] : { sessions: [] }),
+      })),
+    );
     const html = renderToStaticMarkup(
-      createElement(MemoryRouter, { initialEntries: ['/chat'] }, createElement(AppRoutes)),
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
+        createElement(
+          PlatformProvider,
+          { value: stubPlatform },
+          createElement(
+            MemoryRouter,
+            { initialEntries: ['/chat'] },
+            createElement(ThemeProvider, null, createElement(AppRoutes)),
+          ),
+        ),
+      ),
     );
     expect(html).toContain('对话');
+    expect(html).toContain('新建会话');
+    vi.unstubAllGlobals();
   });
 
   it('在 /dev/tokens 渲染令牌页', () => {

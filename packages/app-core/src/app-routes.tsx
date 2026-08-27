@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
+import { ChatPage } from './pages/chat-page';
 import { KnowledgeDetailPage } from './pages/knowledge-detail-page';
 import { KnowledgeListPage } from './pages/knowledge-list-page';
 import { ObservabilityPage } from './pages/observability-page';
@@ -16,8 +17,8 @@ const PlaceholderPage = ({ title }: { title: string }) => (
 export const AppRoutes = () => (
   <Routes>
     <Route path="/" element={<Navigate to="/chat" replace />} />
-    <Route path="/chat" element={<PlaceholderPage title="对话" />} />
-    <Route path="/chat/:sessionId" element={<PlaceholderPage title="对话" />} />
+    <Route path="/chat" element={<ChatPage />} />
+    <Route path="/chat/:sessionId" element={<ChatPage />} />
     <Route path="/knowledge" element={<KnowledgeListPage />} />
     <Route path="/knowledge/:id" element={<KnowledgeDetailPage />} />
     <Route path="/workflow" element={<PlaceholderPage title="工作流" />} />
