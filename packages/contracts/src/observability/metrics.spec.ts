@@ -7,7 +7,17 @@ import {
 
 describe('可观测性契约', () => {
   it('解析 health 响应', () => {
-    expect(HealthResponseSchema.parse({ status: 'ok' })).toEqual({ status: 'ok' });
+    expect(
+      HealthResponseSchema.parse({
+        status: 'ok',
+        chatModel: 'qwen3.5:2b',
+        embeddingModel: 'nomic-embed-text:latest',
+        numCtx: 8192,
+        numPredict: 2048,
+        temperature: 0.2,
+        vectorStore: 'memory',
+      }),
+    ).toMatchObject({ status: 'ok', vectorStore: 'memory' });
   });
 
   it('解析 LLM 调用指标', () => {

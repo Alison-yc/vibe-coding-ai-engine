@@ -8,19 +8,23 @@
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
-      "import": "./dist/index.js"
+      "import": "./dist/index.js",
+      "require": "./dist/index.js"
     },
     "./chat": {
       "types": "./dist/chat/index.d.ts",
-      "import": "./dist/chat/index.js"
+      "import": "./dist/chat/index.js",
+      "require": "./dist/chat/index.js"
     },
     "./common": {
       "types": "./dist/common/index.d.ts",
-      "import": "./dist/common/index.js"
+      "import": "./dist/common/index.js",
+      "require": "./dist/common/index.js"
     },
     "./llm": {
       "types": "./dist/llm/index.d.ts",
-      "import": "./dist/llm/index.js"
+      "import": "./dist/llm/index.js",
+      "require": "./dist/llm/index.js"
     }
   },
   "dependencies": {

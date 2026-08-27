@@ -43,5 +43,11 @@ export type ObservabilityMetricsResponse = z.infer<typeof ObservabilityMetricsRe
 
 export const HealthResponseSchema = z.object({
   status: z.literal('ok'),
+  chatModel: z.string().min(1),
+  embeddingModel: z.string().min(1),
+  numCtx: z.number().int().positive(),
+  numPredict: z.number().int().positive(),
+  temperature: z.number().min(0).max(2),
+  vectorStore: z.enum(['postgres', 'memory']),
 });
 export type HealthResponse = z.infer<typeof HealthResponseSchema>;

@@ -9,6 +9,7 @@ export {
   DatasetSchema,
   IndexStageSchema,
   KNOWLEDGE_EMPTY_ANSWER,
+  RAG_PROMPT_VERSION,
   KnowledgeAnswerRequestSchema,
   KnowledgeAnswerResponseSchema,
   KnowledgeDocumentSchema,

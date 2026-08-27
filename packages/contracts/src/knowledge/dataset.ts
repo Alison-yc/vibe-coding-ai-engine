@@ -121,6 +121,7 @@ export const KnowledgeAnswerRequestSchema = RetrieveRequestSchema;
 export type KnowledgeAnswerRequest = z.infer<typeof KnowledgeAnswerRequestSchema>;
 
 export const KNOWLEDGE_EMPTY_ANSWER = '资料中没有相关信息';
+export const RAG_PROMPT_VERSION = 'rag-v1-delimiter-escaped';
 
 export const KnowledgeAnswerResponseSchema = z.object({
   answer: z.string().min(1),
