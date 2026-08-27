@@ -5,7 +5,8 @@ export default defineProject({
     name: 'gen-tests',
     environment: 'node',
     include: ['**/*.spec.ts'],
-    exclude: ['.tmp/**', 'packs/**', 'fixtures/weak-always-pass.spec.ts'],
-    testTimeout: 60_000,
+    exclude: ['.tmp/**', 'packs/**', 'fixtures/**'],
+    fileParallelism: false,
+    testTimeout: 180_000,
   },
 });

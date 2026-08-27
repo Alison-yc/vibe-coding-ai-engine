@@ -60,13 +60,17 @@ export const verifyGeneratedSpec = async (input: {
 
   const targetName = path.basename(targetPath, path.extname(targetPath));
   const mentionsTarget = specSource.includes(targetName);
+  const hasMeaningfulAssert = /expect\s*\([\s\S]*?\)\s*\.(?!toBeDefined\b)/.test(specSource);
+  const incremental = mentionsTarget && hasMeaningfulAssert;
   gates.push(
     gate(
       '有增量',
-      mentionsTarget,
-      mentionsTarget
-        ? `测试引用了 ${targetName}；覆盖率数值对比请再跑 pnpm test:cov`
-        : `测试未引用被测文件 ${targetName}`,
+      incremental,
+      incremental
+        ? `测试引用了 ${targetName} 且含非 toBeDefined 断言；覆盖率数值请再跑 pnpm test:cov 对照`
+        : !mentionsTarget
+          ? `测试未引用被测文件 ${targetName}`
+          : '测试只有 toBeDefined 一类断言，覆盖率数字不可信',
     ),
   );
   return { passed: gates.every((item) => item.ok), gates };

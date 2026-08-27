@@ -11,4 +11,10 @@ describe('applyFirstMutation', () => {
   it('没有可替换模式时返回 null', () => {
     expect(applyFirstMutation('const n = 1;')).toBeNull();
   });
+
+  it('没有比较符时把 return 改成 null', () => {
+    const result = applyFirstMutation('export const f = () => { return value; };');
+    expect(result?.name).toBe('return-to-null');
+    expect(result?.mutated).toContain('return null;');
+  });
 });

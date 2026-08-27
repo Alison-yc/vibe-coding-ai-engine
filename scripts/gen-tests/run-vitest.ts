@@ -1,4 +1,5 @@
 import { execFile } from 'node:child_process';
+import path from 'node:path';
 import { promisify } from 'node:util';
 
 const execFileAsync = promisify(execFile);
@@ -8,9 +9,11 @@ export const runVitestFile = async (
   specFile: string,
 ): Promise<{ ok: boolean; output: string }> => {
   try {
+    const vitestBin = path.join(repoRoot, 'node_modules', '.bin', 'vitest');
+    const verifyConfig = path.join(repoRoot, 'scripts/gen-tests/vitest.verify.config.ts');
     const result = await execFileAsync(
-      'pnpm',
-      ['exec', 'vitest', 'run', specFile, '--coverage.enabled=false'],
+      vitestBin,
+      ['run', '--config', verifyConfig, specFile, '--coverage.enabled=false'],
       { cwd: repoRoot, timeout: 120_000 },
     );
     return { ok: true, output: `${result.stdout}\n${result.stderr}` };

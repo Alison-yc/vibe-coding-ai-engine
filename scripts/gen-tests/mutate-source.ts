@@ -12,6 +12,13 @@ export const MUTATIONS: Mutation[] = [
     name: '>-to->=',
     apply: (source) => (/\s>\s/.test(source) ? source.replace(/\s>\s/, ' >= ') : null),
   },
+  {
+    name: 'return-to-null',
+    apply: (source) => {
+      const mutated = source.replace(/return\s+[^;]+;/, 'return null;');
+      return mutated === source ? null : mutated;
+    },
+  },
 ];
 
 export const applyFirstMutation = (

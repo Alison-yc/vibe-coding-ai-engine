@@ -14,6 +14,7 @@ describe('verifyGeneratedSpec', () => {
     });
     expect(result.passed).toBe(false);
     expect(result.gates.find((item) => item.name.startsWith('有效'))?.ok).toBe(false);
+    expect(result.gates.find((item) => item.name === '有增量')?.ok).toBe(false);
   });
 
   it('强测试能通过四道门禁', async () => {
