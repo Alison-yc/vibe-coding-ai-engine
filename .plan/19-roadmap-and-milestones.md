@@ -224,7 +224,7 @@ plan 编号表示**主题**，不是严格的执行队列。实际执行顺序�
   - 内置 `datetime`：返回指定 IANA 时区的当前日期、时间、星期与 UTC 偏移。
   - 内置 `calculate`：解析基础算术表达式，不使用 `eval` / `new Function`。
   - 内置 `generate_uuid`：一次生成 1～10 个 UUID v4。
-  - 天气 MCP：示例配置固定 `@dangahagan/weather-mcp@1.25.6`，只暴露单调用即可完成常见查询的 `get_weather_summary`。
+  - 天气 MCP：示例配置固定 `@dangahagan/weather-mcp@1.25.6`，只暴露单调用即可完成常见查询的 `get_weather_summary`；通过 `toolFilter.inputParams` 将模型可见参数投影为 `city_name` 与 `units`，并强制 `city_name` 必填。
   - 基于当前用户输入的确定性工具选择：命中日期、计算、UUID 或天气意图时优先放入对应工具，再补文件工具；任何请求仍不得超过 `capabilities().maxToolCount = 6`。
 - **不包含**：任意 URL `webfetch`、Shell/命令执行、长期记忆、提醒/定时任务、多个天气工具、多 MCP 并行编排、修改第三方 MCP server。
 - **Review 重点**：工具选择不能依赖另一次 LLM 调用；普通文件任务不能回归；天气 MCP 默认按 `execute` 走审批；时间输出可测试且不依赖机器本地时区；计算器不存在代码执行或资源耗尽路径。
@@ -235,6 +235,8 @@ plan 编号表示**主题**，不是严格的执行队列。实际执行顺序�
   - “北京天气”只需向模型暴露一个天气 MCP 工具且总数不超过 6；未连接天气 MCP 时 Agent 能文本说明不可用，不伪造实时天气。
   - 定向单测、contracts 测试、lint、typecheck、构建与安全扫描通过。
 - **提交边界**：规划提交；contracts + 内置工具；意图选择 + Agent 接入；天气 MCP 示例；进度更新。
+
+实现与自检完成，状态 `待 CR`（2026-08-28）。`datetime`、`calculate`、`generate_uuid` 已注册；实时天气意图会优先选择 `get_weather_summary`，知识类天气问题不被短路，未连接时由服务端确定性提示。天气 MCP 1.25.6 已真实完成 stdio 握手与北京查询，返回 22°C 等实时数据；复杂 schema 已投影为 `city_name`（必填）和 `units`。`pnpm ci:local` 全绿，共 563 条测试通过；Semgrep 规则自测、SAST、SCA、双端与服务端构建、Rust 检查均通过。
 
 ### M5 · 双端与打包
 

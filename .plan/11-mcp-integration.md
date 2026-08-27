@@ -173,6 +173,6 @@ pnpm test --filter liangzui-ai-server -- mcp
 
 CR-X1 采用 `@dangahagan/weather-mcp@1.25.6` 的 stdio transport。该包使用 NOAA、Open-Meteo 等公开数据源，无需云端 API key；版本号来自 2026-08-28 的 npm registry 查询。
 
-只通过 `toolFilter.include` 暴露 `get_weather_summary`。它接受城市名并在一次调用中组合当前天气、预报与告警，比要求 2B 模型先查经纬度再查天气更符合 `.plan/04` 的弱模型边界。该工具按 `execute` 处理，必须审批；返回内容继续按不可信 MCP 数据隔离。
+只通过 `toolFilter.include` 暴露 `get_weather_summary`。它接受城市名并在一次调用中组合当前天气、预报与告警，比要求 2B 模型先查经纬度再查天气更符合 `.plan/04` 的弱模型边界。原始 schema 有 13 个可选参数，因此再用 `toolFilter.inputParams` 投影为 `city_name` 与 `units` 两个模型可见参数，并用 `requiredParams` 强制模型提供 `city_name`；投影后的 schema 禁止额外字段，避免参数藏在未展示字段中。该工具按 `execute` 处理，必须审批；返回内容继续按不可信 MCP 数据隔离。北京真实调用约 47 秒（其中反向地理编码超时 30 秒后自动降级但仍成功），天气 server 的调用超时因此设为 60 秒。
 
 不开放其余天气、历史、雷达、保存地点等工具，也不接公共 Streamable HTTP 实例。前者会挤占 `maxToolCount=6`，后者把可用性与数据边界交给无法控制的远端服务。
