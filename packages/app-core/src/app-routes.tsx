@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
 import { ChatPage } from './pages/chat-page';
@@ -6,6 +6,19 @@ import { KnowledgeDetailPage } from './pages/knowledge-detail-page';
 import { KnowledgeListPage } from './pages/knowledge-list-page';
 import { ObservabilityPage } from './pages/observability-page';
 import { TokenGalleryPage } from './pages/token-gallery-page';
+
+const WorkflowListPage = lazy(async () => ({
+  default: (await import('./pages/workflow-list-page')).WorkflowListPage,
+}));
+const WorkflowEditorPage = lazy(async () => ({
+  default: (await import('./pages/workflow-editor-page')).WorkflowEditorPage,
+}));
+
+const LazyPage = ({ children }: { children: ReactNode }) => (
+  <Suspense fallback={<main className="bg-background text-foreground min-h-dvh p-6">加载中…</main>}>
+    {children}
+  </Suspense>
+);
 
 const PlaceholderPage = ({ title }: { title: string }) => (
   <main className="bg-background text-foreground mx-auto flex min-h-dvh max-w-5xl flex-col gap-4 p-6">
@@ -21,8 +34,22 @@ export const AppRoutes = () => (
     <Route path="/chat/:sessionId" element={<ChatPage />} />
     <Route path="/knowledge" element={<KnowledgeListPage />} />
     <Route path="/knowledge/:id" element={<KnowledgeDetailPage />} />
-    <Route path="/workflow" element={<PlaceholderPage title="工作流" />} />
-    <Route path="/workflow/:id" element={<PlaceholderPage title="工作流编辑器" />} />
+    <Route
+      path="/workflow"
+      element={
+        <LazyPage>
+          <WorkflowListPage />
+        </LazyPage>
+      }
+    />
+    <Route
+      path="/workflow/:id"
+      element={
+        <LazyPage>
+          <WorkflowEditorPage />
+        </LazyPage>
+      }
+    />
     <Route path="/agent" element={<PlaceholderPage title="文件助手" />} />
     <Route path="/agent/:sessionId" element={<PlaceholderPage title="文件助手" />} />
     <Route path="/settings" element={<PlaceholderPage title="设置" />} />
