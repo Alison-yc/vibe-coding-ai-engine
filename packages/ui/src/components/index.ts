@@ -1,3 +1,10 @@
 export { Button, buttonVariants, type ButtonProps } from './ui/button';
 export { Textarea, type TextareaProps } from './ui/textarea';
+export { Input, type InputProps } from './ui/input';
+export { Label, type LabelProps } from './ui/label';
+export { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from './ui/card';
+export { Badge, badgeVariants, type BadgeProps } from './ui/badge';
+export { Select, type SelectProps } from './ui/select';
+export { Separator, type SeparatorProps } from './ui/separator';
+export { FileInput, type FileInputProps } from './ui/file-input';
 export { ThemeToggle } from './theme-toggle';
