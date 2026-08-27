@@ -24,15 +24,21 @@ type SelectOption = {
   disabled?: boolean;
 };
 
+const optionText = (children: ReactNode): string =>
+  Children.toArray(children)
+    .map((child) => {
+      if (typeof child === 'string' || typeof child === 'number') return String(child);
+      if (!isValidElement<{ children?: ReactNode }>(child)) return '';
+      return optionText(child.props.children);
+    })
+    .join('');
+
 const readOptions = (children: ReactNode): SelectOption[] =>
   Children.toArray(children).flatMap((child) => {
     if (!isValidElement(child) || child.type !== 'option') return [];
     const element = child as ReactElement<OptionHTMLAttributes<HTMLOptionElement>>;
     const value = element.props.value == null ? '' : String(element.props.value);
-    const label =
-      typeof element.props.children === 'string' || typeof element.props.children === 'number'
-        ? String(element.props.children)
-        : value;
+    const label = optionText(element.props.children) || value;
     return [{ value, label, disabled: Boolean(element.props.disabled) }];
   });
 

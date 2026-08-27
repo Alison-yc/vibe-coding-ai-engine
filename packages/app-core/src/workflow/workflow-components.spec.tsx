@@ -182,7 +182,8 @@ describe('工作流组件', () => {
       />,
     );
     expect(screen.getByText(/来源节点不存在/)).toBeTruthy();
-    fireEvent.change(screen.getByRole('combobox'), { target: { value: 'start\u0000query' } });
+    fireEvent.click(screen.getByRole('button', { name: /失效引用/ }));
+    fireEvent.click(screen.getByRole('option', { name: /^开始 \/ query/ }));
     expect(onChange).toHaveBeenCalledWith(['start', 'query']);
   });
 
