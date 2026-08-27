@@ -43,15 +43,20 @@ const GenerateResponseBodySchema = z.object({
 
 const StreamChunkSchema = z.object({
   done: z.boolean().optional(),
-  message: z.object({ content: z.string() }).optional(),
+  message: z
+    .object({
+      content: z.string().optional(),
+      thinking: z.string().optional(),
+    })
+    .optional(),
   done_reason: z.string().optional(),
 });
 
 // chat 120s：覆盖 qwen 冷启动总耗时 5.4s。见 2026-08-26 基线 latency 表。
 const CHAT_TIMEOUT_MS = 120_000;
 const EMBED_TIMEOUT_MS = 30_000;
-// 首 token 30s：覆盖 qwen 冷启动首 token 3.0s。不是整段生成超时。
-const FIRST_TOKEN_TIMEOUT_MS = 30_000;
+// 首 token：冷启动约 3s；挂载 RAG 大 prompt 时 30s 不够，与 chat 总超时对齐下限。
+const FIRST_TOKEN_TIMEOUT_MS = 90_000;
 const MAX_CONNECTION_RETRIES = 2;
 
 class OllamaResponseError extends Error {
@@ -185,8 +190,16 @@ export class OllamaLlmGateway implements LlmGateway {
         buffer = lines.pop() ?? '';
         for (const line of lines) {
           if (!line.trim()) continue;
-          const parsed = StreamChunkSchema.parse(JSON.parse(line));
-          const text = parsed.message?.content ?? '';
+          let raw: unknown;
+          try {
+            raw = JSON.parse(line);
+          } catch {
+            continue;
+          }
+          const parsed = StreamChunkSchema.safeParse(raw);
+          if (!parsed.success) continue;
+          const chunk = parsed.data;
+          const text = chunk.message?.content ?? '';
           if (text) {
             if (!receivedFirstToken) {
               receivedFirstToken = true;
@@ -196,11 +209,11 @@ export class OllamaLlmGateway implements LlmGateway {
             completionTokens += 1;
             yield LlmStreamEventSchema.parse({ event: 'chunk', data: { text } });
           }
-          if (parsed.done) {
-            finishReason = parsed.done_reason ?? 'stop';
+          if (chunk.done) {
+            finishReason = chunk.done_reason ?? 'stop';
             yield LlmStreamEventSchema.parse({
               event: 'done',
-              data: { finishReason: parsed.done_reason },
+              data: { finishReason: chunk.done_reason },
             });
           }
         }

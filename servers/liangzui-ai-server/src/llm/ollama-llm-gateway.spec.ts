@@ -118,7 +118,7 @@ describe('OllamaLlmGateway', () => {
     await expect(createGateway().embed(['你好'])).rejects.toThrow('Embedding 维度或数量不符');
   });
 
-  it('只对首 token 设置 30 秒超时', async () => {
+  it('只对首 token 设置 90 秒超时', async () => {
     vi.useFakeTimers();
     vi.stubGlobal(
       'fetch',
@@ -132,7 +132,7 @@ describe('OllamaLlmGateway', () => {
 
     const iterator = createGateway().stream(REQUEST)[Symbol.asyncIterator]();
     const assertion = expect(iterator.next()).rejects.toBeInstanceOf(LlmTimeoutError);
-    await vi.advanceTimersByTimeAsync(30_000);
+    await vi.advanceTimersByTimeAsync(90_000);
     await assertion;
   });
 
@@ -180,5 +180,32 @@ describe('OllamaLlmGateway', () => {
     ]);
     expect(metrics.snapshot().calls[0]?.finishReason).toBe('stop');
     expect(metrics.snapshot().calls[0]?.operation).toBe('stream');
+  });
+
+  it('跳过无法解析的 NDJSON 行，不因尾行格式异常中断', async () => {
+    const stream = [
+      JSON.stringify({ message: { content: '你' }, done: false }),
+      'not-json',
+      JSON.stringify({ message: { content: '好' }, done: false }),
+      JSON.stringify({ done: true, done_reason: 'stop' }),
+      '',
+    ].join('\n');
+    vi.stubGlobal(
+      'fetch',
+      vi
+        .fn()
+        .mockResolvedValue(
+          new Response(stream, { headers: { 'Content-Type': 'application/x-ndjson' } }),
+        ),
+    );
+
+    const gateway = createGateway();
+    const events = [];
+    for await (const event of gateway.stream(REQUEST)) events.push(event);
+    expect(events).toEqual([
+      { event: 'chunk', data: { text: '你' } },
+      { event: 'chunk', data: { text: '好' } },
+      { event: 'done', data: { finishReason: 'stop' } },
+    ]);
   });
 });

@@ -1,7 +1,8 @@
 import type { RetrieveHit } from '@ai-engine/contracts';
 import type { VectorSearchHit } from '../../database/vector-store';
+import { estimateTokenCount } from '../../llm/token-estimate';
 
-export const estimateTokenCount = (text: string): number => Math.ceil([...text].length / 2);
+export { estimateTokenCount };
 
 export const keywordCoverage = (query: string, content: string): number => {
   const terms = query

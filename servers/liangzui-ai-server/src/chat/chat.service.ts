@@ -18,10 +18,19 @@ import { KnowledgeService } from '../knowledge/knowledge.service';
 import { assembleRagPrompt } from '../knowledge/pipeline/prompt';
 import { LLM_GATEWAY, type LlmGateway } from '../llm/llm-gateway';
 import { CHAT_REPOSITORY, type ChatRepository } from './chat.repository';
-import { toLlmMessages, trimToBudget } from './context-window';
+import {
+  toLlmMessages,
+  trimToBudget,
+  estimateTokenCount,
+  trimHitsToTokenBudget,
+} from './context-window';
 
 const TITLE_PREDICT = 24;
 const PROMPT_RESERVE_TOKENS = 800;
+/** assembleRagPrompt 固定说明 + 分隔符的大致 token 开销 */
+const RAG_PROMPT_OVERHEAD = 350;
+/** 参考资料最多占上下文预算的比例，其余留给历史与生成 */
+const RAG_CITATION_BUDGET_RATIO = 0.45;
 
 const isAbortError = (error: unknown): boolean =>
   (error instanceof Error && error.name === 'AbortError') ||
@@ -93,29 +102,34 @@ export class ChatService {
       parts: [{ type: 'text', id: randomUUID(), text: request.content }],
     });
 
-    const citations = await this.collectCitations(datasetIds, request.content);
+    let citations = await this.collectCitations(datasetIds, request.content);
     if (datasetIds.length > 0 && citations.length === 0) {
       await this.emitStaticAssistant(sessionId, KNOWLEDGE_EMPTY_ANSWER, send);
       await this.maybeTitle(sessionId, request.content);
       return;
     }
 
-    const history = await this.repository.listMessages(sessionId);
     const budget = this.config.get('OLLAMA_NUM_CTX', { infer: true }) - PROMPT_RESERVE_TOKENS;
-    const trimmed = await trimToBudget(toLlmMessages(history), Math.max(budget, 1), (text) =>
-      this.gateway.countTokens(text),
-    );
-    const lastUser = trimmed.at(-1);
+    if (citations.length > 0) {
+      const citationBudget = Math.max(
+        Math.floor(budget * RAG_CITATION_BUDGET_RATIO) - RAG_PROMPT_OVERHEAD,
+        1,
+      );
+      citations = trimHitsToTokenBudget(citations, citationBudget);
+    }
+
+    const history = await this.repository.listMessages(sessionId);
+    const historyMessages = toLlmMessages(history);
     const promptContent =
-      citations.length > 0 && lastUser
-        ? assembleRagPrompt(request.content, citations)
-        : request.content;
+      citations.length > 0 ? assembleRagPrompt(request.content, citations) : request.content;
+    const promptTokens = estimateTokenCount(promptContent);
     const llmMessages =
       citations.length > 0
-        ? [...trimmed.slice(0, -1), { role: 'user' as const, content: promptContent }]
-        : trimmed.length > 0
-          ? trimmed
-          : [{ role: 'user' as const, content: promptContent }];
+        ? [
+            ...trimToBudget(historyMessages.slice(0, -1), Math.max(budget - promptTokens, 1)),
+            { role: 'user' as const, content: promptContent },
+          ]
+        : trimToBudget(historyMessages, Math.max(budget, 1));
 
     const assistantId = randomUUID();
     const partId = randomUUID();
@@ -147,16 +161,7 @@ export class ChatService {
     } catch (error) {
       if (isAbortError(error) || signal.aborted) {
         interrupted = true;
-      } else {
-        if (text.length > 0) {
-          await this.repository.appendMessage({
-            id: assistantId,
-            sessionId,
-            role: 'assistant',
-            parts: [{ type: 'text', id: partId, text }],
-            status: 'complete',
-          });
-        }
+      } else if (text.length === 0) {
         send({
           event: 'error',
           data: { message: this.publicError(error) },
@@ -164,6 +169,7 @@ export class ChatService {
         send({ event: 'done', data: { messageId: assistantId, status: 'complete' } });
         return;
       }
+      // 已有部分内容：保留已生成文本，不再向前端抛 error（避免「写一半又报错」）
     }
 
     send({ event: 'message.part.end', data: { messageId: assistantId, partId } });
