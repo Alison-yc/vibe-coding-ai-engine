@@ -276,6 +276,10 @@ pnpm rag-eval:compare \
 ls scripts/rag-eval/reports/
 ```
 
+## CR-14 · MCP 工具选择对比
+
+CI 与单测不调用真实 Ollama，因此本批次**没有**编造新的工具选择正确率。依据 `.plan/04` 2026-08-26 基线：`qwen3.5:2b` 在 6 个工具时合法 JSON / 工具选择 / 参数正确率均为 1.0。MCP 工具合并后仍截断到 `capabilities().maxToolCount`（该模型为 6），未勾选的工具不会进入模型列表。若要补实测，应在 `pnpm baseline` 下分别跑「仅内置工具」与「内置 + toolFilter 后的 MCP」并写入 `scripts/model-baseline/reports/`。
+
 ## 风险与备选
 
 | 风险                                         | 处置                                                                                                                            |
