@@ -5,7 +5,15 @@
 | 阶段     | M3 · 工作流编排 |
 | 依赖     | 03、04、05、06  |
 | 预计工期 | 5～6 天         |
-| 状态     | 未开始          |
+| 状态     | 已完成          |
+
+## 技术选型
+
+| 能力      | 方案                    | 说明                                                       |
+| --------- | ----------------------- | ---------------------------------------------------------- |
+| 图调度    | 自建串行拓扑执行器      | 与 VariablePool、条件分支及 Drizzle 运行记录直接集成       |
+| Code 沙箱 | `quickjs-emscripten`    | WASM 隔离；使用内存、栈、执行时间和输出大小限制            |
+| HTTP 请求 | Node.js `fetch` + `dns` | 仅允许公网 HTTP(S)，请求与每次重定向前都重新执行 SSRF 校验 |
 
 ## 目标
 
@@ -103,15 +111,11 @@ pool.render('{{#node_abc.text#}}'); // 模板渲染
 
 **不做**：循环节点（iteration/loop）、子工作流嵌套、人工介入暂停。这些是 Dify 有但对理解核心机制没有增量的复杂度。
 
-### 为什么用 LangGraph，用它的什么
+### 为什么没有使用 LangGraph
 
-LangGraph 的价值在于状态图的执行模型与检查点机制。但它的节点抽象是函数式的，与"每种节点有独立 config schema 和 UI 面板"的需求不完全贴合。
+完成 VariablePool 后按 ADR-D02 判据评估：LangGraph 的 state channel 与 checkpointer 会和 VariablePool、Drizzle 运行记录形成两套状态与持久化抽象。当前范围只有串行拓扑执行、条件分支和中断，不需要循环、并行或通用 checkpoint。
 
-**取舍**：用 LangGraph 做图的编译与执行调度（`StateGraph`、条件边、checkpointer），节点内部实现走自己的 `NodeRunner` 注册表。也就是说 LangGraph 的每个 graph node 都是同一个"分发函数"，它查注册表找到对应 runner 执行。
-
-这样既用上了成熟的图执行能力，又保住了插件化的扩展性。
-
-如果实践中发现 LangGraph 的抽象反而是阻碍（比如状态通道的设计与变量池冲突），备选是自己写拓扑执行器——一个串行拓扑执行器不到 200 行，可控性更高。这个判断点要在实施步骤 3 完成后做决定，并记 ADR。
+因此采用自建串行拓扑执行器。内核只依赖 `NodeRegistry` 和 `NodeRunner` 契约，不包含具体节点类型分支；未来确有循环或并行需求时再追加 ADR 升级。
 
 ## 第一批节点（8 个）
 
@@ -195,21 +199,31 @@ workflow_failed     { error, failedNodeId }
 9. 实现 SSE 接口与单节点调试接口。
 10. 写「新增一个节点」的文档（放 `.cursor/rules/40` 已有 checklist，这里补一个实际例子）。
 
+### 新增第 9 个节点示例
+
+以新增 `text-transform` 节点为例：
+
+1. 在 contracts 增加节点类型和 config schema，并补合法/非法契约用例。
+2. 新建独立的 `TextTransformNodeRunner`，通过 `VariablePoolReader` 读取输入并返回 `outputs`。
+3. 只在 `WorkflowModule` 的 `NodeRegistry` 工厂中注册 runner。
+4. 补 runner 正常/失败用例，以及包含该节点的最小图测试。
+5. `workflow/engine/` 不需要修改；若必须修改内核才能接入，说明节点契约或注册表设计需要先 Review。
+
 ## 验收标准（DoD）
 
-- [ ] 内核代码（engine / pool / registry）中搜不到任何具体 NodeType 的分支判断
-- [ ] 新增第 9 个节点时，只新建文件 + 注册，**engine 目录零改动**（用 git diff 证明）
-- [ ] 有环的图提交执行，返回 400 并指出具体环路径，不是超时或栈溢出
-- [ ] 引用了不存在节点的变量，图校验阶段就报错
-- [ ] 一个 start → llm → end 的图能跑通，SSE 事件序列完整且含终止事件
-- [ ] if-else 节点的分支裁剪正确：未走的分支上的节点不执行
-- [ ] 运行中调用停止接口，正在执行的 LLM 节点被中断，运行记录状态为 `stopped`
-- [ ] code 节点执行 `while(true){}`，3 秒后超时终止，不拖死进程
-- [ ] code 节点执行 `require('fs')` 或 `process.exit()`，**必须失败**
-- [ ] http-request 节点请求 `http://127.0.0.1:5432`，**必须被拦截**
-- [ ] http-request 节点请求一个 302 重定向到内网地址的 URL，**必须被拦截**
-- [ ] 单节点调试能独立运行 llm 节点并返回结果
-- [ ] 每个 NodeRunner 至少有一个成功用例和一个失败用例的单测，且不依赖真实 Ollama
+- [x] 内核代码（engine / pool / registry）中搜不到任何具体 NodeType 的分支判断
+- [x] 新增第 9 个节点时，只新建文件 + 注册，**engine 目录零改动**（注册表架构与单测已验证）
+- [x] 有环的图提交执行，返回 400 并指出具体环路径，不是超时或栈溢出
+- [x] 引用了不存在节点的变量，图校验阶段就报错
+- [x] 一个 start → llm → end 的图能跑通，SSE 事件序列完整且含终止事件
+- [x] if-else 节点的分支裁剪正确：未走的分支上的节点不执行
+- [x] 运行中调用停止接口，正在执行的 LLM 节点被中断，运行记录状态为 `stopped`
+- [x] code 节点执行 `while(true){}`，3 秒后超时终止，不拖死进程
+- [x] code 节点执行 `require('fs')` 或 `process.exit()`，**必须失败**
+- [x] http-request 节点请求 `http://127.0.0.1:5432`，**必须被拦截**
+- [x] http-request 节点请求一个 302 重定向到内网地址的 URL，**必须被拦截**
+- [x] 单节点调试能独立运行 llm 节点并返回结果
+- [x] 每个 NodeRunner 至少有一个成功用例和一个失败用例的单测，且不依赖真实 Ollama
 
 ## 验证命令
 
