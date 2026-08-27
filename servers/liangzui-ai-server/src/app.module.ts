@@ -9,6 +9,7 @@ import { KnowledgeModule } from './knowledge/knowledge.module';
 import { LlmController } from './llm/llm.controller';
 import { ObservabilityModule } from './observability/observability.module';
 import { TraceIdModule } from './observability/trace-id.module';
+import { WorkflowModule } from './workflow/workflow.module';
 
 @Module({
   imports: [
@@ -22,6 +23,7 @@ import { TraceIdModule } from './observability/trace-id.module';
     DatabaseModule,
     KnowledgeModule,
     ChatModule,
+    WorkflowModule,
   ],
   controllers: [AppController, LlmController],
   providers: [AppService],

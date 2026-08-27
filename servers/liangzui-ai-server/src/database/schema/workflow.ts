@@ -17,7 +17,10 @@ export const workflowRuns = pgTable('workflow_runs', {
   status: text('status').notNull(),
   inputs: jsonb('inputs').notNull().default({}),
   outputs: jsonb('outputs'),
+  graphSnapshot: jsonb('graph_snapshot').notNull(),
+  error: text('error'),
   startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
 });
 
 export const workflowNodeRuns = pgTable('workflow_node_runs', {
