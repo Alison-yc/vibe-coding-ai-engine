@@ -332,6 +332,8 @@ CR 已通过（2026-08-28）。审查补齐干净构建依赖闭包与产物校�
 - 打包版能切换已测评模型；未知模型保持只聊天。
 - `17-C` 只在本机 dmg 已验证后接入，且 tag 构建成功。
 
+集成 Review 已通过（2026-08-28）。两端共用 `packages/app-core`；Web E2E 覆盖对话、设置、工作流、审批与 smoke；本机 Nest 返回已测评模型目录且不含 `nomic-embed-text`；sidecar 实包曾完成 `/health`、会话与模型请求，退出无残留。审查修复 README 安装说明仍要求手动启动 NestJS。`release.yml` 已按 `v*`/手动触发接入，真实 tag artifact 仍待发版时验证。下一步为 CR-S1。
+
 ### 收尾
 
 #### CR-S1 · 评测实验与交付材料
