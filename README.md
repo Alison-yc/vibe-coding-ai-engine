@@ -35,12 +35,44 @@ M0～M5 已完成，含 Web/桌面双端、会话模型切换与 NestJS sidecar�
 | 状态   | TanStack Query（服务端数据）+ zustand（交互态）                   |
 | 画布   | @xyflow/react v12                                                 |
 | 契约   | zod（前后端唯一类型来源）                                         |
-| 服务端 | NestJS 11 + LangChain / LangGraph                                 |
+| 服务端 | NestJS 11 + Ollama 网关 + 自建工作流引擎                          |
 | 数据   | PostgreSQL + pgvector，Drizzle ORM                                |
 | 模型   | Ollama：qwen3.5:2b / gemma4:e2b / nomic-embed-text                |
 | 构建   | pnpm workspace + Turborepo                                        |
 | 测试   | Vitest 4 + Playwright，覆盖率阈值门禁                             |
 | 安全   | Semgrep（含 11 条自定义规则）+ OSV-Scanner + Gitleaks，SARIF 汇总 |
+
+## 架构
+
+```text
+Tauri 壳 ─┐
+          ├─ packages/app-core（页面、业务状态、请求编排）
+Web 壳 ───┘          │
+                     ├─ packages/platform（Web / Tauri 能力适配）
+                     ├─ packages/ui（无业务语义的组件与主题）
+                     └─ packages/contracts（共享 zod 契约）
+                                      │
+                               NestJS Server
+                       ┌──────────────┼──────────────┐
+                    Ollama       PostgreSQL      MCP Servers
+                 对话 / 向量化     + pgvector      可选工具
+```
+
+`packages/app-core` 不直接访问 Tauri、浏览器存储或 Node API；跨进程结构只在
+`packages/contracts` 定义。桌面壳在 release 中管理 NestJS sidecar，Web 壳连接独立
+NestJS 服务。
+
+### Web / 桌面功能对照
+
+| 能力                | Web                        | macOS 桌面                 |
+| ------------------- | -------------------------- | -------------------------- |
+| 对话、RAG、工作流   | 共用 `app-core`            | 共用 `app-core`            |
+| 本地模型切换        | 已测评模型开放对应能力     | 已测评模型开放对应能力     |
+| 文件工作区          | 输入服务端可访问的绝对路径 | 系统原生目录选择器         |
+| NestJS              | 单独执行 `pnpm dev:server` | release 包自动启动 sidecar |
+| 后端地址            | 环境变量或本地设置         | 启动引导与设置页           |
+| PostgreSQL / Ollama | 本机提供                   | 本机提供                   |
+| 路由                | History                    | Hash                       |
 
 ## 目录结构
 
@@ -148,6 +180,68 @@ Gatekeeper 拦截，这是正常的，不是应用损坏。可先在 Finder 中�
 xattr -cr /Applications/liangzui-ai-app.app
 ```
 
+### 只收到 dmg 时
+
+无需源码、Node.js、pnpm 或 Rust。安装 Docker Desktop 与 Ollama 后执行：
+
+```bash
+docker run -d \
+  --name ai-engine-postgres \
+  -e POSTGRES_USER=ai_engine \
+  -e POSTGRES_PASSWORD=ai_engine_dev_only \
+  -e POSTGRES_DB=ai_engine \
+  -p 5432:5432 \
+  -v ai-engine-postgres-data:/var/lib/postgresql/data \
+  pgvector/pgvector:pg17
+
+ollama pull qwen3.5:2b
+ollama pull nomic-embed-text
+ollama pull gemma4:e2b # 可选
+```
+
+打开应用后 sidecar 会自动迁移数据库。`qwen3.5:2b` 是默认且覆盖完整基线的模型；
+`gemma4:e2b` 只实测了单轮 A/C/G 工具阶梯，不外推两步或嵌套参数能力；扫描到的其他
+模型只允许对话。`nomic-embed-text` 只用于 768 维向量化，不会出现在对话模型选择器。
+
+若已有同名容器，使用 `docker start ai-engine-postgres`。连接失败时先检查：
+
+```bash
+docker ps --filter name=ai-engine-postgres
+curl http://127.0.0.1:11434/api/tags
+```
+
+## RAG 评测
+
+固定人工标注集包含 30 条检索、30 条问答、15 条拒答和 10 条提示词注入样本。规则化
+指标不使用 2B 模型自评。PostgreSQL 同环境基线与三组单变量实验均使用
+`qwen3.5:2b`、`nomic-embed-text:latest`、递归切分、`numCtx=8192`：
+
+| 配置                                     | Recall@k |    MRR | 关键词覆盖率 | 拒答正确率 | 注入抵抗率 |
+| ---------------------------------------- | -------: | -----: | -----------: | ---------: | ---------: |
+| 基线：chunk 500 / topK 5 / threshold 0.3 |   0.7000 | 0.5911 |       0.7444 |          1 |     0.9000 |
+| chunk 300（其余同基线）                  |   0.7000 | 0.5911 |       0.7278 |          1 |     0.9000 |
+| topK 3（其余同基线，此行 Recall@3）      |   0.6333 | 0.5778 |       0.5944 |          1 |     1.0000 |
+| threshold 0.2（其余同基线）              |   0.7000 | 0.5911 |       0.7000 |          1 |     0.9000 |
+
+报告：
+[同环境基线](./scripts/rag-eval/reports/20260828-0527-postgres-baseline.md)、
+[chunk 300](./scripts/rag-eval/reports/20260828-0529-chunk-size-300.md)、
+[topK 3](./scripts/rag-eval/reports/20260828-0531-top-k-3.md)、
+[threshold 0.2](./scripts/rag-eval/reports/20260828-0533-threshold-0-2.md)。
+
+三组实验都没有提升检索指标：chunk 300 与 threshold 0.2 持平，topK 3 的 Recall
+下降 6.67 个百分点。拒答正确率均为 100%，但生成指标存在本地小模型非确定性。因此
+保留 chunk 500、topK 5、threshold 0.3，不为追求单次生成波动修改默认值。
+
+## 5 分钟演示提纲
+
+1. **0:00–0:40**：说明本地 Ollama、NestJS、PostgreSQL 与 Web/Tauri 双壳分层。
+2. **0:40–1:40**：导入知识库文档，展示五阶段索引、检索分数、对话引用与拒答。
+3. **1:40–2:40**：创建工作流，运行条件、HTTP 与 QuickJS/WASM code 节点，展示日志。
+4. **2:40–3:50**：在统一对话中切换已测评模型，开启文件访问，展示原生目录选择与审批 diff。
+5. **3:50–4:30**：连接 MCP 工具，说明 6 工具上限、未知模型只聊天及失败兜底。
+6. **4:30–5:00**：展示 RAG 对比报告、测试覆盖率、安全扫描和 dmg sidecar 自动启动。
+
 ## 已知限制
 
 这些是设计前提，不是待修的缺陷。如实列出比藏起来更有价值。
@@ -155,7 +249,7 @@ xattr -cr /Applications/liangzui-ai-app.app
 | 限制                     | 说明                                                                                                                                                            |
 | ------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | 模型只有 2B 级别         | qwen3.5:2b 的工具调用可靠性、指令遵循、长上下文表现都显著低于云端大模型。功能设计以 [`.plan/04`](./.plan/04-model-baseline-and-llm-gateway.md) 的实测数据为边界 |
-| 中文向量检索质量有天花板 | nomic-embed-text 是 768 维通用模型，中文效果一般。检索指标见 RAG 评测报告                                                                                       |
+| 中文向量检索质量有天花板 | nomic-embed-text 是 768 维通用模型，中文效果一般。检索指标见上方可复现的 RAG 评测报告                                                                           |
 | 单用户                   | 无多租户、无权限体系                                                                                                                                            |
 | 仅 macOS 桌面包          | 不构建 Windows / Linux                                                                                                                                          |
 | 无云端部署               | 模型在本机，部署上云也访问不到                                                                                                                                  |
