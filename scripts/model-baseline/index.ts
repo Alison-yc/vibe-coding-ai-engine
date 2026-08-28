@@ -32,6 +32,27 @@ if (!baseUrl) {
   throw new Error('缺少 OLLAMA_BASE_URL。请从 .env.example 复制为 .env 后设置该变量。');
 }
 
+const parseListArg = (name: string): string[] | undefined => {
+  const raw = readArg(name);
+  if (!raw) return undefined;
+  const items = raw
+    .split(',')
+    .map((item) => item.trim().toUpperCase())
+    .filter((item) => item.length > 0);
+  return items.length > 0 ? items : undefined;
+};
+
+const TOOL_SCENARIO_IDS = ['A', 'B', 'C', 'D', 'E', 'F', 'G'] as const;
+const isToolScenarioId = (value: string): value is (typeof TOOL_SCENARIO_IDS)[number] =>
+  TOOL_SCENARIO_IDS.some((id) => id === value);
+
+const toolScenarios = parseListArg('--tool-scenarios');
+if (toolScenarios?.some((id) => !isToolScenarioId(id))) {
+  throw new Error(
+    `--tool-scenarios 只能是 ${TOOL_SCENARIO_IDS.join('/')}，收到：${toolScenarios.join(',')}`,
+  );
+}
+
 const options: BaselineOptions = {
   baseUrl,
   model: readArg('--model') ?? process.env.OLLAMA_MODEL ?? 'qwen3.5:2b',
@@ -41,6 +62,8 @@ const options: BaselineOptions = {
   selectedCases,
   outputDir: path.resolve('scripts/model-baseline/reports'),
   force: process.argv.includes('--force'),
+  toolScenarios,
+  reportSlug: readArg('--report-slug') ?? undefined,
 };
 
 const reportPath = await runBaseline(options);

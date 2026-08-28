@@ -17,4 +17,14 @@ describe('模型能力表', () => {
   it('未知模型抛出 ModelNotFoundError', () => {
     expect(() => getModelCapability('missing-model')).toThrow('missing-model');
   });
+
+  it('gemma4:e2b 的工具上限能在 2026-08-28 增量报告里对上', () => {
+    const capability = getModelCapability('gemma4:e2b');
+    expect(capability).toMatchObject({
+      supportsTools: true,
+      needsToolCallFallback: false,
+      maxToolCount: 6,
+      sourceReport: 'scripts/model-baseline/reports/2026-08-28-gemma-tool-call.md',
+    });
+  });
 });

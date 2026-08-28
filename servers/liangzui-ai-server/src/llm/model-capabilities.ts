@@ -18,13 +18,14 @@ const CAPABILITIES: Record<string, ModelCapability> = {
   }),
   'gemma4:e2b': ModelCapabilitySchema.parse({
     id: 'gemma4:e2b',
-    supportsTools: false,
+    supportsTools: true,
     supportsVision: false,
     supportsJsonMode: true,
-    needsToolCallFallback: true,
-    maxToolCount: 0,
+    // A/C 合法 JSON 与选择正确率均为 1.0，G 假阳性 0。未测 B/D/E/F，不外推 12 工具或嵌套参数。
+    needsToolCallFallback: false,
+    maxToolCount: 6,
     effectiveContextTokens: 8192,
-    sourceReport: SOURCE_REPORT,
+    sourceReport: 'scripts/model-baseline/reports/2026-08-28-gemma-tool-call.md',
   }),
   'nomic-embed-text:latest': ModelCapabilitySchema.parse({
     id: 'nomic-embed-text:latest',

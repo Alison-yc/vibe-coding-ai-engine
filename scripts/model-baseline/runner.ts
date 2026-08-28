@@ -87,6 +87,7 @@ export const runBaseline = async (options: BaselineOptions): Promise<string> => 
       hardware: `${os.cpus()[0]?.model ?? os.arch()} / ${Math.round(os.totalmem() / 1024 ** 3)} GB`,
     },
     sections,
+    ...(options.reportSlug ? { slug: options.reportSlug } : {}),
   };
   return writeBaselineReport(report, options.outputDir);
 };

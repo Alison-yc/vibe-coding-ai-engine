@@ -30,7 +30,8 @@ export const writeBaselineReport = async (
   outputDir: string,
 ): Promise<string> => {
   const date = report.generatedAt.slice(0, 10);
-  const target = path.join(outputDir, `${date}-baseline.md`);
+  const slug = report.slug ? `${date}-${report.slug}.md` : `${date}-baseline.md`;
+  const target = path.join(outputDir, slug);
   await mkdir(outputDir, { recursive: true });
   const sections = report.sections
     .map((section) =>

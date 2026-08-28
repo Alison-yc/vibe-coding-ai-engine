@@ -18,6 +18,8 @@ export type BaselineOptions = {
   selectedCases: BaselineCaseName[];
   outputDir: string;
   force: boolean;
+  toolScenarios?: string[];
+  reportSlug?: string;
 };
 
 export type MetricValue = string | number | boolean | null;
@@ -51,4 +53,5 @@ export type BaselineReport = {
   generatedAt: string;
   environment: ModelEnvironment;
   sections: BaselineSection[];
+  slug?: string;
 };
