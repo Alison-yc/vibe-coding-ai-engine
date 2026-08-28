@@ -57,9 +57,6 @@ export const AppNavLinks = () => (
       <Link to="/workflow">工作流</Link>
     </Button>
     <Button variant="ghost" size="sm" asChild>
-      <Link to="/agent">文件助手</Link>
-    </Button>
-    <Button variant="ghost" size="sm" asChild>
       <Link to="/settings">设置</Link>
     </Button>
   </>

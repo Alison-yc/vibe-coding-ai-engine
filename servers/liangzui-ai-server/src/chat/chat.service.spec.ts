@@ -4,13 +4,14 @@ import {
   KNOWLEDGE_EMPTY_ANSWER,
   type ChatStreamEvent,
 } from '@ai-engine/contracts';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import type { AppConfig } from '../config/ollama.config';
 import { InMemoryVectorStore } from '../database/in-memory-vector-store';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { InMemoryKnowledgeRepository } from '../knowledge/knowledge.repository';
 import { IndexingRunner } from '../knowledge/indexing.runner';
 import { FakeLlmGateway } from '../llm/fake-llm-gateway';
+import type { AgentService } from '../agent/agent.service';
 import { InMemoryChatRepository } from './chat.repository';
 import { ChatService } from './chat.service';
 
@@ -36,9 +37,14 @@ const collect = async (
   signal?: AbortSignal,
 ): Promise<ChatStreamEvent[]> => {
   const events: ChatStreamEvent[] = [];
-  await service.stream(sessionId, { content }, signal ?? new AbortController().signal, (event) => {
-    events.push(event);
-  });
+  await service.stream(
+    sessionId,
+    { content, fileAccess: false, mode: 'edit' },
+    signal ?? new AbortController().signal,
+    (event) => {
+      events.push(event);
+    },
+  );
   return events;
 };
 
@@ -50,8 +56,10 @@ describe('ChatService', () => {
     const store = new InMemoryVectorStore();
     const indexing = new IndexingRunner(knowledgeRepo, store, gateway);
     const knowledge = new KnowledgeService(knowledgeRepo, store, gateway, indexing, config);
-    const service = new ChatService(repository, gateway, knowledge, config);
-    return { gateway, repository, service, knowledge, indexing };
+    const streamConversation = vi.fn(async () => undefined);
+    const agent = { streamConversation } as unknown as AgentService;
+    const service = new ChatService(repository, gateway, knowledge, config, agent);
+    return { gateway, repository, service, knowledge, indexing, agent, streamConversation };
   };
 
   it('先落库用户消息，再流式输出 assistant，并在结束后生成标题', async () => {
@@ -70,18 +78,55 @@ describe('ChatService', () => {
     expect((await service.getSession(session.id)).title).toBe('问候');
   });
 
-  it('普通对话接口拒绝文件助手会话', async () => {
-    const { repository, service } = setup();
+  it('旧文件助手会话可从统一对话入口继续使用', async () => {
+    const { gateway, repository, service } = setup();
+    gateway.enqueueStream([{ event: 'done', data: { finishReason: 'stop' } }]);
+    gateway.enqueueText('兼容会话');
     const session = await repository.createSession({
       title: '文件助手',
       modelId: 'qwen3.5:2b',
       datasetIds: [],
       agentType: 'agent',
     });
-    await expect(collect(service, session.id, '错误入口')).rejects.toThrow(
-      'NOT_FOUND:对话会话不存在',
+    await expect(collect(service, session.id, '继续对话')).resolves.toBeDefined();
+    expect((await repository.listMessages(session.id)).map((item) => item.role)).toEqual([
+      'user',
+      'assistant',
+    ]);
+  });
+
+  it('实用工具意图与文件访问轮次委托统一工具编排', async () => {
+    const { service, streamConversation } = setup();
+    const session = await service.createSession({});
+    await collect(service, session.id, '计算 2+3');
+    expect(streamConversation).toHaveBeenLastCalledWith(
+      session.id,
+      expect.objectContaining({ content: '计算 2+3', fileAccess: false }),
+      expect.any(AbortSignal),
+      expect.any(Function),
     );
-    expect(await repository.listMessages(session.id)).toEqual([]);
+    await service.stream(
+      session.id,
+      {
+        content: '读取 README.md',
+        fileAccess: true,
+        workspaceRoot: '/workspace',
+        mode: 'read-only',
+      },
+      new AbortController().signal,
+      () => undefined,
+    );
+    expect(streamConversation).toHaveBeenLastCalledWith(
+      session.id,
+      expect.objectContaining({
+        content: '读取 README.md',
+        fileAccess: true,
+        workspaceRoot: '/workspace',
+        mode: 'read-only',
+      }),
+      expect.any(AbortSignal),
+      expect.any(Function),
+    );
   });
 
   it('中断时保留已生成文本并标记 interrupted', async () => {
@@ -109,7 +154,7 @@ describe('ChatService', () => {
       Array.from({ length: EMBEDDING_DIMENSION }, (_, index) => (index === 0 ? 1 : 0)),
     ]);
     const session = await service.createSession({ datasetIds: [dataset.id] });
-    const events = await collect(service, session.id, '巴黎天气');
+    const events = await collect(service, session.id, '巴黎人口');
     expect(gateway.calls.some((call) => call.method === 'stream')).toBe(false);
     expect(JSON.stringify(events)).toContain(KNOWLEDGE_EMPTY_ANSWER);
   });

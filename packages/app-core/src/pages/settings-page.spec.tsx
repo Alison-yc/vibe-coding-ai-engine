@@ -106,7 +106,7 @@ describe('SettingsPage', () => {
       </PlatformProvider>,
     );
     expect(await screen.findByText('已连接')).toBeTruthy();
-    expect(screen.getByText('当前暴露给模型的工具')).toBeTruthy();
+    expect(screen.getByText('当前自动装配的工具')).toBeTruthy();
     const user = userEvent.setup();
     await user.click(await screen.findByRole('checkbox', { name: 'write_file' }));
     expect(mocks.patch).toHaveBeenCalledWith(platform, 'filesystem', {

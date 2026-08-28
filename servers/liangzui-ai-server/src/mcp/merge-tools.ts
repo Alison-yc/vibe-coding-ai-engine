@@ -85,7 +85,7 @@ export const mergeAndTrimTools = (
 };
 
 const WEATHER_INTENT = /天气|气温|温度|降雨|下雨|预报|weather|forecast/i;
-const DATETIME_INTENT = /日期|时间|几点|几号|星期|周几|时区|date|time|timezone|today/i;
+const DATETIME_INTENT = /日期|时间|几点|几号|星期|周几|时区|\b(?:date|time|timezone|today)\b/i;
 const CALCULATE_INTENT =
   /计算|算一下|等于多少|calculate|calculator|math|\d\s*(?:\+|-|\*|\/|%|\^)\s*\d/i;
 const UUID_INTENT = /\buuid\b|唯一标识|随机标识/i;
@@ -114,11 +114,22 @@ export const isLiveWeatherQuery = (content: string): boolean => {
   );
 };
 
+export const hasUtilityToolIntent = (content: string): boolean => {
+  const normalized = withoutCommonFilePaths(content);
+  if (isLiveWeatherQuery(normalized) || UUID_INTENT.test(normalized)) return true;
+  if (/什么是|解释|原理|代码|实现|测试|schema|文档/i.test(normalized)) return false;
+  return (
+    DATETIME_INTENT.test(normalized) ||
+    CALCULATE_INTENT.test(normalized.replace(/\d{4}-\d{1,2}-\d{1,2}/g, ''))
+  );
+};
+
 export const selectToolsForInput = (
   builtin: AgentModelTool[],
   mcp: AgentModelTool[],
   content: string,
   maxToolCount: number,
+  fileAccess = true,
 ): { tools: AgentModelTool[]; dropped: string[]; weatherAvailable: boolean } => {
   const selected: AgentModelTool[] = [];
   const add = (tool: AgentModelTool | undefined): void => {
@@ -134,8 +145,10 @@ export const selectToolsForInput = (
     add(findBuiltin('calculate'));
   }
   if (UUID_INTENT.test(content)) add(findBuiltin('generate_uuid'));
-  for (const name of ['read', 'write', 'edit', 'glob', 'grep'] as const) add(findBuiltin(name));
-  for (const tool of mcp) add(tool);
+  if (fileAccess) {
+    for (const name of ['read', 'write', 'edit', 'glob', 'grep'] as const) add(findBuiltin(name));
+    for (const tool of mcp) add(tool);
+  }
 
   const tools = selected.slice(0, maxToolCount);
   const selectedNames = new Set(tools.map((tool) => tool.name));

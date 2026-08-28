@@ -42,8 +42,7 @@ describe('runChatStream', () => {
     await runChatStream({
       platform: stubPlatform,
       sessionId: '00000000-0000-4000-8000-000000000001',
-      content: '   ',
-      datasetIds: undefined,
+      request: { content: '   ', fileAccess: false, mode: 'edit' },
       signal: new AbortController().signal,
       queryClient: new QueryClient(),
     });
@@ -63,8 +62,7 @@ describe('runChatStream', () => {
     await runChatStream({
       platform: stubPlatform,
       sessionId: '00000000-0000-4000-8000-000000000001',
-      content: '你好',
-      datasetIds: undefined,
+      request: { content: '你好', fileAccess: false, mode: 'edit' },
       signal: new AbortController().signal,
       queryClient: new QueryClient(),
     });

@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   BUILTIN_TOOL_NAMES,
   filterMcpToolNames,
+  hasUtilityToolIntent,
   isLiveWeatherQuery,
   isWeatherIntent,
   mcpExposedName,
@@ -101,6 +102,27 @@ describe('MCP tool merge', () => {
     expect(isLiveWeatherQuery('北京今天天气怎么样')).toBe(true);
     expect(isLiveWeatherQuery('解释天气形成原理')).toBe(false);
     expect(isLiveWeatherQuery('天气 MCP 如何配置')).toBe(false);
+    expect(hasUtilityToolIntent('runtime.ts 里解释 time API')).toBe(false);
+  });
+
+  it('文件访问关闭时只装配命中的实用工具并排除文件 MCP', () => {
+    const builtin = BUILTIN_TOOL_NAMES.map((name) => ({
+      name,
+      description: name,
+      inputSchema: {},
+    }));
+    const selected = selectToolsForInput(
+      builtin,
+      [
+        { name: 'get_weather_summary', description: 'weather', inputSchema: {} },
+        { name: 'list_directory', description: 'files', inputSchema: {} },
+      ],
+      '计算 2+3',
+      6,
+      false,
+    );
+    expect(selected.tools.map((tool) => tool.name)).toEqual(['calculate']);
+    expect(selected.tools.some((tool) => tool.name === 'list_directory')).toBe(false);
   });
 
   it('可把复杂 MCP schema 投影为弱模型所需的少量参数', () => {

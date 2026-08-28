@@ -19,6 +19,7 @@ export interface AgentRepository {
     content: string;
     workspaceRoot: string;
     mode: AgentMode;
+    fileAccess?: boolean;
   }): Promise<AgentInput>;
   claimInput(id: string): Promise<AgentInput | null>;
   completeInput(id: string, status: 'completed' | 'error'): Promise<void>;
@@ -37,6 +38,7 @@ export class InMemoryAgentRepository implements AgentRepository {
     content: string;
     workspaceRoot: string;
     mode: AgentMode;
+    fileAccess?: boolean;
   }): Promise<AgentInput> {
     await Promise.resolve();
     const record = AgentInputSchema.parse({
@@ -118,6 +120,7 @@ export class DrizzleAgentRepository implements AgentRepository {
     content: string;
     workspaceRoot: string;
     mode: AgentMode;
+    fileAccess?: boolean;
   }): Promise<AgentInput> {
     const [row] = await this.db
       .insert(chatInputs)

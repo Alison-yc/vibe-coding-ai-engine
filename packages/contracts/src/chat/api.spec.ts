@@ -5,12 +5,23 @@ import { ChatSessionSchema, CreateChatSessionRequestSchema } from './session.js'
 
 describe('chat 契约', () => {
   it('流式请求允许挂载知识库 id', () => {
+    const request = ChatStreamRequestSchema.parse({
+      content: '资料里写了什么',
+      datasetIds: ['00000000-0000-4000-8000-000000000001'],
+    });
+    expect(request.datasetIds).toHaveLength(1);
+    expect(request.fileAccess).toBe(false);
+    expect(request.mode).toBe('edit');
+    expect(ChatStreamRequestSchema.safeParse({ content: '读文件', fileAccess: true }).success).toBe(
+      false,
+    );
     expect(
-      ChatStreamRequestSchema.parse({
-        content: '资料里写了什么',
-        datasetIds: ['00000000-0000-4000-8000-000000000001'],
-      }).datasetIds,
-    ).toHaveLength(1);
+      ChatStreamRequestSchema.safeParse({
+        content: '读文件',
+        fileAccess: true,
+        workspaceRoot: '/workspace',
+      }).success,
+    ).toBe(true);
   });
 
   it('拒绝无法识别的 SSE 事件名', () => {

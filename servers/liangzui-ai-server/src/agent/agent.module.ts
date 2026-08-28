@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { forwardRef, Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import type { AppConfig } from '../config/ollama.config';
 import { ChatModule } from '../chat/chat.module';
@@ -22,7 +22,13 @@ import { AgentToolRegistry } from './tools/tool';
 import { WriteTool } from './tools/write.tool';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule, ChatModule, ObservabilityModule, McpModule],
+  imports: [
+    ConfigModule,
+    DatabaseModule,
+    forwardRef(() => ChatModule),
+    ObservabilityModule,
+    McpModule,
+  ],
   controllers: [AgentController],
   providers: [
     {
@@ -49,5 +55,6 @@ import { WriteTool } from './tools/write.tool';
     ApprovalCoordinator,
     AgentService,
   ],
+  exports: [AgentService],
 })
 export class AgentModule {}

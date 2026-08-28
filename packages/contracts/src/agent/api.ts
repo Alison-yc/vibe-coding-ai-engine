@@ -51,6 +51,7 @@ export const AgentInputSchema = z.object({
   content: z.string().min(1),
   workspaceRoot: z.string().min(1),
   mode: AgentModeSchema,
+  fileAccess: z.boolean().default(true),
   delivery: AgentInputDeliverySchema,
   status: AgentInputStatusSchema,
   createdAt: z.string().datetime(),

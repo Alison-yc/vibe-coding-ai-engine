@@ -17,7 +17,7 @@ import {
 } from '@ai-engine/contracts';
 import type { AppConfig } from '../config/ollama.config';
 import type { RegisteredTool } from '../agent/tools/tool';
-import { loadMcpConfig, saveMcpConfig } from './mcp-config';
+import { loadMcpConfigWithPresets, saveMcpConfig } from './mcp-config';
 import {
   MCP_CONNECTOR,
   type McpConnection,
@@ -166,7 +166,8 @@ export class McpClientManager implements OnModuleInit, OnModuleDestroy, McpToolC
   }
 
   private async reloadFromDisk(): Promise<void> {
-    const file = await loadMcpConfig(this.configPath());
+    const { config: file, added } = await loadMcpConfigWithPresets(this.configPath());
+    if (added.length > 0) this.logger.log(`已补全 MCP 预置 server：${added.join('、')}`);
     this.runtimes.clear();
     for (const [name, config] of Object.entries(file.mcpServers)) {
       this.runtimes.set(name, {

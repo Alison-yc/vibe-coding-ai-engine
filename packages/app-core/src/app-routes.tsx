@@ -1,5 +1,5 @@
 import { lazy, Suspense, type ReactNode } from 'react';
-import { Navigate, Route, Routes } from 'react-router';
+import { Navigate, Route, Routes, useParams } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
 import { ChatPage } from './pages/chat-page';
 import { KnowledgeDetailPage } from './pages/knowledge-detail-page';
@@ -12,9 +12,6 @@ const WorkflowListPage = lazy(async () => ({
 }));
 const WorkflowEditorPage = lazy(async () => ({
   default: (await import('./pages/workflow-editor-page')).WorkflowEditorPage,
-}));
-const AgentPage = lazy(async () => ({
-  default: (await import('./pages/agent-page')).AgentPage,
 }));
 const SettingsPage = lazy(async () => ({
   default: (await import('./pages/settings-page')).SettingsPage,
@@ -49,22 +46,8 @@ export const AppRoutes = () => (
         </LazyPage>
       }
     />
-    <Route
-      path="/agent"
-      element={
-        <LazyPage>
-          <AgentPage />
-        </LazyPage>
-      }
-    />
-    <Route
-      path="/agent/:sessionId"
-      element={
-        <LazyPage>
-          <AgentPage />
-        </LazyPage>
-      }
-    />
+    <Route path="/agent" element={<Navigate to="/chat" replace />} />
+    <Route path="/agent/:sessionId" element={<LegacyAgentRedirect />} />
     <Route
       path="/settings"
       element={
@@ -84,6 +67,11 @@ export const AppRoutes = () => (
     />
   </Routes>
 );
+
+const LegacyAgentRedirect = () => {
+  const { sessionId } = useParams();
+  return <Navigate to={sessionId ? `/chat/${sessionId}` : '/chat'} replace />;
+};
 
 const DevObservabilityRoute = ({ children }: { children: ReactNode }) => {
   const platform = usePlatform();

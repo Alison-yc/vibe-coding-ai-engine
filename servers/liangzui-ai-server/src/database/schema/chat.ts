@@ -1,4 +1,4 @@
-import { integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { boolean, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 
 export const chatSessions = pgTable('chat_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -30,6 +30,7 @@ export const chatInputs = pgTable('chat_inputs', {
   content: text('content').notNull(),
   workspaceRoot: text('workspace_root').notNull().default('.'),
   mode: text('mode').notNull().default('edit'),
+  fileAccess: boolean('file_access').notNull().default(true),
   delivery: text('delivery').notNull(),
   status: text('status').notNull(),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

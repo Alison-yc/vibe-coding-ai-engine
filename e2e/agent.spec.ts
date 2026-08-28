@@ -4,7 +4,7 @@ const sessionId = '11111111-1111-4111-8111-111111111111';
 const messageId = '22222222-2222-4222-8222-222222222222';
 const approvalId = '33333333-3333-4333-8333-333333333333';
 
-test('文件助手展示工具状态并完成写入审批', async ({ page }) => {
+test('统一对话开启文件访问后展示工具状态并完成写入审批', async ({ page }) => {
   let decision = '';
   let sent = false;
   await page.route('**/chat/sessions', async (route) => {
@@ -58,7 +58,7 @@ test('文件助手展示工具状态并完成写入审批', async ({ page }) => 
       },
     });
   });
-  await page.route(`**/agent/${sessionId}/stream`, async (route) => {
+  await page.route(`**/chat/sessions/${sessionId}/stream`, async (route) => {
     sent = true;
     const tool = {
       type: 'tool',
@@ -69,7 +69,7 @@ test('文件助手展示工具状态并完成写入审批', async ({ page }) => 
       permission: { id: approvalId, resource: 'result.md', diff: '+# 结果' },
     };
     const events = [
-      `event: message.start\ndata: ${JSON.stringify({ messageId })}`,
+      `event: message.start\ndata: ${JSON.stringify({ messageId, role: 'assistant' })}`,
       `event: tool.update\ndata: ${JSON.stringify({ messageId, part: tool })}`,
       `event: permission.asked\ndata: ${JSON.stringify({
         id: approvalId,
@@ -100,16 +100,18 @@ test('文件助手展示工具状态并完成写入审批', async ({ page }) => 
   });
 
   await page.goto(`/agent/${sessionId}`);
+  await expect(page).toHaveURL(`/chat/${sessionId}`);
+  await page.getByRole('checkbox', { name: '文件访问' }).check();
   await page.getByLabel('工作区目录').fill('/tmp/agent-workspace');
-  await page.getByLabel('文件助手消息').fill('生成 result.md');
+  await page.getByPlaceholder(/输入消息/).fill('生成 result.md');
   await page.getByRole('button', { name: '发送' }).click();
 
-  await expect(page.getByRole('heading', { name: '需要文件操作审批' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: '需要工具调用审批' })).toBeVisible();
   await expect(page.getByText('+# 结果')).toBeVisible();
   await expect(page.getByText('工具 write · pending')).toBeVisible();
   await expect(page.getByText('工具 write · completed')).toBeHidden();
   await page.getByRole('button', { name: '本会话始终允许' }).click();
   await expect.poll(() => decision).toBe('allow-session');
-  await expect(page.getByRole('heading', { name: '需要文件操作审批' })).toBeHidden();
+  await expect(page.getByRole('heading', { name: '需要工具调用审批' })).toBeHidden();
   await expect(page.getByText('工具 write · completed')).toBeVisible();
 });

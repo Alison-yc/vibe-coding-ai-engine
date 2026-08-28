@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { Inject, Injectable } from '@nestjs/common';
+import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   ChatStreamEventSchema,
@@ -14,9 +14,11 @@ import {
   type UpdateChatSessionRequest,
 } from '@ai-engine/contracts';
 import type { AppConfig } from '../config/ollama.config';
+import { AgentService } from '../agent/agent.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { assembleRagPrompt } from '../knowledge/pipeline/prompt';
 import { LLM_GATEWAY, type LlmGateway } from '../llm/llm-gateway';
+import { hasUtilityToolIntent } from '../mcp/merge-tools';
 import { CHAT_REPOSITORY, type ChatRepository } from './chat.repository';
 import {
   toLlmMessages,
@@ -43,6 +45,7 @@ export class ChatService {
     @Inject(LLM_GATEWAY) private readonly gateway: LlmGateway,
     @Inject(KnowledgeService) private readonly knowledge: KnowledgeService,
     @Inject(ConfigService) private readonly config: ConfigService<AppConfig, true>,
+    @Inject(forwardRef(() => AgentService)) private readonly agent: AgentService,
   ) {}
 
   createSession(request: CreateChatSessionRequest): Promise<ChatSession> {
@@ -92,10 +95,39 @@ export class ChatService {
       emit(ChatStreamEventSchema.parse(event));
     };
     const session = await this.getSession(sessionId);
-    if (session.agentType !== 'chat') throw new Error('NOT_FOUND:对话会话不存在');
     const datasetIds = request.datasetIds ?? session.datasetIds;
     if (request.datasetIds) {
       await this.repository.updateSession(sessionId, { datasetIds: request.datasetIds });
+    }
+
+    if (request.fileAccess || hasUtilityToolIntent(request.content)) {
+      if (request.fileAccess && datasetIds.length > 0) {
+        send({
+          event: 'warning',
+          data: { message: '本轮已开启文件访问，不使用已挂载的知识库。' },
+        });
+      }
+      await this.agent.streamConversation(
+        sessionId,
+        {
+          content: request.content,
+          fileAccess: request.fileAccess,
+          workspaceRoot: request.workspaceRoot,
+          mode: request.mode,
+        },
+        signal,
+        (event) => {
+          if (event.event === 'message.start') {
+            send({
+              event: 'message.start',
+              data: { messageId: event.data.messageId, role: 'assistant' },
+            });
+          } else {
+            send(event);
+          }
+        },
+      );
+      return;
     }
 
     await this.repository.appendMessage({

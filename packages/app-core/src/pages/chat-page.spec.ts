@@ -60,6 +60,8 @@ describe('ChatPage', () => {
     expect(html).toContain('还没有会话');
     expect(html).toContain('从左侧新建或选择一个会话');
     expect(html).toContain('知识库挂载');
+    expect(html).toContain('文件访问');
+    expect(html).not.toContain('href="/agent"');
     vi.unstubAllGlobals();
   });
 

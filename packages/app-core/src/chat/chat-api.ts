@@ -4,10 +4,12 @@ import {
   ChatSessionSchema,
   ChatStreamRequestSchema,
   CreateChatSessionRequestSchema,
+  PermissionResponseRequestSchema,
   type ChatMessage,
   type ChatSession,
   type ChatStreamRequest,
   type CreateChatSessionRequest,
+  type PermissionDecision,
   type UpdateChatSessionRequest,
 } from '@ai-engine/contracts';
 import type { Platform } from '@ai-engine/platform';
@@ -85,6 +87,7 @@ export const streamChat = async (
   sessionId: string,
   request: ChatStreamRequest,
   signal: AbortSignal,
+  requestId: string,
 ): Promise<void> => {
   const payload = ChatStreamRequestSchema.parse(request);
   const baseUrl = platform.getApiBaseUrl().replace(/\/$/, '');
@@ -97,5 +100,19 @@ export const streamChat = async (
   if (!response.ok) {
     throw new Error(`无法开始生成：HTTP ${response.status}`);
   }
-  await readChatSse(response, (event) => useChatStreamStore.getState().applyEvent(event));
+  await readChatSse(response, (event) =>
+    useChatStreamStore.getState().applyEvent(event, requestId),
+  );
+};
+
+export const respondChatPermission = async (
+  platform: Platform,
+  sessionId: string,
+  approvalId: string,
+  decision: PermissionDecision,
+): Promise<void> => {
+  await jsonRequest(platform, `/agent/${sessionId}/permissions/${approvalId}`, {
+    method: 'POST',
+    body: JSON.stringify(PermissionResponseRequestSchema.parse({ decision })),
+  });
 };

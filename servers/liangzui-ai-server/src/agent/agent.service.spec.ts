@@ -88,6 +88,66 @@ const run = async (
   );
 
 describe('AgentService', () => {
+  it('文件访问关闭时拒绝模型伪造的文件工具调用', async () => {
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [{ id: 'forged-read', name: 'read', arguments: { path: 'README.md' } }],
+    });
+    gateway.enqueueAgentResponse({ content: '无法读取文件。', toolCalls: [] });
+    const events: AgentStreamEvent[] = [];
+
+    await service.streamConversation(
+      sessionId,
+      { content: '现在几点', fileAccess: false, mode: 'edit' },
+      new AbortController().signal,
+      (event) => events.push(event),
+    );
+
+    expect(JSON.stringify(events)).toContain('本轮未开放该工具：read');
+    const agentCall = gateway.calls.find((call) => call.method === 'agentChat');
+    expect(
+      agentCall?.method === 'agentChat' ? agentCall.request.tools.map((tool) => tool.name) : [],
+    ).not.toContain('read');
+  });
+
+  it('统一入口校验工作区并为工具首轮生成确定性标题', async () => {
+    const chatSession = await chat.createSession({
+      title: '新对话',
+      modelId: 'qwen3.5:2b',
+      datasetIds: [],
+    });
+    gateway.enqueueAgentResponse({ content: '没有需要执行的工具。', toolCalls: [] });
+    await service.streamConversation(
+      chatSession.id,
+      { content: '分析工作区', fileAccess: true, workspaceRoot: root, mode: 'read-only' },
+      new AbortController().signal,
+      () => undefined,
+    );
+    expect((await chat.getSession(chatSession.id))?.title).toBe('分析工作区');
+    await expect(
+      service.streamConversation(
+        '00000000-0000-4000-8000-000000000099',
+        { content: '测试', fileAccess: false, mode: 'edit' },
+        new AbortController().signal,
+        () => undefined,
+      ),
+    ).rejects.toThrow('对话会话不存在');
+    const emptyTitleSession = await chat.createSession({
+      title: '新对话',
+      modelId: 'qwen3.5:2b',
+      datasetIds: [],
+    });
+    await expect(
+      service.streamConversation(
+        emptyTitleSession.id,
+        { content: '', fileAccess: false, mode: 'edit' },
+        new AbortController().signal,
+        () => undefined,
+      ),
+    ).rejects.toThrow();
+    expect((await chat.getSession(emptyTitleSession.id))?.title).toBe('新对话');
+  });
+
   it('把历史工具状态转换为模型上下文并按预算裁剪', () => {
     const history = [
       {

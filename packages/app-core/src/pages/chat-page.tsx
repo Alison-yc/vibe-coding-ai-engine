@@ -1,4 +1,10 @@
-import type { ChatMessage, ChatSession, Dataset } from '@ai-engine/contracts';
+import type {
+  AgentMode,
+  ChatMessage,
+  ChatSession,
+  Dataset,
+  PermissionDecision,
+} from '@ai-engine/contracts';
 import { Button, Input, Label, Select, Separator, Textarea, ThemeToggle, cn } from '@ai-engine/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type KeyboardEvent, useEffect, useState } from 'react';
@@ -9,9 +15,14 @@ import {
   deleteChatSession,
   listChatMessages,
   listChatSessions,
+  respondChatPermission,
   updateChatSession,
 } from '../chat/chat-api';
-import { useChatStreamStore, shouldHydrateMessages } from '../chat/chat-stream-store';
+import {
+  hasActiveToolParts,
+  shouldHydrateMessages,
+  useChatStreamStore,
+} from '../chat/chat-stream-store';
 import { MessageParts, StreamMarkdown } from '../chat/message-parts';
 import { useChatStream } from '../chat/use-chat-stream';
 import { useStickToBottom } from '../chat/use-stick-to-bottom';
@@ -28,9 +39,26 @@ export const ChatPage = () => {
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
-  const streaming = useChatStreamStore((state) => state.streaming);
-  const error = useChatStreamStore((state) => state.error);
-  const messages = useChatStreamStore((state) => state.messages);
+  const [fileAccessState, setFileAccessState] = useState<{
+    sessionId: string | undefined;
+    enabled: boolean;
+  }>({ sessionId, enabled: false });
+  const fileAccess = fileAccessState.sessionId === sessionId && fileAccessState.enabled;
+  const setFileAccess = (enabled: boolean) => setFileAccessState({ sessionId, enabled });
+  const [workspaceRoot, setWorkspaceRoot] = useState('');
+  const [mode, setMode] = useState<AgentMode>('edit');
+  const storedSessionId = useChatStreamStore((state) => state.sessionId);
+  const storedStreaming = useChatStreamStore((state) => state.streaming);
+  const storedError = useChatStreamStore((state) => state.error);
+  const storedWarning = useChatStreamStore((state) => state.warning);
+  const storedApproval = useChatStreamStore((state) => state.approval);
+  const storedMessages = useChatStreamStore((state) => state.messages);
+  const isCurrentStore = storedSessionId === sessionId;
+  const streaming = isCurrentStore && storedStreaming;
+  const error = isCurrentStore ? storedError : null;
+  const warning = isCurrentStore ? storedWarning : null;
+  const approval = storedApproval?.sessionId === sessionId ? storedApproval : null;
+  const messages = isCurrentStore ? storedMessages : [];
   const { send, stop } = useChatStream(platform, sessionId);
   const { containerRef, bottomRef, onScroll, stickNow } = useStickToBottom(messages);
 
@@ -42,26 +70,38 @@ export const ChatPage = () => {
     queryKey: ['chat-messages', sessionId],
     queryFn: () => listChatMessages(platform, sessionId ?? ''),
     enabled: Boolean(sessionId),
+    refetchInterval: (query) => (hasActiveToolParts(query.state.data ?? []) ? 1_000 : false),
   });
   const datasetsQuery = useQuery({
     queryKey: ['knowledge-datasets'],
     queryFn: () => listDatasets(platform),
   });
+  const busy =
+    streaming ||
+    Boolean(approval) ||
+    hasActiveToolParts(messages) ||
+    hasActiveToolParts(messagesQuery.data ?? []);
 
-  const chatSessions = (sessionsQuery.data ?? []).filter((item) => item.agentType === 'chat');
+  const chatSessions = sessionsQuery.data ?? [];
   const session = chatSessions.find((item) => item.id === sessionId);
   const datasetId = session?.datasetIds[0] ?? '';
 
   useEffect(() => {
     if (!sessionId || streaming || !messagesQuery.data) return;
     const local = useChatStreamStore.getState();
-    if (!shouldHydrateMessages(sessionId, local)) return;
+    if (!shouldHydrateMessages(sessionId, local, messagesQuery.data)) return;
     useChatStreamStore.getState().hydrate(sessionId, messagesQuery.data);
   }, [sessionId, messagesQuery.data, streaming]);
 
   useEffect(() => {
     stickNow();
   }, [sessionId, stickNow]);
+
+  useEffect(() => {
+    void platform.kv.get('agent.workspaceRoot').then((value) => {
+      if (value) setWorkspaceRoot(value);
+    });
+  }, [platform]);
 
   const createMutation = useMutation({
     mutationFn: () => createChatSession(platform, {}),
@@ -89,6 +129,17 @@ export const ChatPage = () => {
     },
   });
 
+  const permissionMutation = useMutation({
+    mutationFn: (decision: PermissionDecision) => {
+      if (!sessionId || !approval) throw new Error('审批上下文已失效');
+      return respondChatPermission(platform, sessionId, approval.id, decision);
+    },
+    onSuccess: async () => {
+      useChatStreamStore.getState().clearApproval(approval?.id);
+      await queryClient.invalidateQueries({ queryKey: ['chat-messages', sessionId] });
+    },
+  });
+
   const mountKnowledge = async (nextDatasetId: string) => {
     if (!sessionId) return;
     await updateChatSession(platform, sessionId, {
@@ -100,18 +151,33 @@ export const ChatPage = () => {
   const onKeyDown = (event: KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      if (!streaming) {
+      if (!busy) {
         void onSend();
       }
     }
   };
 
   const onSend = async () => {
+    if (busy) return;
+    if (fileAccess && !workspaceRoot.trim()) return;
     const datasetIds = datasetId ? [datasetId] : undefined;
     const content = input;
     setInput('');
     stickNow();
-    await send(content, datasetIds);
+    if (fileAccess) await platform.kv.set('agent.workspaceRoot', workspaceRoot.trim());
+    await send(content, {
+      datasetIds,
+      fileAccess,
+      mode,
+      ...(fileAccess ? { workspaceRoot: workspaceRoot.trim() } : {}),
+    });
+  };
+
+  const chooseWorkspace = async () => {
+    const selected = await platform.pickDirectory();
+    if (!selected) return;
+    setWorkspaceRoot(selected);
+    await platform.kv.set('agent.workspaceRoot', selected);
   };
 
   return (
@@ -163,9 +229,6 @@ export const ChatPage = () => {
               <Link to="/workflow">工作流</Link>
             </Button>
             <Button variant="ghost" size="sm" asChild>
-              <Link to="/agent">文件助手</Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild>
               <Link to="/settings">设置</Link>
             </Button>
           </div>
@@ -174,7 +237,7 @@ export const ChatPage = () => {
       </aside>
 
       <section className="flex min-w-0 flex-1 flex-col">
-        <header className="border-border bg-background/95 flex min-h-16 flex-wrap items-center gap-4 border-b px-4 py-3 md:px-6">
+        <header className="border-border bg-background/95 flex min-h-16 flex-wrap items-end gap-4 border-b px-4 py-3 md:px-6">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{session?.title ?? '选择或新建会话'}</p>
             {session ? (
@@ -186,7 +249,7 @@ export const ChatPage = () => {
             <Select
               id="chat-dataset"
               value={datasetId}
-              disabled={!sessionId}
+              disabled={!sessionId || busy}
               onChange={(event) => {
                 void mountKnowledge(event.target.value);
               }}
@@ -199,7 +262,58 @@ export const ChatPage = () => {
               ))}
             </Select>
           </div>
+          <label className="flex min-h-10 items-center gap-2 text-sm">
+            <input
+              type="checkbox"
+              checked={fileAccess}
+              disabled={!sessionId || busy}
+              onChange={(event) => setFileAccess(event.target.checked)}
+            />
+            文件访问
+          </label>
+          {fileAccess ? (
+            <>
+              <div className="flex min-w-48 flex-1 flex-col gap-1.5">
+                <Label htmlFor="chat-workspace">工作区目录</Label>
+                <Input
+                  id="chat-workspace"
+                  value={workspaceRoot}
+                  disabled={busy}
+                  placeholder="输入服务端可访问的绝对路径"
+                  onChange={(event) => setWorkspaceRoot(event.target.value)}
+                />
+              </div>
+              {platform.capabilities.nativeDirectoryPicker ? (
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={busy}
+                  onClick={() => void chooseWorkspace()}
+                >
+                  选择目录
+                </Button>
+              ) : null}
+              <div className="flex flex-col gap-1.5">
+                <Label htmlFor="chat-file-mode">文件模式</Label>
+                <Select
+                  id="chat-file-mode"
+                  value={mode}
+                  disabled={busy}
+                  onChange={(event) => setMode(event.target.value as AgentMode)}
+                >
+                  <option value="edit">编辑</option>
+                  <option value="read-only">只读</option>
+                </Select>
+              </div>
+            </>
+          ) : null}
         </header>
+
+        {fileAccess && datasetId ? (
+          <p className="bg-muted text-muted-foreground px-4 py-2 text-sm md:px-6">
+            文件访问已开启：本轮不会检索已挂载的知识库。
+          </p>
+        ) : null}
 
         <div
           ref={containerRef}
@@ -229,17 +343,22 @@ export const ChatPage = () => {
             {error}
           </p>
         ) : null}
+        {warning ? (
+          <p className="text-muted-foreground bg-muted mx-4 mb-2 rounded-md px-3 py-2 text-sm">
+            {warning}
+          </p>
+        ) : null}
 
         <form
           className="border-border bg-background flex min-w-0 shrink-0 flex-col gap-3 border-t px-4 py-4 md:px-8"
           onSubmit={(event) => {
             event.preventDefault();
-            if (!streaming) void onSend();
+            if (!busy) void onSend();
           }}
         >
           <Textarea
             value={input}
-            disabled={!sessionId || streaming}
+            disabled={!sessionId || busy}
             className="bg-card min-h-20 resize-none rounded-xl px-4 py-3 shadow-sm"
             placeholder={sessionId ? '输入消息，Enter 发送，Shift+Enter 换行' : '请先新建会话'}
             onChange={(event) => setInput(event.target.value)}
@@ -251,13 +370,59 @@ export const ChatPage = () => {
                 停止生成
               </Button>
             ) : (
-              <Button type="submit" disabled={!sessionId || input.trim().length === 0}>
+              <Button
+                type="submit"
+                disabled={
+                  !sessionId ||
+                  busy ||
+                  input.trim().length === 0 ||
+                  (fileAccess && workspaceRoot.trim().length === 0)
+                }
+              >
                 发送
               </Button>
             )}
           </div>
         </form>
       </section>
+      {approval ? (
+        <div className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center p-4">
+          <section className="border-border bg-card max-h-[85vh] w-full max-w-2xl overflow-auto rounded-xl border p-5 shadow-xl">
+            <h2 className="text-lg font-semibold">需要工具调用审批</h2>
+            <p className="text-muted-foreground mt-1 text-sm">
+              工具 {approval.tool} · {approval.resource}
+            </p>
+            <pre className="bg-muted mt-4 max-h-96 overflow-auto rounded-lg p-3 text-xs whitespace-pre-wrap">
+              {approval.diff || '该调用不会写入内容，但需要你的确认。'}
+            </pre>
+            {permissionMutation.error ? (
+              <p className="text-destructive mt-3 text-sm">{permissionMutation.error.message}</p>
+            ) : null}
+            <div className="mt-4 flex flex-wrap justify-end gap-2">
+              <Button
+                variant="destructive"
+                disabled={permissionMutation.isPending}
+                onClick={() => permissionMutation.mutate('deny')}
+              >
+                拒绝
+              </Button>
+              <Button
+                variant="outline"
+                disabled={permissionMutation.isPending}
+                onClick={() => permissionMutation.mutate('allow-once')}
+              >
+                允许一次
+              </Button>
+              <Button
+                disabled={permissionMutation.isPending}
+                onClick={() => permissionMutation.mutate('allow-session')}
+              >
+                本会话始终允许
+              </Button>
+            </div>
+          </section>
+        </div>
+      ) : null}
     </div>
   );
 };

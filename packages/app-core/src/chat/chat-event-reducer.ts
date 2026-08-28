@@ -1,10 +1,17 @@
-import type { ChatMessage, ChatStreamEvent } from '@ai-engine/contracts';
+import type {
+  AgentApproval,
+  ChatMessage,
+  ChatStreamEvent,
+  MessagePart,
+} from '@ai-engine/contracts';
 
 export type ChatStreamState = {
   sessionId: string | null;
   messages: ChatMessage[];
   streaming: boolean;
   error: string | null;
+  warning: string | null;
+  approval: AgentApproval | null;
 };
 
 export const emptyChatStreamState = (): ChatStreamState => ({
@@ -12,6 +19,8 @@ export const emptyChatStreamState = (): ChatStreamState => ({
   messages: [],
   streaming: false,
   error: null,
+  warning: null,
+  approval: null,
 });
 
 const replaceMessage = (
@@ -62,6 +71,41 @@ export const applyChatEvent = (state: ChatStreamState, event: ChatStreamEvent): 
       };
     case 'message.part.end':
       return state;
+    case 'message.delta':
+      return {
+        ...state,
+        messages: replaceMessage(state.messages, event.data.messageId, (message) => {
+          const textPart = message.parts.find((part) => part.type === 'text');
+          return {
+            ...message,
+            parts: textPart
+              ? message.parts.map((part) =>
+                  part.id === textPart.id && part.type === 'text'
+                    ? { ...part, text: part.text + event.data.text }
+                    : part,
+                )
+              : [
+                  ...message.parts,
+                  { type: 'text' as const, id: crypto.randomUUID(), text: event.data.text },
+                ],
+          };
+        }),
+      };
+    case 'tool.update':
+      return {
+        ...state,
+        messages: replaceMessage(state.messages, event.data.messageId, (message) => {
+          const exists = message.parts.some((part) => part.id === event.data.part.id);
+          const parts: MessagePart[] = exists
+            ? message.parts.map((part) => (part.id === event.data.part.id ? event.data.part : part))
+            : [...message.parts, event.data.part];
+          return { ...message, parts };
+        }),
+      };
+    case 'permission.asked':
+      return { ...state, approval: event.data };
+    case 'warning':
+      return { ...state, warning: event.data.message };
     case 'message.citations':
       return {
         ...state,

@@ -67,4 +67,41 @@ describe('applyChatEvent', () => {
     });
     expect(cited.messages[0]?.parts.at(-1)).toMatchObject({ type: 'citation' });
   });
+
+  it('统一处理 Agent 文本、工具、审批与警告事件', () => {
+    let state = applyChatEvent(
+      { ...emptyChatStreamState(), sessionId: SESSION },
+      { event: 'message.start', data: { messageId: MESSAGE, role: 'assistant' } },
+    );
+    state = applyChatEvent(state, {
+      event: 'message.delta',
+      data: { messageId: MESSAGE, text: '处理中' },
+    });
+    state = applyChatEvent(state, {
+      event: 'tool.update',
+      data: {
+        messageId: MESSAGE,
+        part: { type: 'tool', id: PART, name: 'write', state: 'pending' },
+      },
+    });
+    state = applyChatEvent(state, {
+      event: 'permission.asked',
+      data: {
+        id: '00000000-0000-4000-8000-000000000003',
+        sessionId: SESSION,
+        toolCallId: PART,
+        tool: 'write',
+        resource: 'README.md',
+      },
+    });
+    state = applyChatEvent(state, { event: 'warning', data: { message: '本轮不使用知识库' } });
+    expect(state.messages[0]?.parts).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: 'text', text: '处理中' }),
+        expect.objectContaining({ type: 'tool', name: 'write' }),
+      ]),
+    );
+    expect(state.approval?.tool).toBe('write');
+    expect(state.warning).toContain('知识库');
+  });
 });

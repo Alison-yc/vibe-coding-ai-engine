@@ -5,6 +5,7 @@ import {
   deleteChatSession,
   listChatMessages,
   listChatSessions,
+  respondChatPermission,
   streamChat,
   updateChatSession,
 } from './chat-api';
@@ -140,11 +141,37 @@ describe('chat-api', () => {
       }),
     );
     useChatStreamStore.getState().hydrate(session.id, []);
-    await streamChat(stubPlatform, session.id, { content: '你好' }, new AbortController().signal);
+    const requestId = useChatStreamStore.getState().beginRequest(session.id);
+    await streamChat(
+      stubPlatform,
+      session.id,
+      { content: '你好', fileAccess: false, mode: 'edit' },
+      new AbortController().signal,
+      requestId,
+    );
     expect(useChatStreamStore.getState().messages[0]?.id).toBe(
       '00000000-0000-4000-8000-000000000002',
     );
     expect(useChatStreamStore.getState().streaming).toBe(false);
+    vi.unstubAllGlobals();
+  });
+
+  it('从统一对话提交工具审批', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({ accepted: true }),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await respondChatPermission(
+      stubPlatform,
+      session.id,
+      '00000000-0000-4000-8000-000000000003',
+      'allow-once',
+    );
+    expect(fetchMock).toHaveBeenCalledWith(
+      expect.stringContaining(`/agent/${session.id}/permissions/`),
+      expect.objectContaining({ method: 'POST' }),
+    );
     vi.unstubAllGlobals();
   });
 });

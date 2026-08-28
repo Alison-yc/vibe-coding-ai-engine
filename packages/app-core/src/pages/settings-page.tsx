@@ -68,6 +68,11 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
       </CardHeader>
       <CardContent className="flex flex-col gap-4">
         {server.error ? <p className="text-destructive text-sm">{server.error}</p> : null}
+        <p className="text-muted-foreground text-sm">
+          {server.type === 'stdio'
+            ? '启用后会在服务端启动配置中的第三方进程；仅启用你信任的 MCP。'
+            : '启用后服务端会连接外部 MCP 地址；仅启用你信任的服务。'}
+        </p>
         <label className="flex items-center gap-2 text-sm">
           <input
             type="checkbox"
@@ -78,7 +83,7 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
           启用
         </label>
         <div className="flex flex-col gap-2">
-          <Label>可供模型使用的工具</Label>
+          <Label>远程 MCP 工具</Label>
           {(tools.data ?? []).length === 0 ? (
             <p className="text-muted-foreground text-sm">
               连接后可勾选工具。未勾选的不会发给模型。
@@ -153,11 +158,14 @@ export const SettingsPage = () => {
       )}
       <Card>
         <CardHeader>
-          <CardTitle>当前暴露给模型的工具</CardTitle>
+          <CardTitle>当前自动装配的工具</CardTitle>
         </CardHeader>
         <CardContent className="text-sm">
           <p className="text-muted-foreground mb-2">
             上限 {exposed.data?.maxToolCount ?? 6}（依据 .plan/04 的 qwen3.5:2b 基线）。
+          </p>
+          <p className="text-muted-foreground mb-2">
+            datetime、calculate、generate_uuid 属于内置工具，不会出现在上方 MCP 勾选框中。
           </p>
           <ul className="flex flex-col gap-1">
             {(exposed.data?.tools ?? []).map((tool) => (

@@ -50,7 +50,12 @@ describe('ChatController', () => {
       end: vi.fn(),
     };
     const request = { on: vi.fn() };
-    await controller.stream(SESSION, { content: '你好' }, request as never, response as never);
+    await controller.stream(
+      SESSION,
+      { content: '你好', fileAccess: false, mode: 'edit' },
+      request as never,
+      response as never,
+    );
     expect(response.setHeader).toHaveBeenCalledWith('X-Accel-Buffering', 'no');
     expect(writes.join('')).toContain('event: error');
     expect(response.end).toHaveBeenCalled();
