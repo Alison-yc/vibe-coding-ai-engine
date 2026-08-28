@@ -50,6 +50,7 @@ Web 壳不能推迟到 M5：`07`、`09`、`14`、`15` 在更早阶段已经需�
 | 本地键值存储 | `kv.get/set/remove`                        | `localStorage`                                     | Rust 侧 SQLite（`plugin-sql` 或自写命令） |
 | 后端基址     | `getApiBaseUrl(): string`                  | 环境变量 / 同源                                    | 从设置读，用户可配                        |
 | 打开外部链接 | `openExternal(url)`                        | `window.open`                                      | `plugin-opener`（已装）                   |
+| 界面语言     | `getUiLocale` / `setUiLocale`              | kv + `document.documentElement.lang`               | 同左（禁止 app-core 直接写 DOM）          |
 | 应用信息     | `getAppInfo()`                             | 版本号来自构建注入                                 | Tauri API                                 |
 | 窗口控制     | `window.minimize/maximize/close`           | 空实现（浏览器不支持）                             | Tauri window API                          |
 | 系统主题     | `getSystemTheme()` / 订阅变化              | `matchMedia`                                       | Tauri theme API                           |
@@ -152,6 +153,20 @@ React Context + 一个 `usePlatform()` hook。壳在最外层注入实现：
 | 变更后   | 清空 TanStack Query 缓存并重新拉取              |
 
 「测试连接」按钮不是装饰。用户配错端口时，一个明确的"连接失败：无法访问 http://localhost:3001"比整个应用白屏要好得多。
+
+### 界面语言（CR-I18N，ADR-016）
+
+两端共用同一套 locale。实现落在 platform，不在壳页面里各写一份：
+
+| 项   | 做法                                                 |
+| ---- | ---------------------------------------------------- |
+| 枚举 | contracts：`zh-CN` \| `ja-JP` \| `en-US`             |
+| 存储 | `kv`，key `ui.locale`（与 API 地址相同存储机制）     |
+| DOM  | `setUiLocale` 内设置 `document.documentElement.lang` |
+| 默认 | `zh-CN`；不要读 `navigator.language` 覆盖            |
+| UI   | 仅设置页 Select；详细布局见 `14-C`                   |
+
+Web 与 Tauri 的 `create*Platform` 都要实现，行为一致。
 
 ## 路由
 
@@ -261,3 +276,4 @@ pnpm test:e2e
 | Web 端因为没有原生能力，某些功能不可用                   | 明确在 README 的功能对照表里写清"Web 端 / 桌面端"各支持什么。这是诚实的产品说明，不是缺陷                                               |
 | 两个 Vite 配置逐渐漂移                                   | 抽 `packages/vite-config` 共享。但等真的出现三处以上重复再抽                                                                            |
 | M0 只做骨架，M5 才补全，中间业务代码可能误用未实现的能力 | 骨架里未实现的方法**抛明确错误**（`NotImplementedError: pickDirectory 在 Tauri 端尚未实现，见 plan 12-B`），不要返回 undefined 静默失败 |
+| locale 只在一端实现                                      | CR-I18N-A 两端 `create*Platform` 必须都实现 `setUiLocale`；缺实现应在类型检查期失败                                                     |

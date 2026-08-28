@@ -1,11 +1,11 @@
 # 14 · 设计系统与多主题
 
-| 项       | 值                                  |
-| -------- | ----------------------------------- |
-| 阶段     | M0 起步（令牌层），随功能增量补组件 |
-| 依赖     | 14-A：02、12-A；14-B：对应功能 plan |
-| 预计工期 | 令牌层 1～2 天；组件随功能开发      |
-| 状态     | 进行中                              |
+| 项       | 值                                                                 |
+| -------- | ------------------------------------------------------------------ |
+| 阶段     | M0 起步（令牌层），随功能增量补组件                                |
+| 依赖     | 14-A：02、12-A；14-B：对应功能 plan；14-C：ADR-016、12 locale 接口 |
+| 预计工期 | 令牌层 1～2 天；组件随功能开发                                     |
+| 状态     | 进行中                                                             |
 
 ## 子阶段状态
 
@@ -13,6 +13,7 @@
 | ------ | --------------------------------------------------- | -------------------------- | ------ |
 | 14-A   | 共享 UI 包、Tailwind 跨包扫描、主题令牌、令牌展示页 | CR-03                      | 已完成 |
 | 14-B   | 按真实页面需求增量补 shadcn/业务组合组件            | CR-10、CR-12、CR-13、CR-15 | 进行中 |
+| 14-C   | 界面 i18n 与抗撑布局                                | CR-I18N-A / CR-I18N-B      | 未开始 |
 
 14-B 不建立单独的大批次。组件必须跟使用它的功能一起 Review，避免预造没有调用方的抽象。
 
@@ -29,6 +30,19 @@
 `Select` 不使用系统原生下拉（macOS 会遮住触发按钮）。用自绘 listbox：触发按钮 + `absolute top-full` 面板，API 仍兼容 `<option>` 与 `onChange(event.target.value)`。
 
 不在本批次批量安装 shadcn 全家桶。
+
+### 技术选型（14-C · 国际化）
+
+登记于 ADR-016。安装时以 npm 当时最新兼容版为准，跨大版本先评估。
+
+| 包              | 版本带 | 用途                                 |
+| --------------- | ------ | ------------------------------------ |
+| `i18next`       | 26.x   | 资源、插值、回退                     |
+| `react-i18next` | 17.x   | `useTranslation` / `I18nextProvider` |
+
+**不装**：`i18next-http-backend`（本地打包 JSON，禁止运行时拉文案）、`i18next-browser-languagedetector`（默认必须是 `zh-CN`，不能跟 OS 走）、FormatJS / Lingui / next-intl。
+
+资源放 `packages/app-core/src/i18n/locales/<locale>/<ns>.json`，三份 locale 的 key 树必须全等。默认回退 `zh-CN`。复数用 i18next 内置，首批不引入 ICU 插件。
 
 ## 目标
 
@@ -213,6 +227,92 @@ packages/ui/src/
 - [ ] 暗色模式下工作流节点的四种状态色都清晰可辨
 - [ ] 所有列表页有空态设计
 
+### 14-C · 界面国际化（CR-I18N）
+
+目标：设置页切换中日英后，**壳层几何稳定**，观感仍走现有语义令牌，不另开一套「翻译专用」颜色或字号。
+
+#### 入口与信息架构
+
+- 入口只在设置页顶部、后端连接卡片之前，独立「语言 / Language / 言語」卡片。
+- 使用现有 `packages/ui` 的 Select（自绘 listbox，禁止原生 `<select>` 被 macOS 挡住）。
+- 选项标签固定为语言自称，不随当前 locale 改写：`中文`、`日本語`、`English`。
+- 切换立即生效，刷新后仍在（`platform.kv`，key 与 contracts 常量一致，建议 `ui.locale`）。
+- `html lang` 必须同步，供浏览器与系统字体栈选 CJK/拉丁字形；`dir` 恒为 `ltr`。
+
+#### 布局硬约束（CR 必查）
+
+这些不是审美偏好，是防返工条款。英文通常最长，**壳层按 en-US 实测最长串定宽**，中日文不得反向把容器撑得比英文更大。
+
+| 表面               | 约束                                                                                                                                                               |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 顶栏 `AppNavLinks` | `flex-nowrap`；条目 `min-w-0 max-w-[9rem] truncate`（9rem 以英文 “Knowledge”/“Workflow”/“Settings” 实测为准，实现时量完再写进 class 或 token，禁止拍脑袋后不再测） |
+| 页标题 `h1`        | `line-clamp-2 min-h-[1.75rem]`，不得随语言把 header 从 1 行撑成 3 行以上                                                                                           |
+| 页描述             | `line-clamp-3`；允许换行，不允许撑开 `max-w-5xl` 以外                                                                                                              |
+| 主按钮             | 禁止 `w-fit` 包翻译；`min-w` 取三语最长、`px` 固定；过长 `truncate` + `title`                                                                                      |
+| 设置卡片           | `w-full`；内部 `flex-col`，控件 `min-w-0`，`sm:flex-row` 时输入框必须 `flex-1 min-w-0`                                                                             |
+| 侧边栏（对话）     | 宽度仍由现有 layout 决定，标签 `truncate`，不得因 “Conversations” 把侧栏加宽                                                                                       |
+| 工作流节点名       | I18N-B 才翻显示名；节点几何与 `type` id 不变                                                                                                                       |
+
+禁止用 JS 测量 DOM 再改宽度作为主方案。先 CSS 约束，测试断言 class 与「切换前后导航 `getBoundingClientRect().height` 差 ≤ 1px」（jsdom 不够则 Playwright 三语对照）。
+
+字体：继续系统栈，不为日文单独打包字体。`lang=ja` 时依赖系统日文字形。
+
+#### 分层与禁止项
+
+```
+contracts  localeSchema
+platform   getUiLocale / setUiLocale（kv + documentElement.lang）
+app-core   i18n 实例、JSON、页面 t()
+ui         零文案
+server     I18N-A 零改动
+```
+
+- 不要翻译：模型 id、工具 `name`、路径、traceId、评测报告、README 安装命令、`.plan/`。
+- 不要用字符串拼接句子（`t('a') + name + t('b')`）；用插值 `t('key', { name })`。
+- 不要把 `t()` 放进 `packages/ui`。
+- 不要在 `app-core` 写 `window` / `document` / `localStorage`。
+
+#### 实施步骤（开发令下达后才执行）
+
+**I18N-A（本批次可开工的全部）**
+
+1. contracts：`uiLocaleSchema`、`UI_LOCALE_STORAGE_KEY`。
+2. platform 接口 + web/tauri 实现：读写 locale、写 `document.documentElement.lang`；单测 mock。
+3. `app-core` 初始化 i18next（资源静态 import），Provider 包在现有 App 内。
+4. 设置页语言卡片 + 顶栏/PageShell 默认文案走 `common` 命名空间。
+5. 按上表给导航、标题、设置页主按钮加上抗撑 class。
+6. 三语 JSON key 树全等测试；切换 locale 的组件测试；Playwright：设置页改语言后 heading 变为英文/日文，导航高度不跳。
+7. 现有 E2E 里写死「设置」「对话」的，改为 `data-testid` 或当前 locale 夹具（默认仍 zh-CN，中文 E2E 保持绿）。
+
+**I18N-B（禁止与 A 同一 CR）**
+
+8. 对话、知识库、工作流、错误页、空态、审批文案。
+9. 已知 API 中文错误映射表（有 code 用 code，无 code 则保持原文并记录缺口，禁止猜测翻译服务端所有字符串）。
+
+#### 14-C DoD
+
+- [ ] 设置页可切换三种语言，刷新保持
+- [ ] 两端 `html[lang]` 与所选 locale 一致
+- [ ] 三份 JSON key 集合全等，缺 key 测试失败
+- [ ] 1280 与 375 视口下，zh→en→ja 顶栏高度变化 ≤ 1px（Playwright）
+- [ ] 设置页卡片宽度不随语言增加（对 `main` 或 card `width` 断言）
+- [ ] `packages/ui` 与 `packages/app-core` 无新增 `window.` / `localStorage` / `document.`（app-core 继续 eslint 护栏）
+- [ ] 未翻译 NestJS、未改模型提示词
+- [ ] `pnpm ci:local` 绿
+
+#### CR 排查步骤（审查时按此勾，不改代码）
+
+1. **对照 ADR-016**：依赖是否只登记了 i18next / react-i18next；有无 languagedetector / http-backend。
+2. **入口**：设置页是否在 MCP 卡片之前；有无第二入口藏在聊天顶栏（本批次不应有）。
+3. **分层**：`grep -n "useTranslation\\|i18next" packages/ui` 应无；`grep document\\|localStorage packages/app-core/src` 应无新增。
+4. **key 完备**：跑 locale fixture 测试；抽查 ja/en 无残留中文 UI 句子（专有名、模型 id 除外）。
+5. **布局**：按 DoD 跑 Playwright 高度/宽度；用英文最长串目视导航是否截断而不是撑行。
+6. **E2E**：默认中文用例仍过；另有一条显式切到 `en-US` 的设置页用例。
+7. **范围**：`git diff servers/` 在 I18N-A 应为空。
+8. **回退**：选一个故意删掉的 en key，界面应显示中文回退且测试应红（证明测试不是永真）。
+
+验证命令见本文件「验证命令」节追加段。
+
 ## 验证命令
 
 ```bash
@@ -235,6 +335,14 @@ git status    # 应出现在 packages/ui/src/components/ui/
 grep -rn '@ai-engine/\(app-core\|contracts\)' packages/ui/src/
 
 pnpm test --filter @ai-engine/ui
+
+# 14-C · i18n（开发开始后才跑）
+# 三语 key 树（实现后的测试名以代码为准）
+pnpm exec vitest run packages/app-core --grep locale
+# 默认中文 E2E 仍绿
+pnpm test:e2e -- e2e/web-smoke.spec.ts e2e/mcp.spec.ts
+# 布局：切换语言后顶栏高度（实现后补 spec）
+pnpm test:e2e -- e2e/i18n-layout.spec.ts
 ```
 
 ## 风险与备选
@@ -246,3 +354,5 @@ pnpm test --filter @ai-engine/ui
 | 四套主题下某些组合对比度不足（文字看不清）    | 用浏览器 devtools 的对比度检查，或在 `/dev/tokens` 页面加对比度数值显示。至少保证正文达到 4.5:1                                      |
 | 工作流画布的连线颜色不跟随主题                | React Flow 的连线样式部分是内联 SVG 属性，要用 CSS 变量注入。这一项在 `09` 的验收里也有                                              |
 | 令牌越加越多，失去约束力                      | 加令牌前先问"能不能用现有语义令牌表达"。新增前项目里搜一遍是否已有类似的                                                             |
+| 英文文案把导航折成两行                        | 以 en-US 定 `max-width` + truncate；CR 用 Playwright 高度差 ≤ 1px 卡住                                                               |
+| ja/en JSON 漏 key silently 回退中文           | 启动或测试比较三份 key 集合，不允许子集                                                                                              |
