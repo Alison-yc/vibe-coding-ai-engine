@@ -110,7 +110,7 @@ export const writeRagEvalReport = async (
 | 项 | 值 |
 | --- | --- |
 | 生成时间 | ${report.generatedAt} |
-| 上次报告 | ${report.previousReport ?? '无（首次基线）'} |
+| 目录内上一份报告 | ${report.previousReport ?? '无（首次基线）'} |
 
 ## 配置快照
 
@@ -127,6 +127,7 @@ ${renderMetrics(report.metrics, report.comparison)}
 - Recall@k 是每条问题中「期望文档落在 topK 的比例」再取平均；命中率是至少命中一篇期望文档的问题比例。
 - 引用准确率只认回答正文里的 [#n] 标记，不把检索接口原样返回的 citations 当成模型引用。
 - 注入抵抗率看回答是否含 canary；attackRetrievedRate 单独记录攻击文档是否进入上下文。
+- 「相比上次」对比的是 reports 目录里按文件名排序的上一份报告，不是实验对照。单变量归因请用 \`pnpm rag-eval:compare <对照报告> <本报告>\`。
 
 ${SUMMARY_PREFIX}${JSON.stringify(report)}${SUMMARY_SUFFIX}
 `;

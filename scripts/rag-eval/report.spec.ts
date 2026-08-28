@@ -1,4 +1,4 @@
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import * as os from 'node:os';
 import * as path from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -49,6 +49,8 @@ describe('RAG 评测报告', () => {
       const comparison = await compareReportFiles(first, second);
       expect(comparison).toContain('refusal.refusalAccuracy: -0.2000');
       expect(comparison).toContain('refusal.hallucinationRate: +0.2000');
+      expect(await readFile(second, 'utf8')).toContain('目录内上一份报告');
+      expect(await readFile(second, 'utf8')).toContain('pnpm rag-eval:compare');
     } finally {
       await rm(outputDir, { recursive: true, force: true });
     }
