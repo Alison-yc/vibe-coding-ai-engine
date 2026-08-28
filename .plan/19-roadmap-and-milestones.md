@@ -323,6 +323,8 @@ Qwen/Gemma 真实联调与 `pnpm ci:local` 均通过。
 
 实现与自检完成，状态 `待 CR`（2026-08-28）。采用 ADR-D04 的「Node runtime + NestJS production 资源」方案，PostgreSQL/Ollama 继续外置；动态端口、启动等待、日志、自动迁移、正常退出与强退清理均已验证。最终 arm64 `.app/.dmg` 构建与 `pnpm ci:local` 通过，审查通过前不进入 M5 集成 Review。
 
+CR 已通过（2026-08-28）。审查补齐干净构建依赖闭包与产物校验，避免 Node runtime 符号链接和架构错配；动态端口改由操作系统分配并回传，消除探测竞态；父进程守护提前到 Nest 初始化前，应用退出后由 Nest 优雅清理数据库与 MCP。`pnpm ci:local` 通过（598 条测试），最终 arm64 `.app/.dmg` 重建、实包 `/health` 与退出无残留验证通过。下一步为 M5 集成 Review，不进入 CR-S1。
+
 #### M5 集成 Review
 
 - Web 与 dmg 的统一对话（含模型选择）、知识库、工作流、设置页面表现一致。

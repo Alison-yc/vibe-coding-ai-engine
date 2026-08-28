@@ -14,7 +14,7 @@
 | 子阶段 | 内容                           | 所属批次      | 状态   |
 | ------ | ------------------------------ | ------------- | ------ |
 | 13-A   | 前端 dmg + 可配置外部后端      | CR-16         | 已完成 |
-| 13-B   | NestJS sidecar + Rust 进程管理 | CR-17（可选） | 待 CR  |
+| 13-B   | NestJS sidecar + Rust 进程管理 | CR-17（可选） | 已完成 |
 
 ## 目标
 
@@ -168,7 +168,9 @@ CR-16 已通过（2026-08-28）。`tauri.conf.json` 已限制为 app/dmg、设�
 - [x] 强制退出（活动监视器强制结束）后，重新打开能正常启动（不会因端口占用失败）
 - [x] sidecar 日志能在应用日志目录找到
 
-CR-17 实现与自检完成（2026-08-28），状态 `待 CR`。构建脚本把当前架构 Node runtime、NestJS `dist`、production 依赖、Drizzle migrations 与 MCP 预置打入 app；Rust 负责动态端口选择、进程启停、日志重定向和配置目录初始化，NestJS 监测父进程并在 sidecar 模式启动时自动迁移。真实 arm64 `.app` 已启动并完成 `/health`、会话与模型目录请求；正常退出与 `kill -9` 后 Node 均在 3 秒内退出。最终 `.app/.dmg` 构建和 `pnpm ci:local` 全绿。PostgreSQL 与 Ollama 仍由用户本机提供，app 体积约 302 MB，符合 ADR-D04 的可靠优先取舍。
+CR-17 实现与自检完成（2026-08-28）。构建脚本把当前架构 Node runtime、NestJS `dist`、production 依赖、Drizzle migrations 与 MCP 预置打入 app；Rust 负责动态端口选择、进程启停、日志重定向和配置目录初始化，NestJS 监测父进程并在 sidecar 模式启动时自动迁移。真实 arm64 `.app` 已启动并完成 `/health`、会话与模型目录请求；正常退出与 `kill -9` 后 Node 均在 3 秒内退出。最终 `.app/.dmg` 构建和 `pnpm ci:local` 全绿。PostgreSQL 与 Ollama 仍由用户本机提供，app 体积约 302 MB，符合 ADR-D04 的可靠优先取舍。
+
+CR-17 审查通过（2026-08-28）。审查修复了干净环境未构建 workspace 依赖、Node runtime 可能复制为符号链接、端口探测与监听间竞态、父进程在 Nest 初始化期间退出会遗留 sidecar、正常退出直接终止 Node 无法清理 MCP，以及启动错误不可见的问题。端口现由操作系统分配并经受限 loopback 地址回传；父进程失联在初始化阶段直接退出、就绪后走 Nest 优雅关闭。`pnpm ci:local` 通过（598 条测试），最终 arm64 `.app/.dmg` 重建成功，实包 `/health` 与退出无残留再次验证通过。下一步停在 M5 集成 Review。
 
 ## 验证命令
 
