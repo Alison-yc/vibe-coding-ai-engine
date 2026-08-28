@@ -33,10 +33,11 @@ Web 壳不能推迟到 M5：`07`、`09`、`14`、`15` 在更早阶段已经需�
 
 ## 技术选型（12-A）
 
-| 工具         | 版本 | 说明                                      |
-| ------------ | ---- | ----------------------------------------- |
-| react-router | 7.x  | 两端共用路由。Web 用 history，桌面用 hash |
-| Vite         | 7.x  | Web 壳端口 5173，Tauri 壳端口 1420        |
+| 工具          | 版本  | 说明                                      |
+| ------------- | ----- | ----------------------------------------- |
+| react-router  | 7.x   | 两端共用路由。Web 用 history，桌面用 hash |
+| Vite          | 7.x   | Web 壳端口 5173，Tauri 壳端口 1420        |
+| plugin-dialog | 2.7.2 | Tauri 使用系统原生目录对话框              |
 
 `packages/app-core` 里的业务代码在两个壳里跑，零改动。差异全部收敛在 `packages/platform`。
 
@@ -211,13 +212,15 @@ React Context + 一个 `usePlatform()` hook。壳在最外层注入实现：
 - [x] `pnpm dev:app` 起桌面版，上述页面与请求级文件访问表现一致
 - [x] 桌面端设置页改后端端口为错误值，显示明确的连接失败提示（不白屏）
 - [x] 桌面端「测试连接」按钮工作正常
-- [ ] 桌面端点击目录选择，弹出**原生**对话框
-- [ ] Web 端点击目录选择，弹出输入对话框（不报错、不空白）
+- [x] 桌面端点击目录选择，弹出**原生**对话框
+- [x] Web 端点击目录选择，弹出输入对话框（不报错、不空白）
 - [x] Web 端不显示窗口控制按钮（capabilities 生效）
 - [x] 桌面端重启后，配置的后端地址与主题设置仍保留
 - [x] 两端的业务代码 diff：`packages/app-core` 零差异（同一份代码）
 
-由 CR-Y4 承接并完成（2026-08-28）。M5 集成 Review 复核：`packages/app-core` 无 `@tauri-apps` / `localStorage`；两端挂载同一 `App`；设置页「保存并测试」与断连引导仅允许 localhost/127.0.0.1；`windowControls` 两端均为 false，不渲染窗口按钮。残留：两端 `nativeDirectoryPicker` 均为 false，「选择目录」按钮不展示，文件访问工作区用手输绝对路径，不阻塞交付。
+由 CR-Y4 承接并完成（2026-08-28）。M5 集成 Review 复核：`packages/app-core` 无 `@tauri-apps` / `localStorage`；两端挂载同一 `App`；设置页「保存并测试」与断连引导仅允许 localhost/127.0.0.1；`windowControls` 两端均为 false，不渲染窗口按钮。
+
+M5 后置补充（2026-08-28）：Tauri 接入官方 `plugin-dialog`，只开放 `dialog:allow-open`，`pickDirectory()` 返回系统对话框选择的绝对路径或取消时的 `null`；Web 受浏览器安全边界限制，不能取得客户端绝对路径，继续用浏览器原生 `prompt` 收集服务端可访问路径。两端行为均有平台适配测试，业务层接口不变。
 
 ## 验证命令
 
