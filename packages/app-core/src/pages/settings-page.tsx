@@ -1,4 +1,11 @@
-import type { McpRemoteTool, McpServerStatus } from '@ai-engine/contracts';
+import {
+  DEFAULT_UI_LOCALE,
+  UI_LOCALES,
+  UiLocaleSchema,
+  type McpRemoteTool,
+  type McpServerStatus,
+  type UiLocale,
+} from '@ai-engine/contracts';
 import {
   Badge,
   Button,
@@ -8,9 +15,11 @@ import {
   CardTitle,
   Input,
   Label,
+  Select,
 } from '@ai-engine/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { usePlatform } from '@ai-engine/platform';
 import {
   checkBackendConnection,
@@ -30,6 +39,53 @@ const statusLabel: Record<McpServerStatus['status'], string> = {
   connected: '已连接',
   disconnected: '未连接',
   error: '连接失败',
+};
+
+const LANGUAGE_LABELS: Record<UiLocale, string> = {
+  'zh-CN': '中文',
+  'ja-JP': '日本語',
+  'en-US': 'English',
+};
+
+const LanguageCard = () => {
+  const platform = usePlatform();
+  const { t, i18n } = useTranslation();
+  const currentLocale = UiLocaleSchema.catch(DEFAULT_UI_LOCALE).parse(i18n.resolvedLanguage);
+  const change = useMutation({
+    mutationFn: async (locale: UiLocale) => {
+      await Promise.all([i18n.changeLanguage(locale), platform.setUiLocale(locale)]);
+    },
+  });
+
+  return (
+    <Card data-testid="language-card" className="w-full min-w-0 overflow-hidden">
+      <CardHeader>
+        <CardTitle className="line-clamp-2">{t('settings.language.cardTitle')}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex min-w-0 flex-col gap-3">
+        <Label htmlFor="settings-ui-locale">{t('settings.language.label')}</Label>
+        <Select
+          id="settings-ui-locale"
+          value={currentLocale}
+          disabled={change.isPending}
+          className="w-full max-w-sm min-w-0"
+          onChange={(event) => change.mutate(UiLocaleSchema.parse(event.target.value))}
+        >
+          {UI_LOCALES.map((locale) => (
+            <option key={locale} value={locale}>
+              {LANGUAGE_LABELS[locale]}
+            </option>
+          ))}
+        </Select>
+        <p className="text-muted-foreground line-clamp-3 text-sm">
+          {t('settings.language.description')}
+        </p>
+        {change.error ? (
+          <p className="text-destructive text-sm">{t('settings.language.changeError')}</p>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
 };
 
 const BackendAddressCard = () => {
@@ -185,6 +241,7 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
 
 export const SettingsPage = () => {
   const platform = usePlatform();
+  const { t } = useTranslation();
   const servers = useQuery({
     queryKey: ['mcp-servers'],
     queryFn: () => listMcpServers(platform),
@@ -196,10 +253,11 @@ export const SettingsPage = () => {
 
   return (
     <PageShell
-      title="设置"
-      description="管理 MCP server。command 只能写在服务端配置文件里，页面只能开关与勾选工具。"
+      title={t('settings.title')}
+      description={t('settings.description')}
       nav={<AppNavLinks />}
     >
+      <LanguageCard />
       {platform.capabilities.backendConnectionSetup ? <BackendAddressCard /> : null}
       {servers.error || exposed.error ? (
         <p className="text-destructive text-sm">

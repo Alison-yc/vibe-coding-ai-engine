@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useParams } from 'react-router';
+import { useTranslation } from 'react-i18next';
 import { usePlatform } from '@ai-engine/platform';
 import { ChatPage } from './pages/chat-page';
 import { KnowledgeDetailPage } from './pages/knowledge-detail-page';
@@ -17,11 +18,16 @@ const SettingsPage = lazy(async () => ({
   default: (await import('./pages/settings-page')).SettingsPage,
 }));
 
-const LazyPage = ({ children }: { children: ReactNode }) => (
-  <Suspense fallback={<main className="bg-background text-foreground min-h-dvh p-6">加载中…</main>}>
-    {children}
-  </Suspense>
-);
+const LazyPage = ({ children }: { children: ReactNode }) => {
+  const { t } = useTranslation();
+  return (
+    <Suspense
+      fallback={<main className="bg-background text-foreground min-h-dvh p-6">{t('loading')}</main>}
+    >
+      {children}
+    </Suspense>
+  );
+};
 
 export const AppRoutes = () => (
   <Routes>

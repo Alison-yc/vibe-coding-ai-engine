@@ -1,11 +1,18 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
+import {
+  createMemoryKeyValueStore,
+  PlatformProvider,
+  readUiLocale,
+  writeUiLocale,
+  type Platform,
+} from '@ai-engine/platform';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsPage } from './settings-page';
+import { AppI18nProvider } from '../i18n/i18n-provider';
 
 const mocks = vi.hoisted(() => ({
   listServers: vi.fn(),
@@ -23,6 +30,7 @@ vi.mock('../mcp/mcp-api', () => ({
   listExposedAgentTools: mocks.listExposed,
 }));
 
+const kv = createMemoryKeyValueStore();
 const platform = {
   capabilities: {
     nativeDirectoryPicker: false,
@@ -32,8 +40,14 @@ const platform = {
   },
   pickDirectory: async () => null,
   pickFiles: async () => [],
-  kv: createMemoryKeyValueStore(),
+  kv,
   getApiBaseUrl: () => 'http://localhost:3000',
+  getUiLocale: () => readUiLocale(kv),
+  setUiLocale: (locale) =>
+    writeUiLocale(kv, locale, (next) => {
+      document.documentElement.lang = next;
+      document.documentElement.dir = 'ltr';
+    }),
   openExternal: async () => undefined,
   getAppInfo: async () => ({ name: 'test', version: '0' }),
   getSystemTheme: () => 'light',
@@ -46,9 +60,12 @@ const platform = {
   },
 } satisfies Platform;
 
-afterEach(() => {
+afterEach(async () => {
   cleanup();
   vi.clearAllMocks();
+  await kv.remove('ui.locale');
+  document.documentElement.lang = '';
+  document.documentElement.dir = '';
 });
 
 describe('SettingsPage', () => {
@@ -94,15 +111,17 @@ describe('SettingsPage', () => {
     });
     render(
       <PlatformProvider value={platform}>
-        <QueryClientProvider
-          client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-        >
-          <MemoryRouter initialEntries={['/settings']}>
-            <Routes>
-              <Route path="/settings" element={<SettingsPage />} />
-            </Routes>
-          </MemoryRouter>
-        </QueryClientProvider>
+        <AppI18nProvider>
+          <QueryClientProvider
+            client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+          >
+            <MemoryRouter initialEntries={['/settings']}>
+              <Routes>
+                <Route path="/settings" element={<SettingsPage />} />
+              </Routes>
+            </MemoryRouter>
+          </QueryClientProvider>
+        </AppI18nProvider>
       </PlatformProvider>,
     );
     expect(await screen.findByText('已连接')).toBeTruthy();
@@ -112,5 +131,30 @@ describe('SettingsPage', () => {
     expect(mocks.patch).toHaveBeenCalledWith(platform, 'filesystem', {
       toolFilter: { include: ['read_file', 'write_file'] },
     });
+  });
+
+  it('切换语言后立即更新设置页并持久化', async () => {
+    mocks.listServers.mockResolvedValue([]);
+    mocks.listExposed.mockResolvedValue({ tools: [], dropped: [], maxToolCount: 6 });
+    render(
+      <PlatformProvider value={platform}>
+        <AppI18nProvider>
+          <QueryClientProvider client={new QueryClient()}>
+            <MemoryRouter>
+              <SettingsPage />
+            </MemoryRouter>
+          </QueryClientProvider>
+        </AppI18nProvider>
+      </PlatformProvider>,
+    );
+
+    expect(await screen.findByRole('heading', { name: '设置' })).toBeTruthy();
+    const select = document.querySelector<HTMLSelectElement>('#settings-ui-locale');
+    expect(select).not.toBeNull();
+    fireEvent.change(select!, { target: { value: 'en-US' } });
+
+    expect(await screen.findByRole('heading', { name: 'Settings' })).toBeTruthy();
+    await waitFor(() => expect(document.documentElement.lang).toBe('en-US'));
+    await expect(platform.getUiLocale()).resolves.toBe('en-US');
   });
 });

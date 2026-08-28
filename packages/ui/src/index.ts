@@ -14,7 +14,7 @@ export { Badge, badgeVariants, type BadgeProps } from './components/ui/badge';
 export { Select, type SelectProps } from './components/ui/select';
 export { Separator, type SeparatorProps } from './components/ui/separator';
 export { FileInput, type FileInputProps } from './components/ui/file-input';
-export { ThemeToggle } from './components/theme-toggle';
+export { ThemeToggle, type ThemeToggleLabels } from './components/theme-toggle';
 export { cn } from './lib/utils';
 export {
   applyDocumentTheme,

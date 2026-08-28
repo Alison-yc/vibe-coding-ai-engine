@@ -105,7 +105,11 @@ describe('Select', () => {
 
   it('无选项时显示占位且支持函数 ref 与无 onChange 选择', () => {
     const callbackRef = vi.fn();
-    render(<Select ref={callbackRef}>忽略文本</Select>);
+    render(
+      <Select ref={callbackRef} placeholder="请选择">
+        忽略文本
+      </Select>,
+    );
     expect(button().textContent).toContain('请选择');
     expect(callbackRef).toHaveBeenCalledWith(expect.any(HTMLSelectElement));
     render(

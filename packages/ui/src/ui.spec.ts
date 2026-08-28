@@ -174,6 +174,12 @@ describe('ThemeToggle', () => {
       createElement(ThemeToggle, {
         preference: DEFAULT_THEME_PREFERENCE,
         onPreferenceChange: () => undefined,
+        labels: {
+          appearance: '外观',
+          palette: '主题色',
+          modes: { light: '亮色', dark: '暗色', system: '跟随系统' },
+          palettes: { neutral: '默认', blue: '蓝', green: '绿', purple: '紫' },
+        },
       }),
     );
     expect(html).toContain('跟随系统');

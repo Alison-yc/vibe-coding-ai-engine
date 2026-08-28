@@ -1,3 +1,5 @@
+import type { UiLocale } from '@ai-engine/contracts';
+
 export type FileRef = {
   name: string;
   mimeType: string;
@@ -42,6 +44,8 @@ export type Platform = {
   pickFiles: (opts?: { accept?: string; multiple?: boolean }) => Promise<FileRef[]>;
   kv: KeyValueStore;
   getApiBaseUrl: () => string;
+  getUiLocale: () => Promise<UiLocale>;
+  setUiLocale: (locale: UiLocale) => Promise<void>;
   openExternal: (url: string) => Promise<void>;
   getAppInfo: () => Promise<AppInfo>;
   getSystemTheme: () => SystemTheme;

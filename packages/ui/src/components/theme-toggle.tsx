@@ -8,29 +8,25 @@ import {
   type ThemePreference,
 } from '../theme';
 
-const MODE_LABEL: Record<ThemeMode, string> = {
-  light: '亮色',
-  dark: '暗色',
-  system: '跟随系统',
-};
-
-const PALETTE_LABEL: Record<ThemePalette, string> = {
-  neutral: '默认',
-  blue: '蓝',
-  green: '绿',
-  purple: '紫',
+export type ThemeToggleLabels = {
+  appearance: string;
+  palette: string;
+  modes: Record<ThemeMode, string>;
+  palettes: Record<ThemePalette, string>;
 };
 
 export const ThemeToggle = ({
   preference,
   onPreferenceChange,
+  labels,
 }: {
   preference: ThemePreference;
   onPreferenceChange: (preference: ThemePreference) => void;
+  labels: ThemeToggleLabels;
 }) => (
   <div className="flex flex-col gap-4">
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-muted-foreground text-sm">外观</span>
+      <span className="text-muted-foreground text-sm">{labels.appearance}</span>
       {THEME_MODES.map((mode) => (
         <Button
           key={mode}
@@ -44,12 +40,12 @@ export const ThemeToggle = ({
         >
           {mode === 'dark' ? <Moon size={16} /> : null}
           {mode === 'light' ? <Sun size={16} /> : null}
-          {MODE_LABEL[mode]}
+          {labels.modes[mode]}
         </Button>
       ))}
     </div>
     <div className="flex flex-wrap items-center gap-2">
-      <span className="text-muted-foreground text-sm">主题色</span>
+      <span className="text-muted-foreground text-sm">{labels.palette}</span>
       {THEME_PALETTES.map((palette) => (
         <Button
           key={palette}
@@ -61,7 +57,7 @@ export const ThemeToggle = ({
             onPreferenceChange({ ...preference, palette });
           }}
         >
-          {PALETTE_LABEL[palette]}
+          {labels.palettes[palette]}
         </Button>
       ))}
     </div>

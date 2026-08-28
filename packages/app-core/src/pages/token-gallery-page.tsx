@@ -13,6 +13,7 @@ import {
   ThemeToggle,
 } from '@ai-engine/ui';
 import { useTheme } from '../theme-provider';
+import { ZH_CN_THEME_TOGGLE_LABELS } from '../components/theme-toggle-labels';
 
 const SWATCHES = [
   { name: 'background', className: 'bg-background' },
@@ -55,7 +56,11 @@ export const TokenGalleryPage = () => {
         </p>
       </header>
 
-      <ThemeToggle preference={preference} onPreferenceChange={setPreference} />
+      <ThemeToggle
+        preference={preference}
+        onPreferenceChange={setPreference}
+        labels={ZH_CN_THEME_TOGGLE_LABELS}
+      />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-base">语义色</h2>
@@ -83,7 +88,7 @@ export const TokenGalleryPage = () => {
             <Label htmlFor="token-textarea">多行输入</Label>
             <Textarea id="token-textarea" readOnly value="多行输入使用语义令牌，不写硬编码色值。" />
           </div>
-          <FileInput buttonLabel="上传示例" disabled />
+          <FileInput buttonLabel="上传示例" emptyHint="未选择文件" disabled />
         </div>
       </section>
 

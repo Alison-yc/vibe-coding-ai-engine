@@ -21,4 +21,15 @@ describe('createWebPlatform', () => {
     vi.spyOn(window, 'prompt').mockReturnValue(null);
     await expect(createWebPlatform().pickDirectory()).resolves.toBeNull();
   });
+
+  it('界面语言默认中文并持久化到 html lang', async () => {
+    const platform = createWebPlatform();
+    await expect(platform.getUiLocale()).resolves.toBe('zh-CN');
+
+    await platform.setUiLocale('en-US');
+
+    await expect(platform.getUiLocale()).resolves.toBe('en-US');
+    expect(document.documentElement.lang).toBe('en-US');
+    expect(document.documentElement.dir).toBe('ltr');
+  });
 });

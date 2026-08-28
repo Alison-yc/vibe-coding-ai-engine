@@ -30,6 +30,7 @@ import { useChatStream } from '../chat/use-chat-stream';
 import { useStickToBottom } from '../chat/use-stick-to-bottom';
 import { listDatasets } from '../knowledge/knowledge-api';
 import { useTheme } from '../theme-provider';
+import { ZH_CN_THEME_TOGGLE_LABELS } from '../components/theme-toggle-labels';
 
 export const ChatPage = () => {
   const platform = usePlatform();
@@ -591,7 +592,11 @@ export const ChatSidebarPanel = ({
           </Link>
         </Button>
       </div>
-      <ThemeToggle preference={preference} onPreferenceChange={setPreference} />
+      <ThemeToggle
+        preference={preference}
+        onPreferenceChange={setPreference}
+        labels={ZH_CN_THEME_TOGGLE_LABELS}
+      />
     </div>
   </>
 );

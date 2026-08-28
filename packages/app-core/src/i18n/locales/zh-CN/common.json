@@ -1,0 +1,22 @@
+{
+  "loading": "正在加载…",
+  "nav": {
+    "chat": "对话",
+    "knowledge": "知识库",
+    "workflow": "工作流",
+    "settings": "设置"
+  },
+  "shell": {
+    "back": "返回"
+  },
+  "settings": {
+    "title": "设置",
+    "description": "管理界面语言、后端连接与 MCP 工具。",
+    "language": {
+      "cardTitle": "界面语言",
+      "label": "语言",
+      "description": "切换立即生效，并会在此设备上保存。",
+      "changeError": "无法保存语言设置，请重试。"
+    }
+  }
+}

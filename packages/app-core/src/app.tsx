@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { BrowserRouter, HashRouter } from 'react-router';
 import { AppErrorBoundary } from './components/app-error-boundary';
 import { BackendConnectionGate } from './components/backend-connection-gate';
+import { AppI18nProvider } from './i18n/i18n-provider';
 import { AppRoutes } from './app-routes';
 import { ThemeProvider } from './theme-provider';
 
@@ -23,11 +24,13 @@ export const App = () => {
     <QueryClientProvider client={queryClient}>
       <Router>
         <ThemeProvider>
-          <AppErrorBoundary platform={platform}>
-            <BackendConnectionGate>
-              <AppRoutes />
-            </BackendConnectionGate>
-          </AppErrorBoundary>
+          <AppI18nProvider>
+            <AppErrorBoundary platform={platform}>
+              <BackendConnectionGate>
+                <AppRoutes />
+              </BackendConnectionGate>
+            </AppErrorBoundary>
+          </AppI18nProvider>
         </ThemeProvider>
       </Router>
     </QueryClientProvider>

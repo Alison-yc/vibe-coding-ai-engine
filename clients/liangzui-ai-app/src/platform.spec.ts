@@ -37,4 +37,15 @@ describe('createTauriPlatform', () => {
     await expect(platform.pickDirectory()).resolves.toBeNull();
     expect(platform.capabilities.nativeDirectoryPicker).toBe(true);
   });
+
+  it('界面语言默认中文并持久化到 html lang', async () => {
+    const platform = createTauriPlatform();
+    await expect(platform.getUiLocale()).resolves.toBe('zh-CN');
+
+    await platform.setUiLocale('ja-JP');
+
+    await expect(platform.getUiLocale()).resolves.toBe('ja-JP');
+    expect(document.documentElement.lang).toBe('ja-JP');
+    expect(document.documentElement.dir).toBe('ltr');
+  });
 });

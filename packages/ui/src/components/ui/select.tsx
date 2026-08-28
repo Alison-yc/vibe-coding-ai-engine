@@ -16,7 +16,9 @@ import {
 } from 'react';
 import { cn } from '../../lib/utils';
 
-export type SelectProps = SelectHTMLAttributes<HTMLSelectElement>;
+export type SelectProps = SelectHTMLAttributes<HTMLSelectElement> & {
+  placeholder?: string;
+};
 
 type SelectOption = {
   value: string;
@@ -53,7 +55,19 @@ const emitChange = (onChange: SelectProps['onChange'], value: string): void => {
 
 export const Select = forwardRef<HTMLSelectElement, SelectProps>(
   (
-    { className, children, value, defaultValue, disabled, id, name, onChange, onBlur, ...props },
+    {
+      className,
+      children,
+      value,
+      defaultValue,
+      disabled,
+      id,
+      name,
+      onChange,
+      onBlur,
+      placeholder = '',
+      ...props
+    },
     ref,
   ) => {
     const listId = useId();
@@ -128,7 +142,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
           onClick={() => setOpen((current) => !current)}
           onBlur={onBlur as never}
         >
-          <span className="truncate">{selected?.label ?? '请选择'}</span>
+          <span className="truncate">{selected?.label ?? placeholder}</span>
           <ChevronDown className="text-muted-foreground size-4 shrink-0 opacity-70" />
         </button>
         {open ? (

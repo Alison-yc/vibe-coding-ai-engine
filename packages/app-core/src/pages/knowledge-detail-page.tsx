@@ -130,6 +130,7 @@ export const KnowledgeDetailPage = () => {
             accept=".txt,.md,.pdf"
             onChange={handlers.onUploadChange}
             buttonLabel="上传文件"
+            emptyHint="未选择文件"
           />
         </CardContent>
       </Card>
