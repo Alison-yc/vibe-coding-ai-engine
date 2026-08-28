@@ -13,7 +13,7 @@
 | ------ | ---------------------------------------------- | ------------------------ | ------ |
 | 17-A   | 快速门禁、测试、构建、安全 job、缓存、变更检测 | CR-04                    | 已完成 |
 | 17-B   | Postgres service container 与数据库集成测试    | CR-06                    | 进行中 |
-| 17-C   | tag 触发的 macOS release / dmg artifact        | CR-16（本机 dmg 通过后） | 未开始 |
+| 17-C   | tag 触发的 macOS release / dmg artifact        | CR-16（本机 dmg 通过后） | 已完成 |
 
 CI 只接入已经在本地跑通的命令。不要先写一个“看起来完整”的 workflow，再让后续实现迁就它。
 
@@ -210,7 +210,9 @@ pnpm ci:local
 ### 17-C · CR-16 后
 
 - [ ] tag 能触发 macOS 构建并上传 dmg artifact
-- [ ] 普通 PR 不运行 release job
+- [x] 普通 PR 不运行 release job
+
+CR-16 已通过（2026-08-28）。本机 dmg 成功后新增 `release.yml`，仅响应 `v*` tag 与手动触发，在 `macos-14` 安装固定 Node/pnpm/Rust 环境、复用 Rust 缓存、执行 `pnpm tauri:build` 并上传 dmg；workflow 未监听 `pull_request`。真实 tag 触发与 artifact 下载将在发布版本 tag 创建后验证，当前信息无法确认。
 
 ## 验证命令
 

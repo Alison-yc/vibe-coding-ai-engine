@@ -283,6 +283,8 @@ plan 编号表示**主题**，不是严格的执行队列。实际执行顺序�
 - **包含**：`13-A`，前端 dmg + 可配置外部后端；本机打包通过后补 `17-C` release workflow。
 - **必须先验收**：这是承诺交付物，完成后项目已经可以收尾。
 
+CR 已通过（2026-08-28）。桌面端已加入本地后端健康检查、断连引导和地址持久化，CSP、窗口尺寸与 bundle target 已收紧，自定义图标已替换；对话页增加桌面常驻侧边栏和 Web 窄屏会话抽屉。Bugbot 复审无阻塞项，`pnpm ci:local` 全绿（579 条测试），真实 arm64 app/dmg 重新构建成功，6 条 Playwright E2E 通过。本机 dmg 通过后已新增仅由 `v*` tag 或手动触发的 macOS artifact workflow。打包版四页面视觉走查、最小窗口画布操作和 Tauri devtools CSP 检查受当前终端权限限制，当前信息无法确认，保留至 M5 集成 Review；真实 tag artifact 在发布版本 tag 创建后验证。
+
 #### CR-17 · sidecar 阶段二（可选）
 
 - **包含**：`13-B`。
