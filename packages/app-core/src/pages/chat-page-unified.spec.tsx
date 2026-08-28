@@ -4,7 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useChatStreamStore } from '../chat/chat-stream-store';
 import { ThemeProvider } from '../theme-provider';
 import { ChatPage } from './chat-page';
@@ -12,6 +12,7 @@ import { ChatPage } from './chat-page';
 const mocks = vi.hoisted(() => ({
   listSessions: vi.fn(),
   listMessages: vi.fn(),
+  listModels: vi.fn(),
   createSession: vi.fn(),
   updateSession: vi.fn(),
   deleteSession: vi.fn(),
@@ -23,6 +24,7 @@ const mocks = vi.hoisted(() => ({
 vi.mock('../chat/chat-api', () => ({
   listChatSessions: mocks.listSessions,
   listChatMessages: mocks.listMessages,
+  listChatModels: mocks.listModels,
   createChatSession: mocks.createSession,
   updateChatSession: mocks.updateSession,
   deleteChatSession: mocks.deleteSession,
@@ -65,6 +67,41 @@ const platform = {
   },
 } satisfies Platform;
 
+beforeEach(() => {
+  mocks.listModels.mockResolvedValue([
+    {
+      id: 'qwen3.5:2b',
+      installed: true,
+      kind: 'evaluated',
+      capability: {
+        id: 'qwen3.5:2b',
+        supportsTools: true,
+        supportsVision: false,
+        supportsJsonMode: true,
+        needsToolCallFallback: false,
+        maxToolCount: 6,
+        effectiveContextTokens: 8192,
+        sourceReport: 'report.md',
+      },
+    },
+    {
+      id: 'other-chat:latest',
+      installed: true,
+      kind: 'untested',
+      capability: {
+        id: 'other-chat:latest',
+        supportsTools: false,
+        supportsVision: false,
+        supportsJsonMode: false,
+        needsToolCallFallback: false,
+        maxToolCount: 0,
+        effectiveContextTokens: 8192,
+        sourceReport: 'untested-conservative-default',
+      },
+    },
+  ]);
+});
+
 afterEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -81,6 +118,43 @@ afterEach(() => {
 });
 
 describe('统一对话文件能力', () => {
+  it('切换未知模型后关闭并禁用文件访问', async () => {
+    const unknownSession = { ...session, modelId: 'other-chat:latest' };
+    mocks.listSessions.mockResolvedValueOnce([session]).mockResolvedValue([unknownSession]);
+    mocks.listMessages.mockResolvedValue([]);
+    mocks.listDatasets.mockResolvedValue([]);
+    mocks.updateSession.mockResolvedValue(unknownSession);
+    const user = userEvent.setup();
+    render(
+      <PlatformProvider value={platform}>
+        <ThemeProvider>
+          <QueryClientProvider
+            client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+          >
+            <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
+              <Routes>
+                <Route path="/chat/:sessionId" element={<ChatPage />} />
+              </Routes>
+            </MemoryRouter>
+          </QueryClientProvider>
+        </ThemeProvider>
+      </PlatformProvider>,
+    );
+
+    const modelSelect = await screen.findByLabelText('对话模型');
+    await waitFor(() => expect((modelSelect as HTMLSelectElement).disabled).toBe(false));
+    await user.selectOptions(modelSelect, 'other-chat:latest');
+    await waitFor(() =>
+      expect(mocks.updateSession).toHaveBeenCalledWith(platform, session.id, {
+        modelId: 'other-chat:latest',
+      }),
+    );
+    expect(await screen.findByText(/仅支持普通对话与知识库问答/)).toBeDefined();
+    expect((screen.getByRole('checkbox', { name: '文件访问' }) as HTMLInputElement).disabled).toBe(
+      true,
+    );
+  });
+
   it('按轮次开启文件访问并通过 chat stream 发送', async () => {
     mocks.listSessions.mockResolvedValue([session]);
     mocks.listMessages.mockResolvedValue([]);

@@ -70,7 +70,7 @@ export interface ChatRepository {
   getSession(id: string): Promise<ChatSession | null>;
   updateSession(
     id: string,
-    patch: Partial<{ title: string; datasetIds: string[] }>,
+    patch: Partial<{ title: string; datasetIds: string[]; modelId: string }>,
   ): Promise<ChatSession | null>;
   deleteSession(id: string): Promise<void>;
   listMessages(sessionId: string): Promise<ChatMessage[]>;
@@ -122,7 +122,7 @@ export class InMemoryChatRepository implements ChatRepository {
 
   async updateSession(
     id: string,
-    patch: Partial<{ title: string; datasetIds: string[] }>,
+    patch: Partial<{ title: string; datasetIds: string[]; modelId: string }>,
   ): Promise<ChatSession | null> {
     await Promise.resolve();
     const current = this.sessions.get(id);
@@ -223,13 +223,14 @@ export class DrizzleChatRepository implements ChatRepository {
 
   async updateSession(
     id: string,
-    patch: Partial<{ title: string; datasetIds: string[] }>,
+    patch: Partial<{ title: string; datasetIds: string[]; modelId: string }>,
   ): Promise<ChatSession | null> {
     const [row] = await this.db
       .update(chatSessions)
       .set({
         ...(patch.title === undefined ? {} : { title: patch.title }),
         ...(patch.datasetIds === undefined ? {} : { datasetIds: patch.datasetIds }),
+        ...(patch.modelId === undefined ? {} : { modelId: patch.modelId }),
         updatedAt: new Date(),
       })
       .where(eq(chatSessions.id, id))

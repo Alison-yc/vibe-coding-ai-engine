@@ -88,6 +88,24 @@ const run = async (
   );
 
 describe('AgentService', () => {
+  it('未测评模型无法通过 Agent 入口装配工具', async () => {
+    const unknownSession = await chat.createSession({
+      title: '未知模型',
+      modelId: 'other-chat:latest',
+      datasetIds: [],
+      agentType: 'agent',
+    });
+    await expect(
+      service.stream(
+        unknownSession.id,
+        { content: '读取 README', workspaceRoot: root, mode: 'read-only' },
+        new AbortController().signal,
+        () => undefined,
+      ),
+    ).rejects.toThrow('未通过工具能力测评');
+    expect(gateway.calls.some((call) => call.method === 'agentChat')).toBe(false);
+  });
+
   it('文件访问关闭时拒绝模型伪造的文件工具调用', async () => {
     gateway.enqueueAgentResponse({
       content: '',
@@ -762,7 +780,7 @@ describe('AgentService', () => {
     expect(gateway.calls.filter((call) => call.method === 'agentChat')).toHaveLength(1);
   });
 
-  it('天气意图优先暴露单个天气 MCP 工具并按 execute 请求审批', async () => {
+  it('模型未主动调用天气工具时仍规范化中文城市并请求审批', async () => {
     const registry = new AgentToolRegistry();
     registry.register(new ReadTool());
     registry.register(new WriteTool());
@@ -805,12 +823,7 @@ describe('AgentService', () => {
             : null,
       },
     );
-    gateway.enqueueAgentResponse({
-      content: '',
-      toolCalls: [
-        { id: 'weather-1', name: 'get_weather_summary', arguments: { city_name: 'Beijing' } },
-      ],
-    });
+    gateway.enqueueAgentResponse({ content: '我没有天气工具。', toolCalls: [] });
     gateway.enqueueAgentResponse({ content: '北京当前 28°C。', toolCalls: [] });
     const events: AgentStreamEvent[] = [];
     const pending = run('查询北京天气', events);
@@ -822,10 +835,15 @@ describe('AgentService', () => {
     if (firstCall?.method !== 'agentChat') throw new Error('missing agent call');
     expect(firstCall.request.tools[0]?.name).toBe('get_weather_summary');
     expect(firstCall.request.tools).toHaveLength(6);
+    expect(firstCall.request.messages[0]?.content).toContain('必须先调用该工具');
+    expect(firstCall.request.messages[0]?.content).toContain('Beijing, China');
     const approval = events.find((event) => event.event === 'permission.asked');
     if (approval?.event !== 'permission.asked') throw new Error('missing approval');
     service.respondPermission(sessionId, approval.data.id, 'allow-once');
     await pending;
+    expect(JSON.stringify(await chat.listMessages(sessionId))).toContain(
+      '"city_name":"Beijing, China"',
+    );
   });
 
   it('列出暴露工具时内置优先并标记 MCP 来源', async () => {

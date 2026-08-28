@@ -1,6 +1,7 @@
 import { NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { ChatController } from './chat.controller';
+import { ModelsController } from './models.controller';
 
 const SESSION = '00000000-0000-4000-8000-000000000001';
 
@@ -16,6 +17,7 @@ describe('ChatController', () => {
   it('转发 CRUD 成功路径', async () => {
     const chat = {
       createSession: vi.fn().mockResolvedValue({ id: SESSION }),
+      listModels: vi.fn().mockResolvedValue([]),
       listSessions: vi.fn().mockResolvedValue([]),
       getSession: vi.fn().mockResolvedValue({ id: SESSION }),
       updateSession: vi.fn().mockResolvedValue({ id: SESSION, title: '改名' }),
@@ -23,7 +25,9 @@ describe('ChatController', () => {
       listMessages: vi.fn().mockResolvedValue([]),
     };
     const controller = new ChatController(chat as never);
+    const modelsController = new ModelsController(chat as never);
     await expect(controller.createSession({})).resolves.toEqual({ id: SESSION });
+    await expect(modelsController.listModels()).resolves.toEqual({ models: [] });
     await expect(controller.listSessions()).resolves.toEqual({ sessions: [] });
     await expect(controller.getSession(SESSION)).resolves.toEqual({ id: SESSION });
     await expect(controller.updateSession(SESSION, { title: '改名' })).resolves.toEqual({
@@ -44,6 +48,7 @@ describe('ChatController', () => {
       status: vi.fn(),
       setHeader: vi.fn(),
       flushHeaders: vi.fn(),
+      flush: vi.fn(),
       write: (chunk: string) => {
         writes.push(chunk);
       },
@@ -58,6 +63,7 @@ describe('ChatController', () => {
     );
     expect(response.setHeader).toHaveBeenCalledWith('X-Accel-Buffering', 'no');
     expect(writes.join('')).toContain('event: error');
+    expect(response.flush).toHaveBeenCalled();
     expect(response.end).toHaveBeenCalled();
   });
 });

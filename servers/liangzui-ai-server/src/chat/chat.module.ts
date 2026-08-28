@@ -10,6 +10,7 @@ import { ObservabilityModule } from '../observability/observability.module';
 import { ChatController } from './chat.controller';
 import { createChatRepository, CHAT_REPOSITORY } from './chat.repository';
 import { ChatService } from './chat.service';
+import { ModelsController } from './models.controller';
 
 @Module({
   imports: [
@@ -19,7 +20,7 @@ import { ChatService } from './chat.service';
     KnowledgeModule,
     forwardRef(() => AgentModule),
   ],
-  controllers: [ChatController],
+  controllers: [ChatController, ModelsController],
   providers: [
     {
       provide: CHAT_REPOSITORY,

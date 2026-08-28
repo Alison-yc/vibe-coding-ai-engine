@@ -22,6 +22,10 @@ import { abortOnClientClose } from '../http/abort-on-client-close';
 import { ZodValidationPipe } from '../http/zod-validation.pipe';
 import { AgentService } from './agent.service';
 
+const flushResponse = (response: Response): void => {
+  (response as Response & { flush?: () => void }).flush?.();
+};
+
 @Controller('agent')
 export class AgentController {
   constructor(@Inject(AgentService) private readonly agent: AgentService) {}
@@ -50,6 +54,7 @@ export class AgentController {
       if (response.destroyed || response.writableEnded) return;
       response.write(`event: ${event}\n`);
       response.write(`data: ${JSON.stringify(data)}\n\n`);
+      flushResponse(response);
     };
     try {
       await this.agent.stream(sessionId, body, abortOnClientClose(request), (event) => {

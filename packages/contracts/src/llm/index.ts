@@ -6,7 +6,11 @@ export {
 } from './api.js';
 export {
   EMBEDDING_DIMENSION,
+  ChatModelCatalogItemSchema,
+  ChatModelCatalogResponseSchema,
   GenerationParamsSchema,
+  type ChatModelCatalogItem,
+  type ChatModelCatalogResponse,
   ModelCapabilitySchema,
   ModelIdSchema,
   type GenerationParams,

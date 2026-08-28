@@ -23,7 +23,12 @@ import { ApprovalCoordinator } from './approval-coordinator';
 import { evaluatePermission } from './permission-engine';
 import { assertAllowedWorkspaceRoot } from './workspace-path';
 import { AgentToolRegistry } from './tools/tool';
-import { isLiveWeatherQuery, selectToolsForInput } from '../mcp/merge-tools';
+import {
+  extractWeatherCity,
+  isLiveWeatherQuery,
+  normalizeMcpToolArguments,
+  selectToolsForInput,
+} from '../mcp/merge-tools';
 import { MCP_TOOL_CATALOG, type McpToolCatalog } from '../mcp/mcp-tool-catalog';
 
 export const AGENT_TOOL_REGISTRY = Symbol('AGENT_TOOL_REGISTRY');
@@ -39,16 +44,23 @@ const AGENT_SYSTEM_PROMPT = `你是本地 AI 助手。只在完成任务确实�
 6. 实时天气只能来自名称或描述含 weather/天气的 MCP 工具；没有该工具时必须说明未连接，绝不编造。
 完成工具操作后，用简体中文简要说明结果。`;
 
-const buildSystemPrompt = (mode: AgentInput['mode'], fileAccess: boolean): string => {
+const buildSystemPrompt = (
+  mode: AgentInput['mode'],
+  fileAccess: boolean,
+  requiredWeatherTool?: string,
+): string => {
+  const weatherLine = requiredWeatherTool
+    ? `\n本轮是实时天气请求，且已提供 ${requiredWeatherTool}。必须先调用该工具，不得直接声称没有天气工具。city_name 必须使用英文城市名加国家，例如 Beijing, China。`
+    : '';
   if (!fileAccess) {
     return `${AGENT_SYSTEM_PROMPT}
-当前轮次未开启文件访问：read、write、edit、glob、grep 与文件类 MCP 均不可用。只处理日期、计算、UUID 或实时天气请求。`;
+当前轮次未开启文件访问：read、write、edit、glob、grep 与文件类 MCP 均不可用。只处理日期、计算、UUID 或实时天气请求。${weatherLine}`;
   }
   const modeLine =
     mode === 'read-only'
       ? '当前为只读模式：禁止创建、覆盖或修改文件。若用户要求写入，直接用中文说明只读限制并结束，不要反复调用只读工具。'
       : '当前为编辑模式：写入与修改文件前必须等待用户审批。';
-  return `${AGENT_SYSTEM_PROMPT}\n${modeLine}`;
+  return `${AGENT_SYSTEM_PROMPT}\n${modeLine}${weatherLine}`;
 };
 
 export const toolCallFingerprint = (call: Pick<AgentToolCall, 'name' | 'arguments'>): string => {
@@ -201,6 +213,7 @@ export class AgentService implements OnModuleInit {
   ): Promise<void> {
     const session = await this.chatRepository.getSession(sessionId);
     if (!session || session.agentType !== 'agent') throw new Error('文件助手会话不存在');
+    this.assertToolsSupported(session.modelId);
     const workspaceRoot = await assertAllowedWorkspaceRoot(
       request.workspaceRoot,
       this.allowedWorkspaceRoots(),
@@ -231,6 +244,7 @@ export class AgentService implements OnModuleInit {
   ): Promise<void> {
     const session = await this.chatRepository.getSession(sessionId);
     if (!session) throw new Error('对话会话不存在');
+    this.assertToolsSupported(session.modelId);
     if (session.title === '新对话') {
       const title = [...request.content.trim()].slice(0, 20).join('') || '新对话';
       await this.chatRepository.updateSession(sessionId, { title });
@@ -285,6 +299,15 @@ export class AgentService implements OnModuleInit {
     };
   }
 
+  private assertToolsSupported(modelId: string): void {
+    try {
+      if (this.gateway.capabilities(modelId).supportsTools) return;
+    } catch {
+      // 未登记能力的模型按保守策略处理。
+    }
+    throw new Error(`模型 ${modelId} 未通过工具能力测评，仅支持普通对话与知识库问答`);
+  }
+
   private async processInput(
     queuedInput: AgentInput,
     modelId: string,
@@ -333,8 +356,14 @@ export class AgentService implements OnModuleInit {
         });
       }
       const allowedToolNames = new Set(selectedTools.map((tool) => tool.name));
+      const requiredWeatherTool = isLiveWeatherQuery(input.content)
+        ? selectedTools.find((tool) => /weather|forecast|天气|气象/i.test(tool.name))?.name
+        : undefined;
       const messages: AgentModelMessage[] = [
-        { role: 'system', content: buildSystemPrompt(input.mode, input.fileAccess) },
+        {
+          role: 'system',
+          content: buildSystemPrompt(input.mode, input.fileAccess, requiredWeatherTool),
+        },
         ...historyToModelMessages(history),
       ];
       let parseRetries = 0;
@@ -345,6 +374,7 @@ export class AgentService implements OnModuleInit {
         const finalStep = step === maxSteps;
         const response = await this.gateway.agentChat(
           {
+            modelId,
             messages: trimAgentMessages(messages, capability.effectiveContextTokens - 2048),
             tools: selectedTools,
             toolChoice: finalStep ? 'none' : 'auto',
@@ -364,7 +394,20 @@ export class AgentService implements OnModuleInit {
         if (toolCalls.length === 0 && !finalStep) {
           const fallback = fallbackToolCall(response.content);
           if (fallback) toolCalls = [fallback];
-          else if (
+          else if (requiredWeatherTool) {
+            const city = extractWeatherCity(input.content);
+            if (city) {
+              toolCalls = [
+                {
+                  id: randomUUID(),
+                  name: requiredWeatherTool,
+                  arguments: { city_name: city },
+                },
+              ];
+            }
+          }
+          if (
+            toolCalls.length === 0 &&
             /```(?:action|json)/i.test(response.content) &&
             parseRetries < MAX_TOOL_PARSE_RETRIES
           ) {
@@ -377,7 +420,7 @@ export class AgentService implements OnModuleInit {
               },
             );
             continue;
-          } else if (/```(?:action|json)/i.test(response.content)) {
+          } else if (toolCalls.length === 0 && /```(?:action|json)/i.test(response.content)) {
             toolCallFailed = true;
             emit({
               event: 'warning',
@@ -385,6 +428,10 @@ export class AgentService implements OnModuleInit {
             });
           }
         }
+        toolCalls = toolCalls.map((call) => ({
+          ...call,
+          arguments: normalizeMcpToolArguments(call.name, call.arguments),
+        }));
         if (!finalStep && toolCalls.length > 0) {
           const seen = new Set<string>();
           const novelCalls: AgentToolCall[] = [];

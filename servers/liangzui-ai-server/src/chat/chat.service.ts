@@ -3,7 +3,10 @@ import { forwardRef, Inject, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   ChatStreamEventSchema,
+  ChatModelCatalogResponseSchema,
   KNOWLEDGE_EMPTY_ANSWER,
+  ModelCapabilitySchema,
+  type ChatModelCatalogItem,
   type ChatMessage,
   type ChatSession,
   type ChatStreamEvent,
@@ -18,6 +21,7 @@ import { AgentService } from '../agent/agent.service';
 import { KnowledgeService } from '../knowledge/knowledge.service';
 import { assembleRagPrompt } from '../knowledge/pipeline/prompt';
 import { LLM_GATEWAY, type LlmGateway } from '../llm/llm-gateway';
+import { findModelCapability, listEvaluatedModelCapabilities } from '../llm/model-capabilities';
 import { hasUtilityToolIntent } from '../mcp/merge-tools';
 import { CHAT_REPOSITORY, type ChatRepository } from './chat.repository';
 import {
@@ -48,10 +52,11 @@ export class ChatService {
     @Inject(forwardRef(() => AgentService)) private readonly agent: AgentService,
   ) {}
 
-  createSession(request: CreateChatSessionRequest): Promise<ChatSession> {
+  async createSession(request: CreateChatSessionRequest): Promise<ChatSession> {
+    if (request.modelId) await this.assertModelInstalled(request.modelId);
     return this.repository.createSession({
       title: request.title ?? '新对话',
-      modelId: this.config.get('OLLAMA_MODEL', { infer: true }),
+      modelId: request.modelId ?? this.config.get('OLLAMA_MODEL', { infer: true }),
       datasetIds: request.datasetIds ?? [],
       agentType: request.agentType ?? 'chat',
     });
@@ -69,9 +74,48 @@ export class ChatService {
 
   async updateSession(id: string, request: UpdateChatSessionRequest): Promise<ChatSession> {
     await this.getSession(id);
+    if (request.modelId) await this.assertModelInstalled(request.modelId);
     const updated = await this.repository.updateSession(id, request);
     if (!updated) throw new Error(`NOT_FOUND:会话不存在`);
     return updated;
+  }
+
+  async listModels(): Promise<ChatModelCatalogItem[]> {
+    const installed = await this.gateway.listInstalledModels();
+    const embeddingModel = this.config.get('OLLAMA_EMBED_MODEL', { infer: true });
+    const chatModels = installed.filter(
+      (modelId) => modelId !== embeddingModel && !modelId.startsWith('nomic-embed-text'),
+    );
+    const installedSet = new Set(chatModels);
+    const evaluated = listEvaluatedModelCapabilities();
+    const evaluatedIds = new Set(evaluated.map((capability) => capability.id));
+    return ChatModelCatalogResponseSchema.parse({
+      models: [
+        ...evaluated.map((capability) => ({
+          id: capability.id,
+          installed: installedSet.has(capability.id),
+          kind: 'evaluated' as const,
+          capability,
+        })),
+        ...chatModels
+          .filter((modelId) => !evaluatedIds.has(modelId))
+          .map((modelId) => ({
+            id: modelId,
+            installed: true,
+            kind: 'untested' as const,
+            capability: ModelCapabilitySchema.parse({
+              id: modelId,
+              supportsTools: false,
+              supportsVision: false,
+              supportsJsonMode: false,
+              needsToolCallFallback: false,
+              maxToolCount: 0,
+              effectiveContextTokens: this.config.get('OLLAMA_NUM_CTX', { infer: true }),
+              sourceReport: 'untested-conservative-default',
+            }),
+          })),
+      ],
+    }).models;
   }
 
   async deleteSession(id: string): Promise<{ ok: true }> {
@@ -100,7 +144,12 @@ export class ChatService {
       await this.repository.updateSession(sessionId, { datasetIds: request.datasetIds });
     }
 
-    if (request.fileAccess || hasUtilityToolIntent(request.content)) {
+    const toolIntent = request.fileAccess || hasUtilityToolIntent(request.content);
+    if (toolIntent) {
+      const capability = findModelCapability(session.modelId);
+      if (!capability?.supportsTools) {
+        throw new Error(`模型 ${session.modelId} 未通过工具能力测评，仅支持普通对话与知识库问答`);
+      }
       if (request.fileAccess && datasetIds.length > 0) {
         send({
           event: 'warning',
@@ -181,6 +230,7 @@ export class ChatService {
           sessionId,
           content: promptContent,
           messages: llmMessages,
+          modelId: session.modelId,
         },
         signal,
       )) {
@@ -298,6 +348,7 @@ export class ChatService {
         sessionId,
         content: `用不超过20个字为这段用户问题生成会话标题，只输出标题：\n${userText}`,
         numPredict: TITLE_PREDICT,
+        modelId: session.modelId,
       });
       const textPart = response.message.parts.find((part) => part.type === 'text');
       const raw = textPart && textPart.type === 'text' ? textPart.text.trim() : '';
@@ -310,6 +361,18 @@ export class ChatService {
       await this.repository.updateSession(sessionId, { title });
     } catch {
       await this.repository.updateSession(sessionId, { title: fallback });
+    }
+  }
+
+  private async assertModelInstalled(modelId: string): Promise<void> {
+    const installed = await this.gateway.listInstalledModels();
+    const embeddingModel = this.config.get('OLLAMA_EMBED_MODEL', { infer: true });
+    if (
+      modelId === embeddingModel ||
+      modelId.startsWith('nomic-embed-text') ||
+      !installed.includes(modelId)
+    ) {
+      throw new Error(`模型 ${modelId} 未安装或不能用于对话`);
     }
   }
 

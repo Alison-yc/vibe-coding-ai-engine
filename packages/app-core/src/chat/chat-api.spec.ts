@@ -4,6 +4,7 @@ import {
   createChatSession,
   deleteChatSession,
   listChatMessages,
+  listChatModels,
   listChatSessions,
   respondChatPermission,
   streamChat,
@@ -64,6 +65,35 @@ describe('chat-api', () => {
       }),
     );
     await expect(createChatSession(stubPlatform, {})).resolves.toEqual(session);
+    vi.unstubAllGlobals();
+  });
+
+  it('解析模型目录', async () => {
+    const models = [
+      {
+        id: 'other:latest',
+        installed: true,
+        kind: 'untested',
+        capability: {
+          id: 'other:latest',
+          supportsTools: false,
+          supportsVision: false,
+          supportsJsonMode: false,
+          needsToolCallFallback: false,
+          maxToolCount: 0,
+          effectiveContextTokens: 8192,
+          sourceReport: 'untested-conservative-default',
+        },
+      },
+    ];
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ models }),
+      }),
+    );
+    await expect(listChatModels(stubPlatform)).resolves.toEqual(models);
     vi.unstubAllGlobals();
   });
 

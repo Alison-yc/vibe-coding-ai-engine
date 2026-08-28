@@ -42,6 +42,11 @@ export class FakeLlmGateway implements LlmGateway {
   private streamReplies: LlmStreamEvent[][] = [];
   private streamErrors: unknown[] = [];
   private embeddingReplies: number[][][] = [];
+  private installedModels = ['qwen3.5:2b', 'gemma4:e2b', 'nomic-embed-text:latest'];
+
+  setInstalledModels(models: string[]): void {
+    this.installedModels = [...models];
+  }
 
   enqueueText(text: string, sessionId: string = randomUUID()): void {
     this.chatReplies.push(
@@ -113,6 +118,12 @@ export class FakeLlmGateway implements LlmGateway {
     await Promise.resolve();
     this.calls.push({ method: 'countTokens', text });
     return Math.ceil([...text].length / 2);
+  }
+
+  async listInstalledModels(signal?: AbortSignal): Promise<string[]> {
+    await Promise.resolve();
+    if (signal?.aborted) throw signal.reason;
+    return [...this.installedModels];
   }
 
   capabilities(modelId: ModelId): ModelCapability {

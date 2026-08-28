@@ -69,8 +69,8 @@ export class McpClientManager implements OnModuleInit, OnModuleDestroy, McpToolC
     @Inject(MCP_CONNECTOR) private readonly connector: McpConnector,
   ) {}
 
-  onModuleInit(): void {
-    void this.bootstrap();
+  async onModuleInit(): Promise<void> {
+    await this.bootstrap();
   }
 
   async bootstrap(): Promise<void> {

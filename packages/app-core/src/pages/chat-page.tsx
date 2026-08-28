@@ -1,5 +1,6 @@
 import type {
   AgentMode,
+  ChatModelCatalogItem,
   ChatMessage,
   ChatSession,
   Dataset,
@@ -14,6 +15,7 @@ import {
   createChatSession,
   deleteChatSession,
   listChatMessages,
+  listChatModels,
   listChatSessions,
   respondChatPermission,
   updateChatSession,
@@ -76,6 +78,10 @@ export const ChatPage = () => {
     queryKey: ['knowledge-datasets'],
     queryFn: () => listDatasets(platform),
   });
+  const modelsQuery = useQuery({
+    queryKey: ['chat-models'],
+    queryFn: () => listChatModels(platform),
+  });
   const busy =
     streaming ||
     Boolean(approval) ||
@@ -85,6 +91,8 @@ export const ChatPage = () => {
   const chatSessions = sessionsQuery.data ?? [];
   const session = chatSessions.find((item) => item.id === sessionId);
   const datasetId = session?.datasetIds[0] ?? '';
+  const selectedModel = (modelsQuery.data ?? []).find((model) => model.id === session?.modelId);
+  const supportsTools = selectedModel?.capability?.supportsTools === true;
 
   useEffect(() => {
     if (!sessionId || streaming || !messagesQuery.data) return;
@@ -126,6 +134,18 @@ export const ChatPage = () => {
       setPendingDeleteId(null);
       await queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
       if (id === sessionId) void navigate('/chat');
+    },
+  });
+
+  const modelMutation = useMutation({
+    mutationFn: (modelId: string) => {
+      if (!sessionId) throw new Error('请先选择会话');
+      return updateChatSession(platform, sessionId, { modelId });
+    },
+    onSuccess: async (updated) => {
+      const model = (modelsQuery.data ?? []).find((item) => item.id === updated.modelId);
+      if (!model?.capability?.supportsTools) setFileAccess(false);
+      await queryClient.invalidateQueries({ queryKey: ['chat-sessions'] });
     },
   });
 
@@ -275,6 +295,23 @@ export const ChatPage = () => {
               <p className="text-muted-foreground truncate text-xs">{session.modelId}</p>
             ) : null}
           </div>
+          <div className="flex min-w-[12rem] flex-col gap-1.5">
+            <Label htmlFor="chat-model">对话模型</Label>
+            <Select
+              id="chat-model"
+              value={session?.modelId ?? ''}
+              disabled={!sessionId || busy || modelMutation.isPending || modelsQuery.isPending}
+              onChange={(event) => modelMutation.mutate(event.target.value)}
+            >
+              {(modelsQuery.data ?? []).map((model: ChatModelCatalogItem) => (
+                <option key={model.id} value={model.id} disabled={!model.installed}>
+                  {model.id}
+                  {model.kind === 'untested' ? '（仅聊天）' : ''}
+                  {!model.installed ? '（未安装）' : ''}
+                </option>
+              ))}
+            </Select>
+          </div>
           <div className="flex min-w-[12rem] flex-col gap-1.5 sm:min-w-[16rem]">
             <Label htmlFor="chat-dataset">知识库挂载</Label>
             <Select
@@ -297,11 +334,16 @@ export const ChatPage = () => {
             <input
               type="checkbox"
               checked={fileAccess}
-              disabled={!sessionId || busy}
+              disabled={!sessionId || busy || !supportsTools}
               onChange={(event) => setFileAccess(event.target.checked)}
             />
             文件访问
           </label>
+          {session && selectedModel?.kind === 'untested' ? (
+            <p className="text-muted-foreground w-full text-xs">
+              该模型尚未经过工具能力测评，仅支持普通对话与知识库问答。
+            </p>
+          ) : null}
           {fileAccess ? (
             <>
               <div className="flex min-w-48 flex-1 flex-col gap-1.5">
@@ -340,6 +382,11 @@ export const ChatPage = () => {
           ) : null}
         </header>
 
+        {modelMutation.isError ? (
+          <p className="text-destructive bg-destructive/10 px-4 py-2 text-sm md:px-6">
+            切换模型失败：{modelMutation.error.message}
+          </p>
+        ) : null}
         {fileAccess && datasetId ? (
           <p className="bg-muted text-muted-foreground px-4 py-2 text-sm md:px-6">
             文件访问已开启：本轮不会检索已挂载的知识库。

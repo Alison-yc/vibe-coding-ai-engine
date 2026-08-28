@@ -176,7 +176,7 @@ describe('McpClientManager', () => {
       new ConfigService(validateEnvironment({ NODE_ENV: 'test', MCP_CONFIG_PATH: file })),
       new FakeConnector(),
     );
-    manager.onModuleInit();
+    await manager.onModuleInit();
     await vi.waitFor(() => {
       expect(manager.listServers()[0]?.status).toBe('connected');
     });

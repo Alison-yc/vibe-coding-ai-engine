@@ -27,6 +27,10 @@ import { abortOnClientClose } from '../http/abort-on-client-close';
 import { ZodValidationPipe } from '../http/zod-validation.pipe';
 import { ChatService } from './chat.service';
 
+const flushResponse = (response: Response): void => {
+  (response as Response & { flush?: () => void }).flush?.();
+};
+
 @Controller('chat')
 export class ChatController {
   constructor(@Inject(ChatService) private readonly chat: ChatService) {}
@@ -87,6 +91,7 @@ export class ChatController {
       await this.chat.stream(sessionId, body, abortOnClientClose(request), (event) => {
         response.write(`event: ${event.event}\n`);
         response.write(`data: ${JSON.stringify(event.data)}\n\n`);
+        flushResponse(response);
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : '生成失败';
@@ -95,6 +100,7 @@ export class ChatController {
       } else {
         response.write(`event: error\ndata: ${JSON.stringify({ message })}\n\n`);
       }
+      flushResponse(response);
     } finally {
       response.end();
     }

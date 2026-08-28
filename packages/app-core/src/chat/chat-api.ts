@@ -1,11 +1,14 @@
 import {
+  ChatModelCatalogResponseSchema,
   ChatMessageListResponseSchema,
   ChatSessionListResponseSchema,
   ChatSessionSchema,
   ChatStreamRequestSchema,
   CreateChatSessionRequestSchema,
   PermissionResponseRequestSchema,
+  UpdateChatSessionRequestSchema,
   type ChatMessage,
+  type ChatModelCatalogItem,
   type ChatSession,
   type ChatStreamRequest,
   type CreateChatSessionRequest,
@@ -45,6 +48,11 @@ export const listChatSessions = async (platform: Platform): Promise<ChatSession[
   return body.sessions;
 };
 
+export const listChatModels = async (platform: Platform): Promise<ChatModelCatalogItem[]> => {
+  const body = ChatModelCatalogResponseSchema.parse(await jsonRequest(platform, '/models'));
+  return body.models;
+};
+
 export const createChatSession = async (
   platform: Platform,
   request: CreateChatSessionRequest = {},
@@ -64,7 +72,7 @@ export const updateChatSession = async (
   ChatSessionSchema.parse(
     await jsonRequest(platform, `/chat/sessions/${sessionId}`, {
       method: 'PATCH',
-      body: JSON.stringify(request),
+      body: JSON.stringify(UpdateChatSessionRequestSchema.parse(request)),
     }),
   );
 

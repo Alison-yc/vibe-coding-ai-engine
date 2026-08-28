@@ -45,3 +45,9 @@ export const getModelCapability = (modelId: ModelId): ModelCapability => {
   if (!capability) throw new ModelNotFoundError(modelId);
   return capability;
 };
+
+export const findModelCapability = (modelId: ModelId): ModelCapability | null =>
+  CAPABILITIES[modelId] ?? null;
+
+export const listEvaluatedModelCapabilities = (): ModelCapability[] =>
+  Object.values(CAPABILITIES).filter((capability) => capability.embeddingDimension === undefined);

@@ -19,6 +19,19 @@ export const ModelCapabilitySchema = z.object({
 });
 export type ModelCapability = z.infer<typeof ModelCapabilitySchema>;
 
+export const ChatModelCatalogItemSchema = z.object({
+  id: ModelIdSchema,
+  installed: z.boolean(),
+  kind: z.enum(['evaluated', 'untested']),
+  capability: ModelCapabilitySchema,
+});
+export type ChatModelCatalogItem = z.infer<typeof ChatModelCatalogItemSchema>;
+
+export const ChatModelCatalogResponseSchema = z.object({
+  models: z.array(ChatModelCatalogItemSchema),
+});
+export type ChatModelCatalogResponse = z.infer<typeof ChatModelCatalogResponseSchema>;
+
 export const GenerationParamsSchema = z.object({
   temperature: z.number().min(0).max(2).optional(),
   numCtx: z.number().int().positive().optional(),

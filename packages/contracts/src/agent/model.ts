@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { ModelIdSchema } from '../llm/model.js';
 
 export const AgentBuiltinToolNameSchema = z.enum([
   'read',
@@ -43,6 +44,7 @@ export const AgentModelToolSchema = z.object({
 export type AgentModelTool = z.infer<typeof AgentModelToolSchema>;
 
 export const AgentModelRequestSchema = z.object({
+  modelId: ModelIdSchema.optional(),
   messages: z.array(AgentModelMessageSchema).min(1),
   tools: z.array(AgentModelToolSchema).max(6),
   toolChoice: z.enum(['auto', 'none']).default('auto'),

@@ -95,6 +95,56 @@ const CALCULATE_INTENT =
   /计算|算一下|等于多少|calculate|calculator|math|\d\s*(?:\+|-|\*|\/|%|\^)\s*\d/i;
 const UUID_INTENT = /\buuid\b|唯一标识|随机标识/i;
 const WEATHER_TOOL = /weather|forecast|天气|气象/i;
+const CHINESE_CITY_ALIASES: Readonly<Record<string, string>> = {
+  北京: 'Beijing, China',
+  上海: 'Shanghai, China',
+  天津: 'Tianjin, China',
+  重庆: 'Chongqing, China',
+  广州: 'Guangzhou, China',
+  深圳: 'Shenzhen, China',
+  成都: 'Chengdu, China',
+  杭州: 'Hangzhou, China',
+  南京: 'Nanjing, China',
+  武汉: 'Wuhan, China',
+  西安: "Xi'an, China",
+  苏州: 'Suzhou, China',
+  青岛: 'Qingdao, China',
+  厦门: 'Xiamen, China',
+  长沙: 'Changsha, China',
+  郑州: 'Zhengzhou, China',
+  济南: 'Jinan, China',
+  沈阳: 'Shenyang, China',
+  大连: 'Dalian, China',
+  哈尔滨: 'Harbin, China',
+  昆明: 'Kunming, China',
+  福州: 'Fuzhou, China',
+  合肥: 'Hefei, China',
+  南昌: 'Nanchang, China',
+  南宁: 'Nanning, China',
+  海口: 'Haikou, China',
+  贵阳: 'Guiyang, China',
+  石家庄: 'Shijiazhuang, China',
+  太原: 'Taiyuan, China',
+  兰州: 'Lanzhou, China',
+  西宁: 'Xining, China',
+  银川: 'Yinchuan, China',
+  乌鲁木齐: 'Urumqi, China',
+  拉萨: 'Lhasa, China',
+  香港: 'Hong Kong, China',
+  澳门: 'Macau, China',
+  台北: 'Taipei, Taiwan',
+};
+
+export const normalizeMcpToolArguments = (
+  toolName: string,
+  args: Record<string, unknown>,
+): Record<string, unknown> => {
+  if (!WEATHER_TOOL.test(toolName) || typeof args.city_name !== 'string') return args;
+  const raw = args.city_name.trim();
+  const city = raw.replace(/市$/u, '');
+  const normalized = CHINESE_CITY_ALIASES[raw] ?? CHINESE_CITY_ALIASES[city];
+  return normalized ? { ...args, city_name: normalized } : args;
+};
 
 const withoutCommonFilePaths = (content: string): string =>
   content.replace(
@@ -117,6 +167,19 @@ export const isLiveWeatherQuery = (content: string): boolean => {
     ) ||
       /^\s*[\p{L}\s,，]{2,30}天气\s*[？?]?\s*$/u.test(normalized))
   );
+};
+
+export const extractWeatherCity = (content: string): string | null => {
+  const normalized = withoutCommonFilePaths(content).trim();
+  const chinese =
+    /(?:查询|查一下|看看|告诉我)?\s*([\p{Script=Han}]{2,12}?)(?:今天|明天|后天|现在|当前|实时|未来|本周)?(?:的)?(?:天气|气温|温度|降雨|预报)/u.exec(
+      normalized,
+    )?.[1];
+  if (chinese) return chinese;
+  const english =
+    /\bweather\s+(?:in|for)\s+([a-z][a-z\s,'-]{1,60})/iu.exec(normalized)?.[1] ??
+    /^([a-z][a-z\s,'-]{1,60}?)\s+(?:weather|forecast)\b/iu.exec(normalized)?.[1];
+  return english?.trim() || null;
 };
 
 export const hasUtilityToolIntent = (content: string): boolean => {

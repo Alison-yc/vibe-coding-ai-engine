@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ChatModelCatalogResponseSchema } from '../llm/model.js';
 import { ChatRequestSchema, ChatStreamEventSchema, ChatStreamRequestSchema } from './api.js';
 import { ChatMessageSchema } from './message.js';
 import { ChatSessionSchema, CreateChatSessionRequestSchema } from './session.js';
@@ -35,13 +36,52 @@ describe('chat 契约', () => {
   });
 
   it('网关 ChatRequest 可携带多轮 messages', () => {
-    expect(
-      ChatRequestSchema.parse({
-        sessionId: '00000000-0000-4000-8000-000000000003',
-        content: '你好',
-        messages: [{ role: 'user', content: '你好' }],
-      }).messages,
-    ).toEqual([{ role: 'user', content: '你好' }]);
+    const request = ChatRequestSchema.parse({
+      sessionId: '00000000-0000-4000-8000-000000000003',
+      content: '你好',
+      messages: [{ role: 'user', content: '你好' }],
+      modelId: 'gemma4:e2b',
+    });
+    expect(request.messages).toEqual([{ role: 'user', content: '你好' }]);
+    expect(request.modelId).toBe('gemma4:e2b');
+  });
+
+  it('模型目录区分已测评与未知模型', () => {
+    const result = ChatModelCatalogResponseSchema.parse({
+      models: [
+        {
+          id: 'qwen3.5:2b',
+          installed: true,
+          kind: 'evaluated',
+          capability: {
+            id: 'qwen3.5:2b',
+            supportsTools: true,
+            supportsVision: false,
+            supportsJsonMode: true,
+            needsToolCallFallback: false,
+            maxToolCount: 6,
+            effectiveContextTokens: 8192,
+            sourceReport: 'report.md',
+          },
+        },
+        {
+          id: 'other:latest',
+          installed: true,
+          kind: 'untested',
+          capability: {
+            id: 'other:latest',
+            supportsTools: false,
+            supportsVision: false,
+            supportsJsonMode: false,
+            needsToolCallFallback: false,
+            maxToolCount: 0,
+            effectiveContextTokens: 8192,
+            sourceReport: 'untested-conservative-default',
+          },
+        },
+      ],
+    });
+    expect(result.models[1]?.capability.maxToolCount).toBe(0);
   });
 
   it('会话与消息 schema 含时间戳与状态默认值', () => {

@@ -119,6 +119,24 @@ describe('OllamaLlmGateway', () => {
     });
   });
 
+  it('按请求模型调用 Ollama，并读取已安装模型目录', async () => {
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce(Response.json({ message: { content: 'Gemma 回复' } }))
+      .mockResolvedValueOnce(
+        Response.json({
+          models: [{ name: 'qwen3.5:2b' }, { name: 'gemma4:e2b' }],
+        }),
+      );
+    vi.stubGlobal('fetch', fetchMock);
+    const gateway = createGateway();
+
+    await gateway.chat({ ...REQUEST, modelId: 'gemma4:e2b' });
+    const init = fetchMock.mock.calls[0]?.[1] as { body?: unknown };
+    expect(JSON.parse(String(init.body))).toMatchObject({ model: 'gemma4:e2b' });
+    await expect(gateway.listInstalledModels()).resolves.toEqual(['qwen3.5:2b', 'gemma4:e2b']);
+  });
+
   it('非流式 chat 记录 Ollama 的 done_reason', async () => {
     vi.stubGlobal(
       'fetch',

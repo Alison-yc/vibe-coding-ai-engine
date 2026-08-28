@@ -17,5 +17,6 @@ export interface LlmGateway {
   stream(request: ChatRequest, signal?: AbortSignal): AsyncIterable<LlmStreamEvent>;
   embed(texts: string[], signal?: AbortSignal): Promise<number[][]>;
   countTokens(text: string): Promise<number>;
+  listInstalledModels(signal?: AbortSignal): Promise<string[]>;
   capabilities(modelId: ModelId): ModelCapability;
 }

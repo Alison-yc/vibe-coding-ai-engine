@@ -78,6 +78,57 @@ describe('ChatService', () => {
     expect((await service.getSession(session.id)).title).toBe('问候');
   });
 
+  it('列出已测评与未知对话模型，并过滤 embedding 模型', async () => {
+    const { gateway, service } = setup();
+    gateway.setInstalledModels([
+      'qwen3.5:2b',
+      'gemma4:e2b',
+      'other-chat:latest',
+      'nomic-embed-text:latest',
+    ]);
+    const models = await service.listModels();
+    expect(models.map((model) => [model.id, model.kind, model.installed])).toEqual([
+      ['qwen3.5:2b', 'evaluated', true],
+      ['gemma4:e2b', 'evaluated', true],
+      ['other-chat:latest', 'untested', true],
+    ]);
+  });
+
+  it('会话选择的模型进入流式与标题请求', async () => {
+    const { gateway, service } = setup();
+    gateway.enqueueStream([
+      { event: 'chunk', data: { text: 'Gemma 回复' } },
+      { event: 'done', data: { finishReason: 'stop' } },
+    ]);
+    gateway.enqueueText('Gemma 标题');
+    const session = await service.createSession({ modelId: 'gemma4:e2b' });
+    await collect(service, session.id, '你好');
+    const calls = gateway.calls.filter(
+      (call) => call.method === 'stream' || call.method === 'chat',
+    );
+    expect(calls.map((call) => call.request.modelId)).toEqual(['gemma4:e2b', 'gemma4:e2b']);
+  });
+
+  it('未知已安装模型仅允许普通对话，拒绝工具意图', async () => {
+    const { gateway, service, streamConversation } = setup();
+    gateway.setInstalledModels(['qwen3.5:2b', 'gemma4:e2b', 'other-chat:latest']);
+    gateway.enqueueStream([{ event: 'done', data: { finishReason: 'stop' } }]);
+    gateway.enqueueText('普通标题');
+    const session = await service.createSession({ modelId: 'other-chat:latest' });
+    await expect(collect(service, session.id, '普通问候')).resolves.toBeDefined();
+    await expect(collect(service, session.id, '计算 2+3')).rejects.toThrow('仅支持普通对话');
+    expect(streamConversation).not.toHaveBeenCalled();
+  });
+
+  it('拒绝未安装模型和 embedding 模型作为会话模型', async () => {
+    const { gateway, service } = setup();
+    gateway.setInstalledModels(['qwen3.5:2b', 'nomic-embed-text:latest']);
+    await expect(service.createSession({ modelId: 'missing:latest' })).rejects.toThrow('未安装');
+    await expect(service.createSession({ modelId: 'nomic-embed-text:latest' })).rejects.toThrow(
+      '不能用于对话',
+    );
+  });
+
   it('旧文件助手会话可从统一对话入口继续使用', async () => {
     const { gateway, repository, service } = setup();
     gateway.enqueueStream([{ event: 'done', data: { finishReason: 'stop' } }]);

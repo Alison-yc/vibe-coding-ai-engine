@@ -59,6 +59,10 @@ const EmbedResponseBodySchema = z.object({
   embeddings: z.array(z.array(z.number())),
 });
 
+const TagsResponseBodySchema = z.object({
+  models: z.array(z.object({ name: z.string().min(1) })).default([]),
+});
+
 const parseToolArguments = (input: unknown): Record<string, unknown> => {
   let candidate = input;
   if (typeof input === 'string') {
@@ -133,10 +137,11 @@ export class OllamaLlmGateway implements LlmGateway {
 
   async agentChat(request: AgentModelRequest, signal?: AbortSignal): Promise<AgentModelResponse> {
     const startedAt = performance.now();
+    const model = this.resolveModel(request.modelId);
     const body = await this.requestJson(
       '/api/chat',
       {
-        model: this.config.get('OLLAMA_MODEL', { infer: true }),
+        model,
         messages: request.messages.map((message) => ({
           role: message.role,
           content: message.content,
@@ -173,12 +178,13 @@ export class OllamaLlmGateway implements LlmGateway {
       CHAT_TIMEOUT_MS,
       'Agent 模型生成',
       signal,
+      model,
     );
     const parsed = AgentChatResponseBodySchema.parse(body);
     const durationMs = Math.round(performance.now() - startedAt);
     this.metrics.record({
       operation: 'chat',
-      model: this.config.get('OLLAMA_MODEL', { infer: true }),
+      model,
       promptTokens: parsed.prompt_eval_count ?? 0,
       completionTokens: parsed.eval_count ?? 0,
       firstTokenMs: durationMs,
@@ -203,10 +209,11 @@ export class OllamaLlmGateway implements LlmGateway {
 
   async chat(request: ChatRequest, signal?: AbortSignal): Promise<ChatResponse> {
     const startedAt = performance.now();
+    const model = this.resolveModel(request.modelId);
     const body = await this.requestJson(
       '/api/chat',
       {
-        model: this.config.get('OLLAMA_MODEL', { infer: true }),
+        model,
         messages: request.messages ?? [{ role: 'user', content: request.content }],
         stream: false,
         think: false,
@@ -220,22 +227,24 @@ export class OllamaLlmGateway implements LlmGateway {
       CHAT_TIMEOUT_MS,
       '模型生成',
       signal,
+      model,
     );
     const parsed = ChatResponseBodySchema.parse(body);
     const durationMs = Math.round(performance.now() - startedAt);
     const promptTokens = parsed.prompt_eval_count ?? 0;
     const completionTokens = parsed.eval_count ?? 0;
+    const responseSummary = summarizeText(parsed.message.content);
     this.logger.debug({
       operation: 'chat',
-      model: this.config.get('OLLAMA_MODEL', { infer: true }),
+      model,
       promptTokens,
       completionTokens,
       durationMs,
-      content: summarizeText(parsed.message.content),
+      responseSummary,
     });
     this.metrics.record({
       operation: 'chat',
-      model: this.config.get('OLLAMA_MODEL', { infer: true }),
+      model,
       promptTokens,
       completionTokens,
       firstTokenMs: durationMs,
@@ -254,6 +263,7 @@ export class OllamaLlmGateway implements LlmGateway {
 
   async *stream(request: ChatRequest, signal?: AbortSignal): AsyncIterable<LlmStreamEvent> {
     const startedAt = performance.now();
+    const model = this.resolveModel(request.modelId);
     let firstTokenMs: number | null = null;
     let completionTokens = 0;
     let finishReason: string | null = null;
@@ -269,7 +279,7 @@ export class OllamaLlmGateway implements LlmGateway {
       const response = await this.fetchWithRetry(
         '/api/chat',
         {
-          model: this.config.get('OLLAMA_MODEL', { infer: true }),
+          model,
           messages: request.messages ?? [{ role: 'user', content: request.content }],
           stream: true,
           think: false,
@@ -324,9 +334,10 @@ export class OllamaLlmGateway implements LlmGateway {
         }
       }
       const totalMs = Math.round(performance.now() - startedAt);
+      const requestSummary = summarizeText(request.content);
       this.metrics.record({
         operation: 'stream',
-        model: this.config.get('OLLAMA_MODEL', { infer: true }),
+        model,
         promptTokens: Math.ceil([...request.content].length / 2),
         completionTokens,
         firstTokenMs,
@@ -335,17 +346,17 @@ export class OllamaLlmGateway implements LlmGateway {
       });
       this.logger.debug({
         operation: 'stream',
-        model: this.config.get('OLLAMA_MODEL', { infer: true }),
+        model,
         completionTokens,
         firstTokenMs,
         totalMs,
         finishReason,
-        content: summarizeText(request.content),
+        requestSummary,
       });
     } catch (error) {
       if (signal?.aborted) throw signal.reason;
       if (firstTokenController.signal.aborted) throw firstTokenController.signal.reason;
-      throw this.classifyError(error);
+      throw this.classifyError(error, model);
     } finally {
       clearTimeout(timer);
     }
@@ -406,8 +417,31 @@ export class OllamaLlmGateway implements LlmGateway {
     return GenerateResponseBodySchema.parse(body).prompt_eval_count;
   }
 
+  async listInstalledModels(signal?: AbortSignal): Promise<string[]> {
+    const timeoutSignal = AbortSignal.timeout(EMBED_TIMEOUT_MS);
+    const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
+    const baseUrl = this.config.get('OLLAMA_BASE_URL', { infer: true }).replace(/\/$/u, '');
+    try {
+      const response = await fetch(`${baseUrl}/api/tags`, { signal: combinedSignal });
+      if (!response.ok) {
+        throw new OllamaResponseError(response.status, await responseErrorMessage(response));
+      }
+      return TagsResponseBodySchema.parse(await response.json()).models.map((model) => model.name);
+    } catch (error) {
+      if (signal?.aborted) throw signal.reason;
+      if (timeoutSignal.aborted) throw new LlmTimeoutError('模型目录', { cause: error });
+      throw this.classifyError(error);
+    }
+  }
+
   capabilities(modelId: ModelId): ModelCapability {
     return getModelCapability(modelId);
+  }
+
+  private resolveModel(modelId?: string): string {
+    const resolved = modelId ?? this.config.get('OLLAMA_MODEL', { infer: true });
+    if (!resolved) throw new Error('未配置对话模型');
+    return resolved;
   }
 
   private async requestJson(
@@ -416,6 +450,7 @@ export class OllamaLlmGateway implements LlmGateway {
     timeoutMs: number,
     operation: string,
     signal?: AbortSignal,
+    modelId?: string,
   ): Promise<unknown> {
     const timeoutSignal = AbortSignal.timeout(timeoutMs);
     const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;
@@ -425,7 +460,7 @@ export class OllamaLlmGateway implements LlmGateway {
     } catch (error) {
       if (signal?.aborted) throw signal.reason;
       if (timeoutSignal.aborted) throw new LlmTimeoutError(operation, { cause: error });
-      throw this.classifyError(error);
+      throw this.classifyError(error, modelId);
     }
   }
 
@@ -457,10 +492,10 @@ export class OllamaLlmGateway implements LlmGateway {
     throw new OllamaUnreachableError(baseUrl);
   }
 
-  private classifyError(error: unknown): Error {
+  private classifyError(error: unknown, modelId?: string): Error {
     if (error instanceof OllamaResponseError) {
       if (error.status === 404 || /model.*not found|pull model/iu.test(error.message)) {
-        return new ModelNotFoundError(this.config.get('OLLAMA_MODEL', { infer: true }), {
+        return new ModelNotFoundError(modelId ?? this.config.get('OLLAMA_MODEL', { infer: true }), {
           cause: error,
         });
       }

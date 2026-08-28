@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { UuidSchema } from '../common/primitives.js';
+import { ModelIdSchema } from '../llm/model.js';
 import { AgentApprovalSchema, AgentModeSchema } from '../agent/permission.js';
 import { ChatMessageSchema, MessagePartSchema } from './message.js';
 
@@ -14,6 +15,7 @@ export const ChatRequestSchema = z.object({
   content: z.string().min(1).max(32_000),
   messages: z.array(LlmChatMessageSchema).optional(),
   numPredict: z.number().int().positive().optional(),
+  modelId: ModelIdSchema.optional(),
 });
 export type ChatRequest = z.infer<typeof ChatRequestSchema>;
 

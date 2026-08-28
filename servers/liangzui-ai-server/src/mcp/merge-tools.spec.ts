@@ -1,18 +1,31 @@
 import { describe, expect, it } from 'vitest';
 import {
   BUILTIN_TOOL_NAMES,
+  extractWeatherCity,
   filterMcpToolNames,
   hasUtilityToolIntent,
   isLiveWeatherQuery,
   isWeatherIntent,
   mcpExposedName,
   mergeAndTrimTools,
+  normalizeMcpToolArguments,
   projectMcpToolInputSchema,
   selectToolsForInput,
   applyFixedMcpParams,
 } from './merge-tools';
 
 describe('MCP tool merge', () => {
+  it('提取天气地点并把常见中文城市转换为天气服务可识别名称', () => {
+    expect(extractWeatherCity('北京今天天气如何')).toBe('北京');
+    expect(extractWeatherCity('weather in New York, USA')).toBe('New York, USA');
+    expect(normalizeMcpToolArguments('get_weather_summary', { city_name: '北京市' })).toEqual({
+      city_name: 'Beijing, China',
+    });
+    expect(normalizeMcpToolArguments('calculate', { city_name: '北京' })).toEqual({
+      city_name: '北京',
+    });
+  });
+
   it('冲突时给 MCP 工具加 server 前缀', () => {
     const used = new Set<string>(BUILTIN_TOOL_NAMES);
     expect(mcpExposedName('filesystem', 'read', true, used)).toBe('filesystem__read');
