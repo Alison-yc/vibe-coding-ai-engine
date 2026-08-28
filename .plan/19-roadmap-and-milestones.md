@@ -236,12 +236,45 @@ plan 编号表示**主题**，不是严格的执行队列。实际执行顺序�
   - 定向单测、contracts 测试、lint、typecheck、构建与安全扫描通过。
 - **提交边界**：规划提交；contracts + 内置工具；意图选择 + Agent 接入；天气 MCP 示例；进度更新。
 
-实现与自检完成，状态 `待 CR`（2026-08-28）。`datetime`、`calculate`、`generate_uuid` 已注册；实时天气意图会优先选择 `get_weather_summary`，知识类天气问题不被短路，未连接时由服务端确定性提示。天气 MCP 1.25.6 已真实完成 stdio 握手与北京查询，返回 22°C 等实时数据；复杂 schema 已投影为 `city_name`（必填）和 `units`。`pnpm ci:local` 全绿，共 563 条测试通过；Semgrep 规则自测、SAST、SCA、双端与服务端构建、Rust 检查均通过。
+实现、自检与 CR 已完成（2026-08-28）。`datetime`、`calculate`、`generate_uuid` 已注册；实时天气意图会优先选择 `get_weather_summary`，知识类天气问题不被短路，未连接时由服务端确定性提示。天气 MCP 1.25.6 已真实完成 stdio 握手与北京查询，返回 22°C 等实时数据；复杂 schema 已投影为 `city_name`（必填）和 `units`。`pnpm ci:local` 全绿，共 563 条测试通过；CR 未发现阻塞项。后续接入面按 ADR-014 从独立 Agent 页迁到统一对话。
+
+#### CR-Y1 · 天气 MCP 预置可发现性
+
+- 启动时把 `mcp.json.example` 中缺失的 server 非破坏性补入本地 `mcp.json`，不覆盖用户已有配置。
+- weather 默认关闭；设置页区分内置工具与远程 MCP 工具，并提示启用 stdio MCP 会运行第三方进程。
+- **通过条件**：已有配置不被覆盖；老用户重启后能看到 weather；启用和勾选继续即时生效。
+
+实现与自检完成（2026-08-28）。真实启动已把 weather 以 `enabled=false` 补入现有配置，原 filesystem command、路径、开关与过滤器保持不变；`GET /mcp/servers` 同时返回 weather 与 filesystem。
+
+#### CR-Y2 · 统一服务端对话编排
+
+- `POST /chat/sessions/:id/stream` 接入请求级 `fileAccess` 与实用工具意图路由，扩展统一 SSE 事件。
+- 文件访问关闭时文件工具与 filesystem MCP 不可达；开启时要求工作区并复用 durable inbox、沙箱、权限和审批。
+- 实用工具或文件轮次首批不检索知识库；普通问答保留现有真流式与 RAG citations。
+- **通过条件**：任意一轮工具总数不超过 6；伪造文件 tool call 无法绕过开关；旧 Agent API 仍兼容。
+
+实现与自检完成（2026-08-28）。Chat 请求、统一 SSE 与 durable inbox 已持久化 `fileAccess`；关闭时文件内置工具和 filesystem MCP 均不进入候选，执行面也拒绝伪造调用。真实 `/chat` 调用 datetime 与 calculate 成功，数据库迁移 `0006` 已验证。
+
+#### CR-Y3 · 统一对话页面
+
+- `/chat` 统一展示历史会话、工具卡、审批与引用；文件访问作为同一会话中默认关闭的逐轮开关。
+- `/agent` 路由兼容重定向，导航不再提供独立“文件助手”入口。
+- **通过条件**：同一会话可完成普通问答、实用工具、开启文件访问、关闭后恢复最小权限；刷新不自动开启文件访问。
+
+实现与自检完成（2026-08-28）。统一 Chat store/reducer 已承载工具状态、warning 与审批；文件开关按 sessionId 隔离并默认关闭；旧 Agent 前端页面、store 与 stream API 已删除。
+
+#### CR-Y4 · 双端收敛与验证
+
+- 清理无引用的独立 Agent 前端代码，完成 Web/Tauri 路由、目录选择、设置页和重启恢复走查。
+- 承接原 CR-15 的 `12-B` 双端体验收尾，完成后再进入 CR-16。
+
+实现、自检与 CR 已完成（2026-08-28）。审查发现并修复了审批期间重复发送、审批恢复重复、活动工具恢复与轮询、停止生成误清审批、会话切换状态泄漏及迟到 SSE 覆盖新请求等竞态；最终复审无阻塞项。Playwright 的 chat/agent/mcp 用例通过，旧 `/agent/:id` 可重定向并完成写入审批；`pnpm ci:local` 全绿，共 571 条测试通过，Web、Tauri 前端与 NestJS 构建、Rust clippy、SAST/SCA 均通过。受本机 `AGENT_WORKSPACE_ROOTS` 配置限制，项目根目录真实文件读取返回“路径越出工作区”，未绕过或修改用户白名单；文件读写链路由安全单测与浏览器审批 E2E 覆盖。
 
 ### M5 · 双端与打包
 
 #### CR-15 · 双端业务装配
 
+- **状态**：由 CR-Y4 承接，不再作为独立批次执行。
 - **包含**：`12-B`，在现有双端壳上补全平台能力与体验。
 - **Review 重点**：两个壳只做装配、app-core 零平台 API、设置页与后端连接失败引导。
 
@@ -258,7 +291,7 @@ plan 编号表示**主题**，不是严格的执行队列。实际执行顺序�
 
 #### M5 集成 Review
 
-- Web 与 dmg 四个页面表现一致。
+- Web 与 dmg 的统一对话、知识库、工作流、设置页面表现一致。
 - 安装、Gatekeeper、CSP、错误后端地址、退出残留进程全部走查。
 - `17-C` 只在本机 dmg 已验证后接入，且 tag 构建成功。
 

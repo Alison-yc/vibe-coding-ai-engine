@@ -66,7 +66,7 @@ packages/contracts/
 
 ## 核心 schema 设计
 
-### 消息 part 联合类型（对话页与 Agent 页共用）
+### 消息 part 联合类型（统一对话与工具轮次共用）
 
 借鉴 opencode 的分块建模。一条 assistant 消息不是一个字符串，而是一串 part：
 
@@ -88,6 +88,8 @@ export const MessagePartSchema = z.discriminatedUnion('type', [
 ```
 
 这个设计让"工具调用卡片"、"思考过程折叠"、"引用溯源"三种 UI 都落在同一套渲染管道里，不需要为每种情况开分支解析。
+
+统一对话改造后，`ChatStreamRequest` 还承担请求级能力边界：`fileAccess` 默认关闭；只有开启时才允许携带 `workspaceRoot` 与只读/编辑模式。Chat SSE 事件联合类型同时覆盖文本增量、引用、工具状态、审批和 warning，前后端不得再手写第二套近似事件。
 
 ### 工作流图 DSL
 

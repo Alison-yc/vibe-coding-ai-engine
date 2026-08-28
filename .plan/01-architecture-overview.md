@@ -20,7 +20,7 @@
 ├──────────────────────────────────────────────────────────────┤
 │  packages/app-core   业务功能（端无关）                        │
 │    features/chat  features/workflow  features/knowledge       │
-│    features/agent stores/  hooks/                             │
+│    chat 内按请求装配 agent 工具能力   stores/  hooks/          │
 ├──────────────────────────────────────────────────────────────┤
 │  packages/ui         shadcn 组件 + 主题令牌                    │
 │  packages/platform   平台能力接口（fs 对话框/本地KV/HTTP 基址） │
@@ -63,6 +63,8 @@
 **契约层是前后端唯一的类型来源。** 所有跨进程数据结构（HTTP 请求响应、SSE 事件、工作流图 DSL、消息 part、工具 schema）都定义在 `packages/contracts` 的 zod schema 里。前端 import 类型，后端 import 同一份 schema 做运行时校验。这解决了全栈项目最常见的腐化点：接口改了前端不知道。
 
 **Agent 的文件操作在服务端，不在 Rust 层。** 详细理由见 `10`。核心是工具执行必须与 LLM 循环同进程，否则每次 tool call 都要跨 IPC，且要维护 Rust 与 TS 两套工具实现。
+
+**对话是唯一助手入口。** `/chat` 的普通问答保留真流式与 RAG；命中实用工具意图或本轮显式开启 `fileAccess` 时，由服务端复用 Agent 工具循环。文件能力是请求级权限，不是第二种会话或第二个产品页面；详情见 ADR-014。
 
 ## 架构不变量（后续 plan 不得违反）
 
@@ -107,6 +109,8 @@ ChatService
 前端 event reducer 按 partId 增量更新 zustand store
   └─ 组件按 part 粒度订阅渲染，不整树重渲染
 ```
+
+工具轮次从同一 `POST /chat/sessions/:id/stream` 进入：日期、计算、UUID、实时天气按输入确定性路由；文件工具还要求 `fileAccess=true` 与合法工作区。首批工具轮次与知识库检索互斥，避免未经基线验证的 2B 组合能力。
 
 ## 端口与进程
 

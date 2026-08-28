@@ -166,8 +166,8 @@ React Context + 一个 `usePlatform()` hook。壳在最外层注入实现：
 /knowledge/:id       知识库详情
 /workflow            工作流列表（08/09）
 /workflow/:id        工作流编辑器
-/agent               文件助手（10）
-/agent/:sessionId
+/agent               兼容重定向到 /chat
+/agent/:sessionId    兼容重定向到 /chat/:sessionId
 /settings            设置（后端地址、主题、MCP 配置）
 ```
 
@@ -207,8 +207,8 @@ React Context + 一个 `usePlatform()` hook。壳在最外层注入实现：
 
 ### 12-B · CR-15
 
-- [ ] `pnpm dev:web` 起浏览器版，四个页面都能打开并正常使用
-- [ ] `pnpm dev:app` 起桌面版，四个页面表现一致
+- [ ] `pnpm dev:web` 起浏览器版，统一对话、知识库、工作流、设置都能打开并正常使用
+- [ ] `pnpm dev:app` 起桌面版，上述页面与请求级文件访问表现一致
 - [ ] 桌面端设置页改后端端口为错误值，显示明确的连接失败提示（不白屏）
 - [ ] 桌面端「测试连接」按钮工作正常
 - [ ] 桌面端点击目录选择，弹出**原生**对话框
