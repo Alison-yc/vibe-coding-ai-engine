@@ -27,6 +27,8 @@
     "preparing": "准备中…",
     "run": "运行",
     "runFailed": "运行失败",
+    "streamMissingBody": "工作流流式响应不可用",
+    "streamDisconnected": "工作流连接意外中断",
     "stopFailed": "停止失败",
     "stopWorkflowFailed": "停止工作流失败",
     "nodeFallback": "节点 {{nodeId}}",
@@ -133,6 +135,7 @@
       "codeLines": "{{count}} 行 JavaScript",
       "incomplete": "配置不完整",
       "configurePrompt": "配置提示词",
+      "topK": "前 {{count}} 条",
       "selectKnowledgeBase": "请选择知识库",
       "configureRequest": "配置请求",
       "configureCode": "配置代码"

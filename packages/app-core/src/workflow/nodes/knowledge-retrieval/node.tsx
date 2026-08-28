@@ -8,7 +8,9 @@ export const KnowledgeRetrievalNodeBody = ({ data }: NodeBodyProps) => {
   const config = KnowledgeRetrievalNodeConfigSchema.safeParse(data.config);
   return (
     <NodeSummary data={data}>
-      {config.success ? `Top ${config.data.topK}` : t('nodes.summary.selectKnowledgeBase')}
+      {config.success
+        ? t('nodes.summary.topK', { count: config.data.topK })
+        : t('nodes.summary.selectKnowledgeBase')}
     </NodeSummary>
   );
 };

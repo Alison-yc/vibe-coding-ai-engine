@@ -5,9 +5,9 @@ import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/re
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import enUS from '../i18n/locales/en-US/workflow.json';
+import { createInstance } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nOptions } from '../i18n/resources';
 import { WorkflowListPage } from './workflow-list-page';
 import { WorkflowEditorPage } from './workflow-editor-page';
 
@@ -76,14 +76,9 @@ const workflow = {
   createdAt: '2026-08-28T00:00:00.000Z',
 };
 
+const i18n = createInstance();
 beforeAll(async () => {
-  await i18n.use(initReactI18next).init({
-    lng: 'en-US',
-    resources: { 'en-US': { workflow: enUS } },
-    ns: ['workflow'],
-    defaultNS: 'workflow',
-    interpolation: { escapeValue: false },
-  });
+  await i18n.init(createI18nOptions('en-US'));
 });
 
 const renderPage = (path: string, element: ReactNode) =>
@@ -92,12 +87,14 @@ const renderPage = (path: string, element: ReactNode) =>
       <QueryClientProvider
         client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
       >
-        <MemoryRouter initialEntries={[path]}>
-          <Routes>
-            <Route path="/workflow" element={path === '/workflow' ? element : null} />
-            <Route path="/workflow/:id" element={path !== '/workflow' ? element : null} />
-          </Routes>
-        </MemoryRouter>
+        <I18nextProvider i18n={i18n}>
+          <MemoryRouter initialEntries={[path]}>
+            <Routes>
+              <Route path="/workflow" element={path === '/workflow' ? element : null} />
+              <Route path="/workflow/:id" element={path !== '/workflow' ? element : null} />
+            </Routes>
+          </MemoryRouter>
+        </I18nextProvider>
       </QueryClientProvider>
     </PlatformProvider>,
   );

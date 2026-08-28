@@ -34,7 +34,11 @@ describe('runChatStream', () => {
     expect(isAbortError(aborted, false)).toBe(true);
     expect(isAbortError(new Error('x'), true)).toBe(true);
     expect(isAbortError(new Error('x'), false)).toBe(false);
-    expect(publicChatError('x')).toBe('生成失败');
+    expect(publicChatError(new Error('原始错误'))).toBe('原始错误');
+    expect(publicChatError('x')).toBe('chat-error:fallback');
+    expect(publicChatError(Object.assign(new Error('raw'), { code: 'BAD_REQUEST' }))).toBe(
+      'api-error:BAD_REQUEST',
+    );
   });
 
   it('空内容直接返回', async () => {
@@ -66,7 +70,7 @@ describe('runChatStream', () => {
       signal: new AbortController().signal,
       queryClient: new QueryClient(),
     });
-    expect(useChatStreamStore.getState().error).toContain('无法开始生成');
+    expect(useChatStreamStore.getState().error).toBe('HTTP 503');
     expect(useChatStreamStore.getState().streaming).toBe(false);
     vi.unstubAllGlobals();
   });

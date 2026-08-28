@@ -1,13 +1,20 @@
 // @vitest-environment jsdom
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Profiler, type Dispatch, type ReactNode, type SetStateAction } from 'react';
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render as testingRender,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
 import { NodeTypeSchema } from '@ai-engine/contracts';
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
-import zhCN from '../i18n/locales/zh-CN/workflow.json';
+import { createInstance } from 'i18next';
+import { I18nextProvider } from 'react-i18next';
+import { createI18nOptions } from '../i18n/resources';
 import { NodeComponentMap, PanelComponentMap } from './nodes/registry';
 import { NodeMetadataMap } from './nodes/metadata';
 import { VariableSelector } from './variable-selector';
@@ -113,15 +120,19 @@ const condition = nodes.find((node) => node.data.type === 'if-else');
 if (!start || !end || !condition) throw new Error('测试关键节点缺失');
 const edges = [{ id: 'edge', source: 'start', target: target.id }];
 
+const i18n = createInstance();
 beforeAll(async () => {
-  await i18n.use(initReactI18next).init({
-    lng: 'zh-CN',
-    resources: { 'zh-CN': { workflow: zhCN } },
-    ns: ['workflow'],
-    defaultNS: 'workflow',
-    interpolation: { escapeValue: false },
-  });
+  await i18n.init(createI18nOptions('zh-CN'));
 });
+
+const render = (element: ReactNode) => {
+  const wrap = (content: ReactNode) => <I18nextProvider i18n={i18n}>{content}</I18nextProvider>;
+  const view = testingRender(wrap(element));
+  return {
+    ...view,
+    rerender: (next: ReactNode) => view.rerender(wrap(next)),
+  };
+};
 
 const renderWithProviders = (element: ReactNode) =>
   render(
@@ -394,6 +405,29 @@ describe('工作流组件', () => {
     render(<RunLogPanel open={false} onToggle={onToggle} logs={[]} />);
     fireEvent.click(screen.getByRole('button', { name: '展开' }));
     expect(onToggle).toHaveBeenCalled();
+  });
+
+  it('切换语言后用稳定 key 更新运行终态标题', async () => {
+    render(
+      <RunLogPanel
+        open
+        onToggle={() => undefined}
+        logs={[
+          {
+            id: 'workflow:done',
+            status: 'completed',
+            title: '',
+            titleKey: 'editor.workflowCompleted',
+            text: '',
+          },
+        ]}
+      />,
+    );
+    expect(screen.getByText('工作流执行完成')).toBeTruthy();
+
+    await act(() => i18n.changeLanguage('en-US'));
+    await waitFor(() => expect(screen.getByText('Workflow completed')).toBeTruthy());
+    await act(() => i18n.changeLanguage('zh-CN'));
   });
 
   it('单节点调试校验输入并显示执行结果', async () => {

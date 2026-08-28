@@ -1,5 +1,4 @@
 import {
-  ApiErrorSchema,
   ChatRequestSchema,
   type ChatRequest,
   TranslateRequestSchema,
@@ -8,6 +7,7 @@ import {
   type TranslateResponse,
 } from '@ai-engine/contracts';
 import type { Platform } from '@ai-engine/platform';
+import { createApiRequestError } from './api-error';
 
 export const createExampleChatRequest = (): ChatRequest => {
   const request = {
@@ -38,8 +38,7 @@ export const createApiClient = (platform: Platform) => {
       });
       const data: unknown = await response.json();
       if (!response.ok) {
-        const error = ApiErrorSchema.safeParse(data);
-        throw new Error(error.success ? error.data.message : `翻译请求失败: ${response.status}`);
+        throw createApiRequestError(data, response.status);
       }
       return TranslateResponseSchema.parse(data);
     },

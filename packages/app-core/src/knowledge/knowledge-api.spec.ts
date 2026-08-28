@@ -100,16 +100,19 @@ describe('knowledge-api', () => {
     vi.unstubAllGlobals();
   });
 
-  it('失败时优先使用 message 字段', async () => {
+  it('失败时保留 ApiError code 与 message', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue({
         ok: false,
         status: 400,
-        json: async () => ({ message: '文件太大' }),
+        json: async () => ({ code: 'PAYLOAD_TOO_LARGE', message: '文件太大' }),
       }),
     );
-    await expect(listDatasets(stubPlatform)).rejects.toThrow('文件太大');
+    await expect(listDatasets(stubPlatform)).rejects.toMatchObject({
+      code: 'PAYLOAD_TOO_LARGE',
+      message: '文件太大',
+    });
     vi.unstubAllGlobals();
   });
 
@@ -122,7 +125,7 @@ describe('knowledge-api', () => {
         json: async () => ({}),
       }),
     );
-    await expect(listDocuments(stubPlatform, dataset.id)).rejects.toThrow('请求失败: 500');
+    await expect(listDocuments(stubPlatform, dataset.id)).rejects.toThrow('HTTP 500');
     vi.unstubAllGlobals();
   });
 

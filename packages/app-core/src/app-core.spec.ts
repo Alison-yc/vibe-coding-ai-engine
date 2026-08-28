@@ -109,7 +109,7 @@ describe('createApiClient', () => {
     );
 
     const client = createApiClient(stubPlatform);
-    await expect(client.translate({ text: '你好' })).rejects.toThrow('翻译请求失败: 500');
+    await expect(client.translate({ text: '你好' })).rejects.toThrow('HTTP 500');
 
     vi.unstubAllGlobals();
   });

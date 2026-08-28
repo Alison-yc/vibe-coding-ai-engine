@@ -11,6 +11,7 @@ import { RunInputDialog } from '../workflow/canvas/run-input-dialog';
 import { WorkflowRunLogPanel } from '../workflow/canvas/run-log-panel';
 import { NodeMetadataMap } from '../workflow/nodes/metadata';
 import { flushConfigDrafts } from '../workflow/nodes/use-config-draft';
+import { localizeApiError } from '../i18n/localize-api-error';
 import {
   getWorkflowRun,
   getWorkflow,
@@ -27,7 +28,17 @@ import {
 } from '../workflow/store/workflow-store';
 
 export const WorkflowEditorPage = () => {
-  const { t } = useTranslation('workflow');
+  const { t, i18n } = useTranslation('workflow');
+  const { t: errorT } = useTranslation('errors');
+  const localizeWorkflowError = (error: unknown, fallback: string): string => {
+    if (error instanceof Error && error.message === 'workflow-error:missing-body') {
+      return t('editor.streamMissingBody');
+    }
+    if (error instanceof Error && error.message === 'workflow-error:disconnected') {
+      return t('editor.streamDisconnected');
+    }
+    return localizeApiError(error, errorT, fallback);
+  };
   const { id = '' } = useParams();
   const platform = usePlatform();
   const queryClient = useQueryClient();
@@ -97,8 +108,15 @@ export const WorkflowEditorPage = () => {
         {
           id: `workflow:${detail.run.id}`,
           status: detail.run.status,
-          title:
-            detail.run.status === 'stopped' ? t('editor.workflowStopped') : t('editor.latestRun'),
+          title: '',
+          titleKey:
+            detail.run.status === 'stopped'
+              ? 'editor.workflowStopped'
+              : detail.run.status === 'completed'
+                ? 'editor.workflowCompleted'
+                : detail.run.status === 'failed'
+                  ? 'editor.workflowFailed'
+                  : 'editor.latestRun',
           outputs: detail.run.outputs ?? undefined,
           error: detail.run.error ?? undefined,
           text: '',
@@ -140,7 +158,11 @@ export const WorkflowEditorPage = () => {
             },
           })),
         }));
-        if (errors.length > 0) throw new Error(errors.map((error) => error.message).join('；'));
+        if (errors.length > 0) {
+          throw new Error(
+            new Intl.ListFormat(i18n.language).format(errors.map((error) => error.message)),
+          );
+        }
       }
       return updateWorkflow(platform, id, { name: name.trim(), graph });
     },
@@ -183,8 +205,9 @@ export const WorkflowEditorPage = () => {
             {
               id: `client:${Date.now()}`,
               status: 'failed',
-              title: t('editor.runFailed'),
-              error: error instanceof Error ? error.message : t('editor.runFailed'),
+              title: '',
+              titleKey: 'editor.runFailed',
+              error: localizeWorkflowError(error, t('editor.runFailed')),
               text: '',
             },
           ],
@@ -211,8 +234,9 @@ export const WorkflowEditorPage = () => {
           {
             id: `stop-error:${Date.now()}`,
             status: 'failed',
-            title: t('editor.stopFailed'),
-            error: error instanceof Error ? error.message : t('editor.stopWorkflowFailed'),
+            title: '',
+            titleKey: 'editor.stopFailed',
+            error: localizeWorkflowError(error, t('editor.stopWorkflowFailed')),
             text: '',
           },
         ],
@@ -236,7 +260,8 @@ export const WorkflowEditorPage = () => {
         {
           id: `stopped:${Date.now()}`,
           status: 'stopped',
-          title: t('editor.workflowStopped'),
+          title: '',
+          titleKey: 'editor.workflowStopped',
           text: '',
         },
       ],
@@ -249,45 +274,52 @@ export const WorkflowEditorPage = () => {
   if (workflow.error)
     return (
       <main className="text-destructive p-6">
-        {workflow.error instanceof Error ? workflow.error.message : t('editor.loadFailed')}
+        {localizeWorkflowError(workflow.error, t('editor.loadFailed'))}
       </main>
     );
 
   return (
     <main className="bg-background text-foreground relative flex h-dvh min-h-0 flex-col overflow-hidden">
-      <header className="border-border flex h-14 min-w-0 shrink-0 items-center gap-3 border-b px-4">
-        <Button size="sm" variant="ghost" asChild>
+      <header
+        data-testid="workflow-toolbar"
+        className="border-border flex h-14 min-w-0 shrink-0 items-center gap-3 overflow-x-auto border-b px-4"
+      >
+        <Button className="shrink-0" size="sm" variant="ghost" asChild>
           <Link className="max-w-32 truncate" to="/workflow">
             {t('editor.back')}
           </Link>
         </Button>
         <Input
           aria-label={t('editor.name')}
-          className="max-w-72 min-w-0"
+          className="w-48 shrink-0"
           value={name}
           onChange={(event) => {
             setName(event.target.value);
             setNameDirty(true);
           }}
         />
-        <Badge className="max-w-28 truncate" variant="secondary">
+        <Badge className="max-w-28 shrink-0 truncate" variant="secondary">
           {save.isPending
             ? t('editor.saveState.saving')
             : dirty || nameDirty
               ? t('editor.saveState.unsaved')
               : t('editor.saveState.saved')}
         </Badge>
-        <Badge variant={workflowStatus === 'failed' ? 'destructive' : 'outline'}>
+        <Badge
+          className="shrink-0"
+          variant={workflowStatus === 'failed' ? 'destructive' : 'outline'}
+        >
           {t(`status.${workflowStatus}`)}
         </Badge>
         {save.error ? (
           <span className="text-destructive min-w-0 flex-1 truncate text-xs">
-            {save.error instanceof Error ? save.error.message : t('editor.saveFailed')}
+            {localizeWorkflowError(save.error, t('editor.saveFailed'))}
           </span>
         ) : (
           <span className="flex-1" />
         )}
         <Button
+          className="shrink-0"
           size="sm"
           variant="outline"
           disabled={save.isPending || running || starting}
@@ -296,11 +328,17 @@ export const WorkflowEditorPage = () => {
           <span className="max-w-32 truncate">{t('editor.saveAndValidate')}</span>
         </Button>
         {running ? (
-          <Button size="sm" variant="destructive" onClick={() => void stopRun()}>
+          <Button
+            className="shrink-0"
+            size="sm"
+            variant="destructive"
+            onClick={() => void stopRun()}
+          >
             {t('editor.stop')}
           </Button>
         ) : (
           <Button
+            className="shrink-0"
             size="sm"
             disabled={!startConfig.success || starting}
             onClick={() => setRunDialogOpen(true)}

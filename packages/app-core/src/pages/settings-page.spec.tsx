@@ -160,4 +160,30 @@ describe('SettingsPage', () => {
     await waitFor(() => expect(document.documentElement.lang).toBe('en-US'));
     await expect(platform.getUiLocale()).resolves.toBe('en-US');
   });
+
+  it('按 ApiError code 本地化真实查询错误', async () => {
+    await kv.set('ui.locale', 'en-US');
+    mocks.listServers.mockRejectedValue(
+      Object.assign(new Error('服务暂不可用'), { code: 'SERVICE_UNAVAILABLE' }),
+    );
+    mocks.listExposed.mockResolvedValue({ tools: [], dropped: [], maxToolCount: 6 });
+
+    render(
+      <PlatformProvider value={platform}>
+        <AppI18nProvider>
+          <QueryClientProvider
+            client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+          >
+            <MemoryRouter>
+              <SettingsPage />
+            </MemoryRouter>
+          </QueryClientProvider>
+        </AppI18nProvider>
+      </PlatformProvider>,
+    );
+
+    expect(
+      await screen.findByText('The service is temporarily unavailable. Try again later.'),
+    ).toBeTruthy();
+  });
 });

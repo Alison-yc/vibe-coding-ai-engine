@@ -10,10 +10,12 @@ import {
   Label,
 } from '@ai-engine/ui';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
 import { AppNavLinks, EmptyState, PageShell } from '../components/page-shell';
 import { createKnowledgeListHandlers } from '../knowledge/knowledge-list-actions';
+import { localizeApiError } from '../i18n/localize-api-error';
 import { useKnowledgeTranslation } from '../i18n/knowledge-i18n';
 
 export const KnowledgeDatasetGrid = ({ datasets }: { datasets: Dataset[] }) => {
@@ -51,6 +53,7 @@ export const KnowledgeDatasetGrid = ({ datasets }: { datasets: Dataset[] }) => {
 export const KnowledgeListPage = () => {
   const platform = usePlatform();
   const t = useKnowledgeTranslation();
+  const { t: errorT } = useTranslation('errors');
   const [datasets, setDatasets] = useState<Dataset[]>([]);
   const [name, setName] = useState(() => t('list.create.defaultName'));
   const [error, setError] = useState<string | null>(null);
@@ -63,6 +66,7 @@ export const KnowledgeListPage = () => {
     setLoading,
     loadErrorFallback: t('errors.load'),
     createErrorFallback: t('errors.create'),
+    formatError: (cause, fallback) => localizeApiError(cause, errorT, fallback),
   });
 
   return (

@@ -193,13 +193,13 @@ describe('workflow api', () => {
     );
     await expect(
       streamWorkflow(platform, workflowId, { inputs: {} }, new AbortController().signal, () => {}),
-    ).rejects.toThrow('没有 body');
+    ).rejects.toThrow('workflow-error:missing-body');
     vi.stubGlobal(
       'fetch',
       vi.fn(async () => new Response('event: broken\ndata: {}', { status: 200 })),
     );
     await expect(
       streamWorkflow(platform, workflowId, { inputs: {} }, new AbortController().signal, () => {}),
-    ).rejects.toThrow('意外中断');
+    ).rejects.toThrow('workflow-error:disconnected');
   });
 });

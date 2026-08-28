@@ -23,6 +23,7 @@ type ListStateSetters = {
   setLoading: (value: boolean) => void;
   loadErrorFallback?: string;
   createErrorFallback?: string;
+  formatError?: (error: unknown, fallback: string) => string;
 };
 
 export const createKnowledgeListHandlers = (platform: Platform, setters: ListStateSetters) => {
@@ -32,7 +33,10 @@ export const createKnowledgeListHandlers = (platform: Platform, setters: ListSta
     try {
       setters.setDatasets(await refreshKnowledgeList(platform));
     } catch (loadError) {
-      setters.setError(loadKnowledgeListError(loadError, setters.loadErrorFallback));
+      const fallback = setters.loadErrorFallback ?? '加载失败';
+      setters.setError(
+        setters.formatError?.(loadError, fallback) ?? loadKnowledgeListError(loadError, fallback),
+      );
     } finally {
       setters.setLoading(false);
     }
@@ -44,7 +48,10 @@ export const createKnowledgeListHandlers = (platform: Platform, setters: ListSta
       setters.setLoading(true);
       setters.setDatasets(await refreshKnowledgeList(platform));
     } catch (loadError) {
-      setters.setError(createKnowledgeListError(loadError, setters.createErrorFallback));
+      const fallback = setters.createErrorFallback ?? '创建失败';
+      setters.setError(
+        setters.formatError?.(loadError, fallback) ?? createKnowledgeListError(loadError, fallback),
+      );
     } finally {
       setters.setLoading(false);
     }

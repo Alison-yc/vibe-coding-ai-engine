@@ -101,6 +101,7 @@
     "approvalExpired": "The approval context has expired",
     "modelSwitch": "Could not switch models: {{message}}",
     "generationFailed": "Generation failed",
+    "streamMissingBody": "The streaming response is unavailable",
     "generationHttp": "Could not start generation: HTTP {{status}}"
   }
 }

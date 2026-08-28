@@ -1,14 +1,16 @@
-import type {
-  AgentMode,
-  ChatModelCatalogItem,
-  ChatMessage,
-  ChatSession,
-  Dataset,
-  PermissionDecision,
+import {
+  ErrorCodeSchema,
+  type AgentMode,
+  type ChatModelCatalogItem,
+  type ChatMessage,
+  type ChatSession,
+  type Dataset,
+  type PermissionDecision,
 } from '@ai-engine/contracts';
 import { Button, Input, Label, Select, Separator, Textarea, ThemeToggle, cn } from '@ai-engine/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type KeyboardEvent, useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
 import {
@@ -29,11 +31,13 @@ import { MessageParts, StreamMarkdown } from '../chat/message-parts';
 import { useChatStream } from '../chat/use-chat-stream';
 import { useStickToBottom } from '../chat/use-stick-to-bottom';
 import { useChatTranslation } from '../i18n/use-chat-translation';
+import { localizeApiError } from '../i18n/localize-api-error';
 import { listDatasets } from '../knowledge/knowledge-api';
 import { useTheme } from '../theme-provider';
 
 export const ChatPage = () => {
   const { t } = useChatTranslation();
+  const { t: errorT } = useTranslation('errors');
   const platform = usePlatform();
   const { sessionId } = useParams();
   const navigate = useNavigate();
@@ -205,9 +209,13 @@ export const ChatPage = () => {
   const persistentSidebar = platform.capabilities.persistentChatSidebar === true;
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const localizedStreamError = (() => {
-    if (error === '生成失败') return t('errors.generationFailed');
-    const httpError = error?.match(/^无法开始生成：HTTP (\d+)$/);
-    return httpError ? t('errors.generationHttp', { status: httpError[1] }) : error;
+    if (error === 'chat-error:fallback') return t('errors.generationFailed');
+    if (error === 'chat-error:missing-body') return t('errors.streamMissingBody');
+    if (error?.startsWith('api-error:')) {
+      const code = ErrorCodeSchema.safeParse(error.slice('api-error:'.length));
+      if (code.success) return errorT(`api.${code.data}`);
+    }
+    return error;
   })();
 
   const sidebarProps = {
@@ -413,7 +421,9 @@ export const ChatPage = () => {
 
         {modelMutation.isError ? (
           <p className="text-destructive bg-destructive/10 line-clamp-2 px-4 py-2 text-sm md:px-6">
-            {t('errors.modelSwitch', { message: modelMutation.error.message })}
+            {t('errors.modelSwitch', {
+              message: localizeApiError(modelMutation.error, errorT),
+            })}
           </p>
         ) : null}
         {fileAccess && datasetId ? (
@@ -506,7 +516,7 @@ export const ChatPage = () => {
             </pre>
             {permissionMutation.error ? (
               <p className="text-destructive mt-3 line-clamp-2 text-sm break-words">
-                {permissionMutation.error.message}
+                {localizeApiError(permissionMutation.error, errorT)}
               </p>
             ) : null}
             <div className="mt-4 flex flex-wrap justify-end gap-2">

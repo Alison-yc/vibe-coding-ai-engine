@@ -27,6 +27,8 @@
     "preparing": "Preparing…",
     "run": "Run",
     "runFailed": "Run failed",
+    "streamMissingBody": "The workflow stream is unavailable",
+    "streamDisconnected": "The workflow connection ended unexpectedly",
     "stopFailed": "Failed to stop",
     "stopWorkflowFailed": "Failed to stop workflow",
     "nodeFallback": "Node {{nodeId}}",
@@ -133,6 +135,7 @@
       "codeLines": "{{count}} lines of JavaScript",
       "incomplete": "Configuration incomplete",
       "configurePrompt": "Configure prompt",
+      "topK": "Top {{count}}",
       "selectKnowledgeBase": "Select a knowledge base",
       "configureRequest": "Configure request",
       "configureCode": "Configure code"

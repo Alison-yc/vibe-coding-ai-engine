@@ -101,6 +101,7 @@
     "approvalExpired": "审批上下文已失效",
     "modelSwitch": "切换模型失败：{{message}}",
     "generationFailed": "生成失败",
+    "streamMissingBody": "流式响应不可用",
     "generationHttp": "无法开始生成：HTTP {{status}}"
   }
 }

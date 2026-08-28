@@ -7,6 +7,7 @@ import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
 import { AppNavLinks, EmptyState, PageShell } from '../components/page-shell';
 import { createWorkflow, deleteWorkflow, listWorkflows } from '../workflow/workflow-api';
+import { localizeApiError } from '../i18n/localize-api-error';
 
 const initialGraph = (t: TFunction<'workflow'>): WorkflowGraph => ({
   nodes: [
@@ -37,6 +38,7 @@ const initialGraph = (t: TFunction<'workflow'>): WorkflowGraph => ({
 
 export const WorkflowListPage = () => {
   const { t, i18n } = useTranslation('workflow');
+  const { t: errorT } = useTranslation('errors');
   const platform = usePlatform();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -75,9 +77,13 @@ export const WorkflowListPage = () => {
         </Button>
       }
     >
-      {workflows.error ? (
+      {workflows.error || create.error || remove.error ? (
         <p className="text-destructive text-sm">
-          {workflows.error instanceof Error ? workflows.error.message : t('list.loadFailed')}
+          {localizeApiError(
+            workflows.error ?? create.error ?? remove.error,
+            errorT,
+            t('list.loadFailed'),
+          )}
         </p>
       ) : null}
       {!workflows.isPending && (workflows.data?.length ?? 0) === 0 ? (

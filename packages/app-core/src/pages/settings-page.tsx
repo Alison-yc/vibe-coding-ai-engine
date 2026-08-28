@@ -36,6 +36,7 @@ import {
   reconnectMcpServer,
 } from '../mcp/mcp-api';
 import { useFeatureTranslation } from '../i18n/feature-resources';
+import { localizeApiError } from '../i18n/localize-api-error';
 
 const LANGUAGE_LABELS: Record<UiLocale, string> = {
   'zh-CN': '中文',
@@ -149,6 +150,7 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
   const platform = usePlatform();
   const queryClient = useQueryClient();
   const { t } = useFeatureTranslation('settings');
+  const { t: errorT } = useFeatureTranslation('errors');
   const tools = useQuery({
     queryKey: ['mcp-tools', server.name],
     queryFn: () => listMcpServerTools(platform, server.name),
@@ -181,6 +183,7 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
       : current.filter((name) => name !== tool.name);
     patch.mutate({ include });
   };
+  const requestError = tools.error ?? reconnect.error ?? patch.error;
 
   return (
     <Card className="w-full min-w-0 overflow-hidden">
@@ -204,6 +207,11 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
       </CardHeader>
       <CardContent className="flex min-w-0 flex-col gap-4">
         {server.error ? <p className="text-destructive text-sm">{server.error}</p> : null}
+        {requestError ? (
+          <p className="text-destructive text-sm">
+            {localizeApiError(requestError, errorT, t('mcp.loadError'))}
+          </p>
+        ) : null}
         <p className="text-muted-foreground line-clamp-3 text-sm">
           {server.type === 'stdio' ? t('mcp.stdioWarning') : t('mcp.httpWarning')}
         </p>
@@ -261,6 +269,7 @@ export const SettingsPage = () => {
   const platform = usePlatform();
   const { t: commonT } = useTranslation();
   const { t } = useFeatureTranslation('settings');
+  const { t: errorT } = useFeatureTranslation('errors');
   const servers = useQuery({
     queryKey: ['mcp-servers'],
     queryFn: () => listMcpServers(platform),
@@ -280,7 +289,7 @@ export const SettingsPage = () => {
       {platform.capabilities.backendConnectionSetup ? <BackendAddressCard /> : null}
       {servers.error || exposed.error ? (
         <p className="text-destructive text-sm">
-          {(servers.error ?? exposed.error)?.message ?? t('mcp.loadError')}
+          {localizeApiError(servers.error ?? exposed.error, errorT, t('mcp.loadError'))}
         </p>
       ) : null}
       {(servers.data ?? []).length === 0 ? (

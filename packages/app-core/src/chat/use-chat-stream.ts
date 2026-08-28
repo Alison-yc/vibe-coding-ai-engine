@@ -2,14 +2,18 @@ import type { Platform } from '@ai-engine/platform';
 import type { ChatStreamRequest } from '@ai-engine/contracts';
 import { useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
+import { apiErrorCodeFrom } from '../i18n/localize-api-error';
 import { streamChat } from './chat-api';
 import { useChatStreamStore } from './chat-stream-store';
 
 export const isAbortError = (error: unknown, aborted: boolean): boolean =>
   aborted || (error instanceof Error && error.name === 'AbortError');
 
-export const publicChatError = (error: unknown): string =>
-  error instanceof Error ? error.message : '生成失败';
+export const publicChatError = (error: unknown): string => {
+  const code = apiErrorCodeFrom(error);
+  if (code) return `api-error:${code}`;
+  return error instanceof Error ? error.message : 'chat-error:fallback';
+};
 
 export const runChatStream = async (input: {
   platform: Platform;

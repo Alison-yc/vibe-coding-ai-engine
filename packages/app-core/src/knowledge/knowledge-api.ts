@@ -18,6 +18,7 @@ import {
   type SplitPreviewResponse,
 } from '@ai-engine/contracts';
 import type { Platform } from '@ai-engine/platform';
+import { createApiRequestError } from '../api/api-error';
 
 const requestJson = async (
   platform: Platform,
@@ -32,14 +33,7 @@ const requestJson = async (
   const response = await fetch(`${baseUrl}${path}`, { ...init, headers });
   const data: unknown = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message =
-      typeof data === 'object' &&
-      data !== null &&
-      'message' in data &&
-      typeof data.message === 'string'
-        ? data.message
-        : `请求失败: ${response.status}`;
-    throw new Error(message);
+    throw createApiRequestError(data, response.status);
   }
   return data;
 };

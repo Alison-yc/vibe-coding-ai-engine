@@ -101,6 +101,7 @@ type DetailSetters = {
   setError: (message: string | null) => void;
   indexErrorFallback?: string;
   uploadErrorFallback?: string;
+  formatError?: (error: unknown, fallback: string) => string;
 };
 
 export const createKnowledgeDetailHandlers = (
@@ -129,7 +130,10 @@ export const createKnowledgeDetailHandlers = (
       setters.setDataset(detail.dataset);
       setters.setDocuments(detail.documents);
     } catch (loadError) {
-      setters.setError(knowledgeActionError(loadError, setters.indexErrorFallback ?? '索引失败'));
+      const fallback = setters.indexErrorFallback ?? '索引失败';
+      setters.setError(
+        setters.formatError?.(loadError, fallback) ?? knowledgeActionError(loadError, fallback),
+      );
     }
   };
   const upload = async (event: { target: { files?: FileList | null } }) => {
@@ -144,7 +148,10 @@ export const createKnowledgeDetailHandlers = (
       setters.setDataset(detail.dataset);
       setters.setDocuments(detail.documents);
     } catch (loadError) {
-      setters.setError(knowledgeActionError(loadError, setters.uploadErrorFallback ?? '上传失败'));
+      const fallback = setters.uploadErrorFallback ?? '上传失败';
+      setters.setError(
+        setters.formatError?.(loadError, fallback) ?? knowledgeActionError(loadError, fallback),
+      );
     }
   };
   const remove = async (documentId: string) => {

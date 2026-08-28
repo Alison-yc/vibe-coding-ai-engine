@@ -23,7 +23,7 @@ export const readChatSse = async (
   response: Response,
   onEvent: (event: ChatStreamEvent) => void,
 ): Promise<void> => {
-  if (!response.body) throw new Error('流式响应没有 body');
+  if (!response.body) throw new Error('chat-error:missing-body');
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = '';
   while (true) {

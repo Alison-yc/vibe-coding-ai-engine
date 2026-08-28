@@ -101,6 +101,7 @@
     "approvalExpired": "承認情報の有効期限が切れました",
     "modelSwitch": "モデルを切り替えられませんでした：{{message}}",
     "generationFailed": "生成に失敗しました",
+    "streamMissingBody": "ストリーミング応答を利用できません",
     "generationHttp": "生成を開始できません：HTTP {{status}}"
   }
 }

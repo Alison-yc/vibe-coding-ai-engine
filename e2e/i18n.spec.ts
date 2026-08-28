@@ -97,4 +97,62 @@ test('英文业务主路径在窄屏保持可用且无横向溢出', async ({ pa
       .evaluate((element) => element.scrollWidth - element.clientWidth);
     expect(overflow).toBeLessThanOrEqual(1);
   }
+
+  const workflowId = '11111111-1111-4111-8111-111111111111';
+  await page.route('**/workflows/**', async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname === `/workflows/${workflowId}/runs`) {
+      await route.fulfill({ json: { runs: [] } });
+      return;
+    }
+    if (pathname === `/workflows/${workflowId}`) {
+      await route.fulfill({
+        json: {
+          id: workflowId,
+          name: 'English layout check',
+          version: 1,
+          createdAt: '2026-08-28T00:00:00.000Z',
+          graph: {
+            nodes: [
+              {
+                id: 'start',
+                type: 'custom-node',
+                position: { x: 40, y: 80 },
+                data: {
+                  type: 'start',
+                  title: 'Start',
+                  config: { fields: [{ name: 'query', type: 'string', required: true }] },
+                },
+              },
+              {
+                id: 'end',
+                type: 'custom-node',
+                position: { x: 320, y: 80 },
+                data: {
+                  type: 'end',
+                  title: 'End',
+                  config: { outputs: [{ name: 'result', selector: ['start', 'query'] }] },
+                },
+              },
+            ],
+            edges: [{ id: 'edge', source: 'start', target: 'end' }],
+            viewport: { x: 0, y: 0, zoom: 1 },
+          },
+        },
+      });
+      return;
+    }
+    await route.fallback();
+  });
+  await page.goto(`/workflow/${workflowId}`);
+  const toolbar = page.getByTestId('workflow-toolbar');
+  await expect(toolbar).toBeVisible();
+  await expect(toolbar).toHaveCSS('overflow-x', 'auto');
+  const runButton = page.getByRole('button', { name: 'Run' });
+  await runButton.scrollIntoViewIfNeeded();
+  await expect(runButton).toBeVisible();
+  const editorOverflow = await page
+    .locator('body')
+    .evaluate((element) => element.scrollWidth - element.clientWidth);
+  expect(editorOverflow).toBeLessThanOrEqual(1);
 });

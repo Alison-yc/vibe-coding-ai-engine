@@ -20,11 +20,13 @@ import {
   Textarea,
 } from '@ai-engine/ui';
 import { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
 import { AppNavLinks, PageShell } from '../components/page-shell';
 import { createKnowledgeDetailHandlers } from '../knowledge/knowledge-detail-actions';
 import { useKnowledgeTranslation } from '../i18n/knowledge-i18n';
+import { localizeApiError } from '../i18n/localize-api-error';
 import {
   KnowledgeDocumentList,
   KnowledgeHitsTable,
@@ -34,6 +36,7 @@ import {
 export const KnowledgeDetailPage = () => {
   const platform = usePlatform();
   const t = useKnowledgeTranslation();
+  const { t: errorT } = useTranslation('errors');
   const { id } = useParams();
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
@@ -79,6 +82,7 @@ export const KnowledgeDetailPage = () => {
     setError,
     indexErrorFallback: t('errors.index'),
     uploadErrorFallback: t('errors.upload'),
+    formatError: (cause, fallback) => localizeApiError(cause, errorT, fallback),
   });
 
   return (

@@ -27,6 +27,8 @@
     "preparing": "準備中…",
     "run": "実行",
     "runFailed": "実行に失敗しました",
+    "streamMissingBody": "ワークフローのストリームを利用できません",
+    "streamDisconnected": "ワークフロー接続が予期せず終了しました",
     "stopFailed": "停止に失敗しました",
     "stopWorkflowFailed": "ワークフローの停止に失敗しました",
     "nodeFallback": "ノード {{nodeId}}",
@@ -133,6 +135,7 @@
       "codeLines": "JavaScript {{count}} 行",
       "incomplete": "設定が未完了です",
       "configurePrompt": "プロンプトを設定",
+      "topK": "上位 {{count}} 件",
       "selectKnowledgeBase": "ナレッジベースを選択してください",
       "configureRequest": "リクエストを設定",
       "configureCode": "コードを設定"

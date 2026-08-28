@@ -11,6 +11,7 @@ import {
   type McpServerStatus,
 } from '@ai-engine/contracts';
 import type { Platform } from '@ai-engine/platform';
+import { createApiRequestError } from '../api/api-error';
 
 const jsonRequest = async (
   platform: Platform,
@@ -24,14 +25,7 @@ const jsonRequest = async (
   });
   const body: unknown = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message =
-      typeof body === 'object' &&
-      body !== null &&
-      'message' in body &&
-      typeof body.message === 'string'
-        ? body.message
-        : `请求失败 ${response.status}`;
-    throw new Error(message);
+    throw createApiRequestError(body, response.status);
   }
   return body;
 };

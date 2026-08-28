@@ -23,6 +23,7 @@ import {
   type WorkflowValidationResponse,
 } from '@ai-engine/contracts';
 import type { Platform } from '@ai-engine/platform';
+import { createApiRequestError } from '../api/api-error';
 
 const requestJson = async (
   platform: Platform,
@@ -35,22 +36,10 @@ const requestJson = async (
   });
   const data: unknown = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message =
-      typeof data === 'object' &&
-      data !== null &&
-      'message' in data &&
-      typeof data.message === 'string'
-        ? data.message
-        : `请求失败: ${response.status}`;
-    throw new Error(message);
+    throw createApiRequestError(data, response.status);
   }
   return data;
 };
-
-const responseErrorMessage = (data: unknown, fallback: string): string =>
-  typeof data === 'object' && data !== null && 'message' in data && typeof data.message === 'string'
-    ? data.message
-    : fallback;
 
 export const listWorkflows = async (platform: Platform): Promise<Workflow[]> =>
   WorkflowListResponseSchema.parse(await requestJson(platform, '/workflows')).workflows;
@@ -165,9 +154,9 @@ export const streamWorkflow = async (
   );
   if (!response.ok) {
     const data: unknown = await response.json().catch(() => ({}));
-    throw new Error(responseErrorMessage(data, `运行工作流失败: ${response.status}`));
+    throw createApiRequestError(data, response.status);
   }
-  if (!response.body) throw new Error('工作流响应没有 body');
+  if (!response.body) throw new Error('workflow-error:missing-body');
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();
   let buffer = '';
   let finished = false;
@@ -186,5 +175,5 @@ export const streamWorkflow = async (
     for (const block of blocks) emitBlock(block);
   }
   if (buffer.trim()) emitBlock(buffer);
-  if (!finished && !signal.aborted) throw new Error('工作流连接意外中断');
+  if (!finished && !signal.aborted) throw new Error('workflow-error:disconnected');
 };

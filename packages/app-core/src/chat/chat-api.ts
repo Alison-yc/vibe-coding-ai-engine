@@ -16,6 +16,7 @@ import {
   type UpdateChatSessionRequest,
 } from '@ai-engine/contracts';
 import type { Platform } from '@ai-engine/platform';
+import { createApiRequestError } from '../api/api-error';
 import { readChatSse } from './read-chat-sse';
 import { useChatStreamStore } from './chat-stream-store';
 
@@ -31,14 +32,7 @@ const jsonRequest = async (
   });
   const body: unknown = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message =
-      typeof body === 'object' &&
-      body !== null &&
-      'message' in body &&
-      typeof body.message === 'string'
-        ? body.message
-        : `请求失败 ${response.status}`;
-    throw new Error(message);
+    throw createApiRequestError(body, response.status);
   }
   return body;
 };
@@ -106,7 +100,8 @@ export const streamChat = async (
     signal,
   });
   if (!response.ok) {
-    throw new Error(`无法开始生成：HTTP ${response.status}`);
+    const body: unknown = await response.json().catch(() => ({}));
+    throw createApiRequestError(body, response.status);
   }
   await readChatSse(response, (event) =>
     useChatStreamStore.getState().applyEvent(event, requestId),
