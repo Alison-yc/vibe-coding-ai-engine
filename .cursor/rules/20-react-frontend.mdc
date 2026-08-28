@@ -51,3 +51,10 @@ onEvent((e) => store.applyEvent(e));
 - 长列表（消息、文档、节点日志）必须虚拟化。
 - 工作流画布只注册**一个** `CustomNode`，内部按 `data.type` 查注册表分发；不要给每种节点注册一个 React Flow nodeType。
 - `React.memo` 只加在实测有问题的地方，不要预防性铺满。
+
+## 界面文案（ADR-016）
+
+- 用户可见句子用 `t('namespace:key')`，禁止在 JSX 里新增长段硬编码中文/日文/英文（`data-testid`、模型 id、工具名除外）。
+- `packages/ui` 零文案。locale 与 `document.documentElement.lang` 只通过 `platform.setUiLocale`。
+- 可变长度文案必须有 CSS 上限：`min-w-0`、`truncate` 或 `line-clamp-*`。壳层按英文最长串定宽，见 `.plan/14-C`。
+- 插值用 `t('key', { name })`，禁止字符串拼接句子。

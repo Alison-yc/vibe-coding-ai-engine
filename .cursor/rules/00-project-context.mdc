@@ -50,4 +50,4 @@ alwaysApply: true
 3. 不绕过 `packages/contracts` 手写重复的请求/响应类型。
 4. 不把密钥、绝对路径、个人目录写进代码或文档示例，用 `.env` 与 `<YOUR_PATH>` 占位。
 5. 无法从现有代码确认的信息，明确写"当前信息无法确认"，不要编造版本号、API 签名或文件路径。
-6. 不引入 i18n 框架。产品只做中文，用户可见文案直接写中文即可。
+6. 用户可见界面文案走 i18next（ADR-016），locale 仅 `zh-CN` / `ja-JP` / `en-US`。不要在 `app-core` 页面里新增长段硬编码中文；不要在 `packages/ui` 写文案；不要为了 i18n 让 `app-core` 直接碰 `document` / `localStorage`。工程文档、`.plan/`、commit message 仍用中文。未登记的 i18n 库不要引入。
