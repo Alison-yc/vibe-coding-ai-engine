@@ -311,6 +311,14 @@ Vitest，不保留 Jest 或覆盖率合并链路。
 
 **原则**：不把两个有难度的事（打包 Node + 重写数据层）绑在一起做。
 
+**决策**：CR-17 只实现 NestJS sidecar，不改 SQLite。构建时把当前架构的 Node runtime、NestJS `dist`、Drizzle migrations 与 production `node_modules` 一并放入 app bundle；Rust 用 Tauri sidecar 启动并管理进程。PostgreSQL 与 Ollama 继续由用户本机提供。
+
+**理由**：Node 官方 SEA 对 NestJS 动态依赖的兼容风险高，`pkg` 对 Node 24 的支持当前信息无法确认；运行时加生产依赖体积更大，但已真实打包并启动。保留 PostgreSQL 可避免在交付阶段同时重写业务数据库与向量存储。
+
+**代价**：`.app` 体积约 302 MB；仍需 Docker PostgreSQL 与 Ollama，不能宣称完全零依赖。当前只构建 Apple Silicon，与 plan 13 的单架构边界一致。
+
+**状态**：已采纳（2026-08-28），待 CR-17 审查。
+
 ---
 
 ### ADR-D05 · 中文全文检索方案
@@ -338,7 +346,7 @@ Vitest，不保留 Jest 或覆盖率合并链路。
 | R5  | Tailwind v4 在 monorepo 跨包扫描失效 | 中   | 中                        | `14` 步骤 6 单独验证                                        | 改用 vite 插件显式声明扫描路径                 |
 | R6  | `quickjs-emscripten` 集成失败        | 中   | 中                        | 已按 ADR-008 完成集成与攻击用例（2026-08-27）               | 已关闭                                         |
 | R7  | NestJS + Vitest 装饰器问题           | 低   | 中                        | `02` 步骤 7 时限两天                                        | 暂留 Jest，设计覆盖率合并                      |
-| R8  | Node 打包成二进制失败（sidecar）     | 低   | 高                        | `13` 阶段二设 4 天硬时间盒                                  | 交付阶段一，完全可接受                         |
+| R8  | Node 打包成二进制失败（sidecar）     | 低   | 已关闭（arm64 实测通过）  | `13-B` 采用 Node runtime + production 资源                  | 已完成真实 app/dmg 与进程生命周期验证          |
 | R9  | 流式渲染性能问题                     | 中   | 中                        | `07` 的三条性能要点                                         | Profiler 定位重渲染范围                        |
 | R10 | 业务代码里泄漏平台专有 API           | 中   | 高（如果没护栏）          | ESLint `no-restricted-imports` 护栏，M0 就上                | 护栏会在 CI 拦住                               |
 | R11 | 覆盖率门禁定太高导致开发受阻         | 低   | 中                        | 阈值分级                                                    | 先问"是不是代码难测"，改设计优于降阈值         |

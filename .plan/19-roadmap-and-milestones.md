@@ -321,6 +321,8 @@ Qwen/Gemma 真实联调与 `pnpm ci:local` 均通过。
 - **时间盒**：最多 4 天；失败则记录 ADR/风险并退回已完成的 CR-16 + CR-Z2。
 - 不允许为了 sidecar 推迟项目交付。Postgres / Ollama 仍由用户本机提供。
 
+实现与自检完成，状态 `待 CR`（2026-08-28）。采用 ADR-D04 的「Node runtime + NestJS production 资源」方案，PostgreSQL/Ollama 继续外置；动态端口、启动等待、日志、自动迁移、正常退出与强退清理均已验证。最终 arm64 `.app/.dmg` 构建与 `pnpm ci:local` 通过，审查通过前不进入 M5 集成 Review。
+
 #### M5 集成 Review
 
 - Web 与 dmg 的统一对话（含模型选择）、知识库、工作流、设置页面表现一致。
