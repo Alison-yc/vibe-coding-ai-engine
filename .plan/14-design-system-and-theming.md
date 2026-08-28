@@ -13,7 +13,7 @@
 | ------ | --------------------------------------------------- | -------------------------- | ------ |
 | 14-A   | 共享 UI 包、Tailwind 跨包扫描、主题令牌、令牌展示页 | CR-03                      | 已完成 |
 | 14-B   | 按真实页面需求增量补 shadcn/业务组合组件            | CR-10、CR-12、CR-13、CR-15 | 进行中 |
-| 14-C   | 界面 i18n 与抗撑布局                                | CR-I18N-A / CR-I18N-B      | 未开始 |
+| 14-C   | 界面 i18n 与抗撑布局                                | CR-I18N-A / CR-I18N-B      | 进行中 |
 
 14-B 不建立单独的大批次。组件必须跟使用它的功能一起 Review，避免预造没有调用方的抽象。
 
@@ -291,14 +291,14 @@ server     I18N-A 零改动
 
 #### 14-C DoD
 
-- [ ] 设置页可切换三种语言，刷新保持
-- [ ] 两端 `html[lang]` 与所选 locale 一致
-- [ ] 三份 JSON key 集合全等，缺 key 测试失败
-- [ ] 1280 与 375 视口下，zh→en→ja 顶栏高度变化 ≤ 1px（Playwright）
-- [ ] 设置页卡片宽度不随语言增加（对 `main` 或 card `width` 断言）
-- [ ] `packages/ui` 与 `packages/app-core` 无新增 `window.` / `localStorage` / `document.`（app-core 继续 eslint 护栏）
-- [ ] 未翻译 NestJS、未改模型提示词
-- [ ] `pnpm ci:local` 绿
+- [x] 设置页可切换三种语言，刷新保持
+- [x] 两端 `html[lang]` 与所选 locale 一致
+- [x] 三份 JSON key 集合全等，缺 key 测试失败
+- [x] 1280 与 375 视口下，zh→en→ja 顶栏高度变化 ≤ 1px（Playwright）
+- [x] 设置页卡片宽度不随语言增加（对 `main` 或 card `width` 断言）
+- [x] `packages/ui` 零文案；`packages/app-core` 生产代码无新增平台 API（测试仅断言 `html` 同步）
+- [x] 未翻译 NestJS、未改模型提示词
+- [x] `pnpm ci:local` 绿
 
 #### CR 排查步骤（审查时按此勾，不改代码）
 
@@ -337,12 +337,12 @@ grep -rn '@ai-engine/\(app-core\|contracts\)' packages/ui/src/
 pnpm test --filter @ai-engine/ui
 
 # 14-C · i18n（开发开始后才跑）
-# 三语 key 树（实现后的测试名以代码为准）
-pnpm exec vitest run packages/app-core --grep locale
+# 三语 key 树与 locale 组件测试
+pnpm --filter @ai-engine/app-core test
 # 默认中文 E2E 仍绿
 pnpm test:e2e -- e2e/web-smoke.spec.ts e2e/mcp.spec.ts
-# 布局：切换语言后顶栏高度（实现后补 spec）
-pnpm test:e2e -- e2e/i18n-layout.spec.ts
+# 布局：切换语言后顶栏高度与卡片宽度
+pnpm test:e2e -- e2e/i18n.spec.ts
 ```
 
 ## 风险与备选
