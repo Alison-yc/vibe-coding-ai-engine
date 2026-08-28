@@ -12,7 +12,7 @@
 | 子阶段 | 内容                        | 所属批次       | 状态   |
 | ------ | --------------------------- | -------------- | ------ |
 | 07-A   | 统一对话页、SSE、知识库挂载 | CR-08～10A、Y3 | 已完成 |
-| 07-B   | 会话模型选择 + 保守目录扫描 | CR-Z2          | 待开发 |
+| 07-B   | 会话模型选择 + 保守目录扫描 | CR-Z2          | 已完成 |
 
 ## 技术选型
 
@@ -183,8 +183,8 @@ function applyEvent(state: ChatState, event: ChatStreamEvent): ChatState {
 - [x] 关掉 Ollama 后发消息，界面显示可操作的错误提示而不是无限 loading（错误文案单测 + error 态）
 - [ ] 连续对话 20 轮后仍正常（上下文裁剪 `trimToBudget` 已单测，20 轮需联调）
 - [x] 切换主题，对话区所有元素颜色正确（无硬编码色值残留）
-- [ ] 顶栏可选择已测评对话模型；下一轮请求走该 `modelId`（CR-Z2）
-- [ ] 未测评已安装模型可聊天，文件访问与工具开关不可用（CR-Z2）
+- [x] 顶栏可选择已测评对话模型；下一轮请求走该 `modelId`（CR-Z2）
+- [x] 未测评已安装模型可聊天，文件访问与工具开关不可用（CR-Z2）
 
 ## 07-B · 会话模型切换（CR-Z2）
 
@@ -197,6 +197,12 @@ function applyEvent(state: ChatState, event: ChatStreamEvent): ChatState {
 3. 对话顶栏 Select；生成中禁用。切到 `supportsTools === false` 时关闭并禁用文件访问，不装配实用工具与 MCP。
 4. 扫描 `GET /api/tags`（服务端），过滤 embedding 家族；未测评 id 不得进入工具循环。
 5. 测试用 FakeLlmGateway，不在 CI 打真模型。
+
+CR-Z2 已通过（2026-08-28）。`GET /models` 会合并已测评模型与 Ollama 已安装
+tag，并过滤 `nomic-embed-text*`；未知模型返回保守能力值且服务端拒绝其进入文件、
+实用工具或 MCP 路径。Review 修复了 Gemma 实时天气不主动调用工具、中文城市无法
+解析及 MCP 启动就绪竞态；Qwen/Gemma 真实联调均完成审批、规范化为
+`Beijing, China` 并成功执行。`pnpm ci:local` 已通过。
 
 ## 验证命令
 
