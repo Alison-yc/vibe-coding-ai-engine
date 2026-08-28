@@ -187,19 +187,27 @@ xattr -cr /Applications/liangzui-ai-app.app
 ```bash
 docker run -d \
   --name ai-engine-postgres \
+  --health-cmd="pg_isready -U ai_engine -d ai_engine" \
+  --health-interval=5s \
+  --health-timeout=5s \
+  --health-retries=10 \
+  --health-start-period=10s \
   -e POSTGRES_USER=ai_engine \
   -e POSTGRES_PASSWORD=ai_engine_dev_only \
   -e POSTGRES_DB=ai_engine \
+  -e POSTGRES_INITDB_ARGS="--encoding=UTF8 --locale=C" \
   -p 5432:5432 \
   -v ai-engine-postgres-data:/var/lib/postgresql/data \
   pgvector/pgvector:pg17
+
+until docker exec ai-engine-postgres pg_isready -U ai_engine -d ai_engine; do sleep 1; done
 
 ollama pull qwen3.5:2b
 ollama pull nomic-embed-text
 ollama pull gemma4:e2b # 可选
 ```
 
-打开应用后 sidecar 会自动迁移数据库。`qwen3.5:2b` 是默认且覆盖完整基线的模型；
+没有源码时不必挂载 `docker/init/`。打开应用后 sidecar 会自动跑 Drizzle 迁移（含 `vector` / `pgcrypto` / `pg_trgm` 扩展）。`qwen3.5:2b` 是默认且覆盖完整基线的模型；
 `gemma4:e2b` 只实测了单轮 A/C/G 工具阶梯，不外推两步或嵌套参数能力；扫描到的其他
 模型只允许对话。`nomic-embed-text` 只用于 768 维向量化，不会出现在对话模型选择器。
 
@@ -228,6 +236,20 @@ curl http://127.0.0.1:11434/api/tags
 [chunk 300](./scripts/rag-eval/reports/20260828-0529-chunk-size-300.md)、
 [topK 3](./scripts/rag-eval/reports/20260828-0531-top-k-3.md)、
 [threshold 0.2](./scripts/rag-eval/reports/20260828-0533-threshold-0-2.md)。
+
+单变量归因请对比同环境基线，不要读实验报告里的「相比上次」（那是目录时间序）：
+
+```bash
+pnpm rag-eval:compare \
+  scripts/rag-eval/reports/20260828-0527-postgres-baseline.md \
+  scripts/rag-eval/reports/20260828-0529-chunk-size-300.md
+pnpm rag-eval:compare \
+  scripts/rag-eval/reports/20260828-0527-postgres-baseline.md \
+  scripts/rag-eval/reports/20260828-0531-top-k-3.md
+pnpm rag-eval:compare \
+  scripts/rag-eval/reports/20260828-0527-postgres-baseline.md \
+  scripts/rag-eval/reports/20260828-0533-threshold-0-2.md
+```
 
 三组实验都没有提升检索指标：chunk 300 与 threshold 0.2 持平，topK 3 的 Recall
 下降 6.67 个百分点。拒答正确率均为 100%，但生成指标存在本地小模型非确定性。因此
