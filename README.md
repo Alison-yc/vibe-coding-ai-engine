@@ -9,7 +9,7 @@
 
 ## 当前状态
 
-M0～M4、通用 Agent 实用工具扩展和统一对话改造已完成。当前执行点见
+M0～M5 已完成，含 Web/桌面双端、会话模型切换与 NestJS sidecar。当前执行点见
 [`.plan/README.md`](./.plan/README.md#当前执行点模型每次开工先看这里)。
 
 | 模块                                     | 状态           |
@@ -21,7 +21,7 @@ M0～M4、通用 Agent 实用工具扩展和统一对话改造已完成。当前
 | RAG 知识库 + 统一对话助手                | 已完成         |
 | 工作流编排引擎                           | 已完成         |
 | 文件访问与 MCP 工具                      | 已并入统一对话 |
-| macOS dmg 阶段一                         | 已完成         |
+| macOS dmg + NestJS sidecar               | 已完成         |
 
 进度看板见 [`.plan/README.md`](./.plan/README.md)。
 
@@ -121,17 +121,25 @@ pnpm tauri:build       # 打包 dmg
 
 ## 桌面端安装说明
 
-先启动数据库、Ollama 与 NestJS 后端，再构建并安装桌面端：
+打包版会随应用自动启动 NestJS sidecar，**不必**再执行 `pnpm dev:server`。PostgreSQL 与 Ollama 仍须本机提供。
+
+开发调试（不会自动起 sidecar）请用上一节的 `pnpm dev:server` + `pnpm dev:app`。
+
+构建并安装：
 
 ```bash
 pnpm dev:db
 pnpm db:migrate
-pnpm dev:server
+# 确认 Ollama 已在 11434 运行，并已拉取 qwen3.5:2b / nomic-embed-text
 pnpm tauri:build
 ```
 
-打开生成的 dmg，将 `liangzui-ai-app.app` 拖入 `/Applications`。桌面端默认连接
-`http://localhost:3000`；后端未启动时会显示连接引导，也可在引导页或设置页修改本机端口。
+打开生成的 dmg，将 `liangzui-ai-app.app` 拖入 `/Applications`。首次启动会把
+`sidecar.env` 写到 `~/Library/Application Support/com.liangzui.liangzui-ai-app/`，
+日志在 `~/Library/Logs/com.liangzui.liangzui-ai-app/sidecar.log`。
+
+Sidecar 使用动态端口；启动失败或数据库未就绪时会显示连接引导，可在引导页或设置页
+把地址改成实际的 `http://127.0.0.1:<端口>`。仅允许 localhost / 127.0.0.1。
 
 本项目**未做 Apple 开发者签名和公证**（需要付费账号）。从 dmg 安装后首次打开可能被
 Gatekeeper 拦截，这是正常的，不是应用损坏。可先在 Finder 中右键选择“打开”；仍被拦截时执行：
