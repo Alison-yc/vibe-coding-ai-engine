@@ -22,7 +22,7 @@ M0～M5 已完成，含 Web/桌面双端、会话模型切换与 NestJS sidecar�
 | 工作流编排引擎                           | 已完成         |
 | 文件访问与 MCP 工具                      | 已并入统一对话 |
 | macOS dmg + NestJS sidecar               | 已完成         |
-| 界面中日英                               | 基础设施待 CR  |
+| 界面中日英                               | 基础设施已通过 |
 
 进度看板见 [`.plan/README.md`](./.plan/README.md)。
 

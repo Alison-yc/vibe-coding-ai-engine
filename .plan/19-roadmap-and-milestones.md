@@ -365,7 +365,7 @@ CR 已通过（2026-08-28）。三组单变量实验相对 PostgreSQL 同环境�
 - **Review 重点**：按 `14-C`「CR 排查步骤」逐条勾。尤其：分层不泄漏、en-US 定宽、顶栏高度、设置页入口位置、`git diff servers/` 为空。
 - **通过条件**：`14-C` DoD 中属于 A 的项；默认中文 E2E 仍绿；`pnpm ci:local`。
 
-实现与自检完成（2026-08-28），当前待 CR。两端 locale 契约、设置入口、壳层抗撑与三语测试已落地；375 / 1280 视口 E2E 和 `pnpm ci:local` 均通过，`servers/` 无差异。
+CR 已通过（2026-08-28）。补齐 Select 可见触发器的可访问名称与中文 fallback 行为测试；两端 locale 契约、设置入口、壳层抗撑、375 / 1280 视口 E2E 和 `pnpm ci:local` 均通过，`servers/` 无差异。下一步为 CR-I18N-B。
 
 #### CR-I18N-B · 其余业务页文案
 
