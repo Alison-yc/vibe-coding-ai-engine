@@ -1,6 +1,8 @@
 import { defineConfig, devices } from '@playwright/test';
 
 const isCI = Boolean(process.env.CI);
+const port = Number(process.env.PLAYWRIGHT_PORT ?? 5173);
+const baseURL = `http://localhost:${port}`;
 
 export default defineConfig({
   testDir: './e2e',
@@ -8,12 +10,14 @@ export default defineConfig({
   forbidOnly: isCI,
   retries: 0,
   use: {
-    baseURL: 'http://localhost:5173',
+    baseURL,
     trace: 'on-first-retry',
   },
   webServer: {
-    command: isCI ? 'pnpm --filter liangzui-ai-web preview' : 'pnpm --filter liangzui-ai-web dev',
-    url: 'http://localhost:5173',
+    command: isCI
+      ? `pnpm --filter liangzui-ai-web preview --port ${port}`
+      : `pnpm --filter liangzui-ai-web dev --port ${port}`,
+    url: baseURL,
     reuseExistingServer: !isCI,
     timeout: 60_000,
   },

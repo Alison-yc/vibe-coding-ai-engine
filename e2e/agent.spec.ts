@@ -8,6 +8,29 @@ test('统一对话开启文件访问后展示工具状态并完成写入审批',
   await page.setViewportSize({ width: 1024, height: 768 });
   let decision = '';
   let sent = false;
+  await page.route('**/models', async (route) => {
+    await route.fulfill({
+      json: {
+        models: [
+          {
+            id: 'qwen3.5:2b',
+            installed: true,
+            kind: 'evaluated',
+            capability: {
+              id: 'qwen3.5:2b',
+              supportsTools: true,
+              supportsVision: false,
+              supportsJsonMode: true,
+              needsToolCallFallback: false,
+              maxToolCount: 6,
+              effectiveContextTokens: 8192,
+              sourceReport: 'e2e-fixture',
+            },
+          },
+        ],
+      },
+    });
+  });
   await page.route('**/chat/sessions', async (route) => {
     await route.fulfill({
       json: {
