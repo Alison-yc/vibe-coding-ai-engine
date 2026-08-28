@@ -285,14 +285,22 @@ pnpm rag-eval --dataset retrieval                # 只跑检索
 pnpm rag-eval --dataset refusal                  # 只跑拒答（最重要）
 pnpm rag-eval --dataset injection                # 注入抵抗
 
-# 参数实验
-pnpm rag-eval --chunk-size 300 --top-k 3 --label "chunk300-k3"
-pnpm rag-eval --chunk-size 500 --top-k 5 --label "chunk500-k5"
+# 参数实验（每次只改一个主要变量）
+pnpm rag-eval --label postgres-baseline
+pnpm rag-eval --chunk-size 300 --label chunk-size-300
+pnpm rag-eval --top-k 3 --label top-k-3
+pnpm rag-eval --threshold 0.2 --label threshold-0-2
 
-# 对比两次报告
+# 对比两次报告（显式指定对照，不要依赖报告内「相比上次」）
 pnpm rag-eval:compare \
-  scripts/rag-eval/reports/<报告A>.md \
-  scripts/rag-eval/reports/<报告B>.md
+  scripts/rag-eval/reports/20260828-0527-postgres-baseline.md \
+  scripts/rag-eval/reports/20260828-0529-chunk-size-300.md
+pnpm rag-eval:compare \
+  scripts/rag-eval/reports/20260828-0527-postgres-baseline.md \
+  scripts/rag-eval/reports/20260828-0531-top-k-3.md
+pnpm rag-eval:compare \
+  scripts/rag-eval/reports/20260828-0527-postgres-baseline.md \
+  scripts/rag-eval/reports/20260828-0533-threshold-0-2.md
 
 ls scripts/rag-eval/reports/
 ```
