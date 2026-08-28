@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
+    "prepare:sidecar": "node scripts/prepare-sidecar.mjs",
     "lint": "eslint src vite.config.ts --max-warnings=0",
     "preview": "vite preview",
     "test": "vitest run --passWithNoTests",

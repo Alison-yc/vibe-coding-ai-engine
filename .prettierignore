@@ -11,6 +11,8 @@ out/
 coverage/
 **/target/
 **/gen/
+**/src-tauri/binaries/
+**/src-tauri/sidecar/
 
 # 缓存
 .turbo/

@@ -56,7 +56,8 @@ export const BackendConnectionGate = ({ children }: { children: ReactNode }) => 
         </CardHeader>
         <CardContent className="flex flex-col gap-5">
           <p className="text-muted-foreground text-sm">
-            桌面版需要单独运行本地数据库、Ollama 和 NestJS 后端。请在项目目录依次执行：
+            桌面版会自动启动 NestJS 后端，但仍需本机运行 PostgreSQL 与
+            Ollama。开发模式下可在项目目录执行：
           </p>
           <pre className="bg-muted overflow-x-auto rounded-md p-4 text-sm">
             {'pnpm dev:db\npnpm db:migrate\npnpm dev:server'}

@@ -6,6 +6,8 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { migrate } from 'drizzle-orm/node-postgres/migrator';
+import path from 'node:path';
 import { Pool } from 'pg';
 import type { AppConfig } from '../config/ollama.config';
 import {
@@ -49,6 +51,13 @@ export class DatabaseLifecycle implements OnModuleInit, OnModuleDestroy {
         });
       }
       return;
+    }
+    if (this.config.get('SIDECAR_MODE', { infer: true })) {
+      const migrationsFolder = path.resolve(
+        this.config.get('DATABASE_MIGRATIONS_PATH', { infer: true }),
+      );
+      await migrate(this.db, { migrationsFolder });
+      this.logger.log({ operation: 'sidecar-migrations-complete', migrationsFolder });
     }
     const columnType = await readEmbeddingColumnType(this.db);
     assertEmbeddingDimensionMatchesContract(columnType);

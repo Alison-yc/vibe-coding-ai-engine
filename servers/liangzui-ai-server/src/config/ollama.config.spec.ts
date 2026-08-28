@@ -27,4 +27,21 @@ describe('Ollama 配置', () => {
   it('允许用空 DATABASE_URL 显式启用内存回退', () => {
     expect(validateEnvironment({ DATABASE_URL: '' }).DATABASE_URL).toBeUndefined();
   });
+
+  it('校验 sidecar 端口、父进程与迁移目录', () => {
+    expect(
+      validateEnvironment({
+        SERVER_PORT: '43121',
+        SIDECAR_MODE: 'true',
+        SIDECAR_PARENT_PID: '1234',
+        DATABASE_MIGRATIONS_PATH: '/tmp/migrations',
+      }),
+    ).toMatchObject({
+      SERVER_PORT: 43121,
+      SIDECAR_MODE: true,
+      SIDECAR_PARENT_PID: 1234,
+      DATABASE_MIGRATIONS_PATH: '/tmp/migrations',
+    });
+    expect(() => validateEnvironment({ SERVER_PORT: '70000' })).toThrow();
+  });
 });

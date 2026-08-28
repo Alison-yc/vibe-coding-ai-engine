@@ -11,6 +11,7 @@ const EnvironmentSchema = z.object({
   OLLAMA_NUM_PREDICT: z.coerce.number().int().positive().default(2048),
   OLLAMA_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.2),
   OLLAMA_KEEP_ALIVE: z.string().min(1).default('10m'),
+  SERVER_PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.preprocess(
@@ -25,6 +26,12 @@ const EnvironmentSchema = z.object({
   AGENT_WORKSPACE_ROOTS: z.string().default(''),
   AGENT_MAX_STEPS: z.coerce.number().int().min(2).max(12).default(6),
   MCP_CONFIG_PATH: z.string().min(1).default('mcp.json'),
+  SIDECAR_MODE: z
+    .string()
+    .optional()
+    .transform((value) => value === 'true' || value === '1'),
+  SIDECAR_PARENT_PID: z.coerce.number().int().positive().optional(),
+  DATABASE_MIGRATIONS_PATH: z.string().min(1).default('drizzle'),
 });
 
 export type AppConfig = z.infer<typeof EnvironmentSchema>;

@@ -1,12 +1,30 @@
 import { Logger } from '@nestjs/common';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { DatabaseLifecycle } from './database.providers';
 import type { AppDatabase } from './pg-vector-store';
 
-const configOf = (nodeEnv: 'development' | 'test' | 'production') =>
-  ({ get: () => nodeEnv }) as never;
+const migrateMock = vi.hoisted(() => vi.fn().mockResolvedValue(undefined));
+vi.mock('drizzle-orm/node-postgres/migrator', () => ({ migrate: migrateMock }));
+
+const configOf = (
+  nodeEnv: 'development' | 'test' | 'production',
+  sidecarMode = false,
+  migrationsPath = 'drizzle',
+) =>
+  ({
+    get: (key: string) => {
+      if (key === 'NODE_ENV') return nodeEnv;
+      if (key === 'SIDECAR_MODE') return sidecarMode;
+      if (key === 'DATABASE_MIGRATIONS_PATH') return migrationsPath;
+      return undefined;
+    },
+  }) as never;
 
 describe('DatabaseLifecycle', () => {
+  beforeEach(() => {
+    migrateMock.mockClear();
+  });
+
   it('测试环境没有数据库连接时静默跳过维度自检', async () => {
     const lifecycle = new DatabaseLifecycle(null, null, configOf('test'));
     await expect(lifecycle.onModuleInit()).resolves.toBeUndefined();
@@ -38,5 +56,23 @@ describe('DatabaseLifecycle', () => {
     } as unknown as AppDatabase;
     const lifecycle = new DatabaseLifecycle(db, null, configOf('test'));
     await expect(lifecycle.onModuleInit()).rejects.toThrow('向量维度不匹配');
+  });
+
+  it('sidecar 启动时先执行数据库迁移再检查向量维度', async () => {
+    const db = {
+      execute: vi.fn().mockResolvedValue({ rows: [{ col_type: 'vector(768)' }] }),
+    } as unknown as AppDatabase;
+    const lifecycle = new DatabaseLifecycle(
+      db,
+      null,
+      configOf('production', true, '/app/resources/drizzle'),
+    );
+
+    await lifecycle.onModuleInit();
+
+    expect(migrateMock).toHaveBeenCalledWith(db, {
+      migrationsFolder: '/app/resources/drizzle',
+    });
+    expect(db.execute).toHaveBeenCalledOnce();
   });
 });

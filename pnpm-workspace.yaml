@@ -4,6 +4,8 @@ packages:
   - "servers/*"
   - "frontend/*"
 
+injectWorkspacePackages: true
+
 # 注意：glob 是 `frontend/*`，所以直接放在 frontend/ 根的 package.json
 # 不会被识别为 workspace 包。Web 应用必须建在 frontend/liangzui-ai-web/ 下。
 # 见 .plan/02-monorepo-and-toolchain.md 步骤 1。
