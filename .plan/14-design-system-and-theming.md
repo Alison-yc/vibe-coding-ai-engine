@@ -300,6 +300,8 @@ server     I18N-A 零改动
 - [x] 未翻译 NestJS、未改模型提示词
 - [x] `pnpm ci:local` 绿
 
+CR-I18N-B 实现与自检完成（2026-08-28），当前待 CR。业务主路径与错误映射已迁移，英文 375px 主路径无横向溢出，三语资源 key 树及默认中文 E2E 均通过。
+
 #### CR 排查步骤（审查时按此勾，不改代码）
 
 1. **对照 ADR-016**：依赖是否只登记了 i18next / react-i18next；有无 languagedetector / http-backend。
