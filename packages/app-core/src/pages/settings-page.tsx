@@ -63,9 +63,12 @@ const LanguageCard = () => {
         <CardTitle className="line-clamp-2">{t('settings.language.cardTitle')}</CardTitle>
       </CardHeader>
       <CardContent className="flex min-w-0 flex-col gap-3">
-        <Label htmlFor="settings-ui-locale">{t('settings.language.label')}</Label>
+        <Label id="settings-ui-locale-label" htmlFor="settings-ui-locale">
+          {t('settings.language.label')}
+        </Label>
         <Select
           id="settings-ui-locale"
+          aria-labelledby="settings-ui-locale-label"
           value={currentLocale}
           disabled={change.isPending}
           className="w-full max-w-sm min-w-0"

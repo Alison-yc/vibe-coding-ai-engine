@@ -149,6 +149,7 @@ describe('SettingsPage', () => {
     );
 
     expect(await screen.findByRole('heading', { name: '设置' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: '语言' })).toBeTruthy();
     const select = document.querySelector<HTMLSelectElement>('#settings-ui-locale');
     expect(select).not.toBeNull();
     fireEvent.change(select!, { target: { value: 'en-US' } });

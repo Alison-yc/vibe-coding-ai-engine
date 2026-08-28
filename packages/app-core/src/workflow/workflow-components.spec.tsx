@@ -206,12 +206,10 @@ describe('工作流组件', () => {
         onChange={() => undefined}
       />,
     );
-    fireEvent.change(screen.getByLabelText('分支 1 条件 1 运算符'), {
-      target: { value: 'equals' },
-    });
-    fireEvent.change(screen.getByLabelText('分支 1 条件 1 右值来源'), {
-      target: { value: 'selector' },
-    });
+    fireEvent.click(screen.getByRole('button', { name: '分支 1 条件 1 运算符' }));
+    fireEvent.click(screen.getByRole('option', { name: 'equals' }));
+    fireEvent.click(screen.getByRole('button', { name: '分支 1 条件 1 右值来源' }));
+    fireEvent.click(screen.getByRole('option', { name: '变量引用' }));
     expect(screen.getByText('右值变量').textContent).toBe('右值变量');
     fireEvent.click(screen.getByRole('button', { name: '添加条件' }));
     expect(screen.getByLabelText('分支 1 条件关系')).toBeTruthy();

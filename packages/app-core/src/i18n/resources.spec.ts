@@ -1,6 +1,7 @@
 import { UI_LOCALES } from '@ai-engine/contracts';
+import { createInstance } from 'i18next';
 import { describe, expect, it } from 'vitest';
-import { i18nResources } from './resources';
+import { createI18nOptions, i18nResources } from './resources';
 
 const leafKeys = (value: unknown, prefix = ''): string[] => {
   if (typeof value !== 'object' || value === null) return [prefix];
@@ -24,5 +25,18 @@ describe('i18n 资源', () => {
       expect(values.length).toBeGreaterThan(0);
       expect(JSON.stringify(values)).not.toContain('""');
     }
+  });
+
+  it('目标语言缺 key 时回退到中文', async () => {
+    const instance = createInstance();
+    await instance.init({
+      ...createI18nOptions('en-US'),
+      resources: {
+        'zh-CN': i18nResources['zh-CN'],
+        'en-US': { common: { loading: 'Loading…' } },
+      },
+    });
+
+    expect(instance.t('nav.settings')).toBe('设置');
   });
 });

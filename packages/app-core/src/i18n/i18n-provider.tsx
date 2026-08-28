@@ -1,22 +1,13 @@
-import { DEFAULT_UI_LOCALE, UI_LOCALES } from '@ai-engine/contracts';
+import { DEFAULT_UI_LOCALE } from '@ai-engine/contracts';
 import { usePlatform } from '@ai-engine/platform';
 import { createInstance, type i18n } from 'i18next';
 import { type ReactNode, useEffect, useRef, useState } from 'react';
 import { I18nextProvider, initReactI18next } from 'react-i18next';
-import { i18nResources } from './resources';
+import { createI18nOptions } from './resources';
 
 const initializeI18n = async (instance: i18n, platform: ReturnType<typeof usePlatform>) => {
   const locale = await platform.getUiLocale().catch(() => DEFAULT_UI_LOCALE);
-  await instance.use(initReactI18next).init({
-    resources: i18nResources,
-    lng: locale,
-    fallbackLng: DEFAULT_UI_LOCALE,
-    supportedLngs: [...UI_LOCALES],
-    ns: ['common'],
-    defaultNS: 'common',
-    load: 'currentOnly',
-    interpolation: { escapeValue: false },
-  });
+  await instance.use(initReactI18next).init(createI18nOptions(locale));
   await platform.setUiLocale(locale).catch(() => undefined);
 };
 
