@@ -1,10 +1,14 @@
 // @vitest-environment jsdom
 import { API_BASE_URL_STORAGE_KEY } from '@ai-engine/platform';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createTauriPlatform } from './platform';
+
+const openMock = vi.hoisted(() => vi.fn());
+vi.mock('@tauri-apps/plugin-dialog', () => ({ open: openMock }));
 
 afterEach(() => {
   window.localStorage.clear();
+  openMock.mockReset();
 });
 
 describe('createTauriPlatform', () => {
@@ -22,5 +26,15 @@ describe('createTauriPlatform', () => {
 
   it('桌面端默认展示常驻对话侧边栏', () => {
     expect(createTauriPlatform().capabilities.persistentChatSidebar).toBe(true);
+  });
+
+  it('通过系统原生对话框选择目录并支持取消', async () => {
+    openMock.mockResolvedValueOnce('/Users/example/workspace').mockResolvedValueOnce(null);
+    const platform = createTauriPlatform();
+
+    await expect(platform.pickDirectory()).resolves.toBe('/Users/example/workspace');
+    expect(openMock).toHaveBeenCalledWith({ directory: true, multiple: false });
+    await expect(platform.pickDirectory()).resolves.toBeNull();
+    expect(platform.capabilities.nativeDirectoryPicker).toBe(true);
   });
 });

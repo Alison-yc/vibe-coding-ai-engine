@@ -1,4 +1,5 @@
 import { API_BASE_URL_STORAGE_KEY, NotImplementedError, type Platform } from '@ai-engine/platform';
+import { open } from '@tauri-apps/plugin-dialog';
 import { openUrl } from '@tauri-apps/plugin-opener';
 
 const DEFAULT_API_BASE_URL = 'http://localhost:3000';
@@ -20,14 +21,17 @@ const createTauriKeyValueStore = () => ({
 
 export const createTauriPlatform = (): Platform => ({
   capabilities: {
-    nativeDirectoryPicker: false,
+    nativeDirectoryPicker: true,
     windowControls: false,
     routerMode: 'hash',
     devTools: import.meta.env.DEV,
     backendConnectionSetup: true,
     persistentChatSidebar: true,
   },
-  pickDirectory: () => Promise.reject(new NotImplementedError('pickDirectory')),
+  pickDirectory: async () => {
+    const selected = await open({ directory: true, multiple: false });
+    return typeof selected === 'string' ? selected : null;
+  },
   pickFiles: () => Promise.reject(new NotImplementedError('pickFiles')),
   kv: createTauriKeyValueStore(),
   getApiBaseUrl: () =>
