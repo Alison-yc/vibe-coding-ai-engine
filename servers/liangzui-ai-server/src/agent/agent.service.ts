@@ -369,9 +369,11 @@ export class AgentService implements OnModuleInit {
       let parseRetries = 0;
       let lastSuccessFingerprint: string | null = null;
       let consecutiveDuplicateSteps = 0;
+      let weatherSatisfied = false;
+      let forceFinalAnswer = false;
       const maxSteps = this.config.get('AGENT_MAX_STEPS', { infer: true });
       for (let step = 1; step <= maxSteps; step += 1) {
-        const finalStep = step === maxSteps;
+        const finalStep = step === maxSteps || forceFinalAnswer;
         const response = await this.gateway.agentChat(
           {
             modelId,
@@ -394,7 +396,8 @@ export class AgentService implements OnModuleInit {
         if (toolCalls.length === 0 && !finalStep) {
           const fallback = fallbackToolCall(response.content);
           if (fallback) toolCalls = [fallback];
-          else if (requiredWeatherTool) {
+          // 天气已成功后禁止再次注入，否则会把模型的总结回合误判成重复调用。
+          else if (requiredWeatherTool && !weatherSatisfied) {
             const city = extractWeatherCity(input.content);
             if (city) {
               toolCalls = [
@@ -443,6 +446,27 @@ export class AgentService implements OnModuleInit {
           }
           if (novelCalls.length < toolCalls.length) {
             if (novelCalls.length === 0) {
+              const repeatingWeather =
+                weatherSatisfied &&
+                Boolean(requiredWeatherTool) &&
+                lastSuccessFingerprint?.startsWith(`${requiredWeatherTool}:`);
+              if (repeatingWeather && !forceFinalAnswer) {
+                forceFinalAnswer = true;
+                messages.push(
+                  { role: 'assistant', content: response.content, toolCalls },
+                  {
+                    role: 'user',
+                    content:
+                      '天气工具已经返回结果，请直接用简体中文总结给用户，不要再调用任何工具。',
+                  },
+                );
+                emit({
+                  event: 'warning',
+                  data: { message: '天气数据已就绪，正在生成文字总结' },
+                });
+                step -= 1;
+                continue;
+              }
               consecutiveDuplicateSteps += 1;
               messages.push(
                 { role: 'assistant', content: response.content, toolCalls },
@@ -484,6 +508,24 @@ export class AgentService implements OnModuleInit {
           }
         }
         if (toolCalls.length === 0) {
+          // 天气已拿到结果，但模型没写总结：强制一轮纯文本回答，避免「任务已完成。」
+          if (weatherSatisfied && !forceFinalAnswer && !finalStep && !response.content.trim()) {
+            forceFinalAnswer = true;
+            messages.push(
+              { role: 'assistant', content: response.content },
+              {
+                role: 'user',
+                content:
+                  '天气工具已经返回结果，请直接用简体中文总结给用户（温度、天气状况即可），不要再调用任何工具。',
+              },
+            );
+            emit({
+              event: 'warning',
+              data: { message: '天气数据已就绪，正在生成文字总结' },
+            });
+            step -= 1;
+            continue;
+          }
           const reply =
             response.content.trim() ||
             (finalStep ? '已达到最大执行步数，Agent 已停止继续调用工具。' : '任务已完成。');
@@ -525,6 +567,12 @@ export class AgentService implements OnModuleInit {
         }
         if (outcome.lastSuccessFingerprint) {
           lastSuccessFingerprint = outcome.lastSuccessFingerprint;
+          if (
+            requiredWeatherTool &&
+            outcome.lastSuccessFingerprint.startsWith(`${requiredWeatherTool}:`)
+          ) {
+            weatherSatisfied = true;
+          }
         }
         if (outcome.detached) activeSignal = new AbortController().signal;
       }

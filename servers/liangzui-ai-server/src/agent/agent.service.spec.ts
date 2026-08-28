@@ -846,6 +846,175 @@ describe('AgentService', () => {
     );
   });
 
+  it('天气工具成功后不再注入兜底，也不因模型重复调用而硬停止', async () => {
+    const registry = new AgentToolRegistry();
+    registry.register(new DatetimeTool());
+    registry.register(new CalculateTool());
+    registry.register(new GenerateUuidTool());
+    service = new AgentService(
+      agentRepository,
+      chat,
+      gateway,
+      registry,
+      new ApprovalCoordinator(),
+      new ConfigService(
+        validateEnvironment({ NODE_ENV: 'test', AGENT_WORKSPACE_ROOTS: root, AGENT_MAX_STEPS: 4 }),
+      ),
+      {
+        listModelTools: () => [
+          {
+            name: 'get_weather_summary',
+            description: 'Get current weather and forecast for a city',
+            inputSchema: { type: 'object' },
+          },
+        ],
+        get: (name: string) =>
+          name === 'get_weather_summary'
+            ? {
+                model: {
+                  name,
+                  description: 'Get current weather and forecast for a city',
+                  inputSchema: { type: 'object' },
+                },
+                permission: 'execute' as const,
+                parse: (input: unknown) => input,
+                prepare: async () => ({ resource: 'weather:Beijing' }),
+                execute: async () => 'Beijing: Light drizzle, 22°C',
+              }
+            : null,
+      },
+    );
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [
+        {
+          id: 'weather-1',
+          name: 'get_weather_summary',
+          arguments: { city_name: 'Beijing, China' },
+        },
+      ],
+    });
+    // 模型再次发起同一调用；旧逻辑会再兜底注入一次并硬停止。
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [
+        {
+          id: 'weather-2',
+          name: 'get_weather_summary',
+          arguments: { city_name: 'Beijing, China' },
+        },
+      ],
+    });
+    gateway.enqueueAgentResponse({ content: '北京今天小雨，约 22°C。', toolCalls: [] });
+    const events: AgentStreamEvent[] = [];
+    const pending = run('北京今天天气如何', events);
+    await vi.waitFor(() => {
+      expect(events.some((event) => event.event === 'permission.asked')).toBe(true);
+    });
+    const approval = events.find((event) => event.event === 'permission.asked');
+    if (approval?.event !== 'permission.asked') throw new Error('missing approval');
+    service.respondPermission(sessionId, approval.data.id, 'allow-once');
+    await pending;
+    expect(
+      events.some(
+        (event) => event.event === 'warning' && event.data.message.includes('连续重复工具调用'),
+      ),
+    ).toBe(false);
+    expect(
+      events.some(
+        (event) => event.event === 'warning' && event.data.message.includes('天气数据已就绪'),
+      ),
+    ).toBe(true);
+    expect(
+      events.some(
+        (event) => event.event === 'message.delta' && event.data.text.includes('北京今天小雨'),
+      ),
+    ).toBe(true);
+    const weatherCalls = gateway.calls.filter(
+      (call) =>
+        call.method === 'agentChat' &&
+        call.request.toolChoice === 'none' &&
+        call.request.messages.some(
+          (message) =>
+            message.role === 'user' &&
+            typeof message.content === 'string' &&
+            message.content.includes('不要再调用任何工具'),
+        ),
+    );
+    expect(weatherCalls.length).toBeGreaterThan(0);
+  });
+
+  it('天气工具成功后模型空回复时强制生成中文总结', async () => {
+    const registry = new AgentToolRegistry();
+    registry.register(new DatetimeTool());
+    registry.register(new CalculateTool());
+    registry.register(new GenerateUuidTool());
+    service = new AgentService(
+      agentRepository,
+      chat,
+      gateway,
+      registry,
+      new ApprovalCoordinator(),
+      new ConfigService(
+        validateEnvironment({ NODE_ENV: 'test', AGENT_WORKSPACE_ROOTS: root, AGENT_MAX_STEPS: 4 }),
+      ),
+      {
+        listModelTools: () => [
+          {
+            name: 'get_weather_summary',
+            description: 'Get current weather and forecast for a city',
+            inputSchema: { type: 'object' },
+          },
+        ],
+        get: (name: string) =>
+          name === 'get_weather_summary'
+            ? {
+                model: {
+                  name,
+                  description: 'Get current weather and forecast for a city',
+                  inputSchema: { type: 'object' },
+                },
+                permission: 'execute' as const,
+                parse: (input: unknown) => input,
+                prepare: async () => ({ resource: 'weather:Beijing' }),
+                execute: async () => 'Beijing: Clear sky, 28°C',
+              }
+            : null,
+      },
+    );
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [
+        {
+          id: 'weather-1',
+          name: 'get_weather_summary',
+          arguments: { city_name: 'Beijing, China' },
+        },
+      ],
+    });
+    gateway.enqueueAgentResponse({ content: '', toolCalls: [] });
+    gateway.enqueueAgentResponse({ content: '北京今天晴，约 28°C。', toolCalls: [] });
+    const events: AgentStreamEvent[] = [];
+    const pending = run('北京今天天气如何', events);
+    await vi.waitFor(() => {
+      expect(events.some((event) => event.event === 'permission.asked')).toBe(true);
+    });
+    const approval = events.find((event) => event.event === 'permission.asked');
+    if (approval?.event !== 'permission.asked') throw new Error('missing approval');
+    service.respondPermission(sessionId, approval.data.id, 'allow-once');
+    await pending;
+    expect(
+      events.some(
+        (event) => event.event === 'message.delta' && event.data.text.includes('任务已完成'),
+      ),
+    ).toBe(false);
+    expect(
+      events.some(
+        (event) => event.event === 'message.delta' && event.data.text.includes('北京今天晴'),
+      ),
+    ).toBe(true);
+  });
+
   it('列出暴露工具时内置优先并标记 MCP 来源', async () => {
     const catalog = {
       listModelTools: () => [
