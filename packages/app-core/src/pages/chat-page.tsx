@@ -292,95 +292,96 @@ export const ChatPage = () => {
             >
               <span className="truncate">{t('sidebar.new')}</span>
             </Button>
-            <div className="ml-auto flex min-w-0 flex-1 flex-wrap justify-end gap-1">
-              <Button variant="ghost" size="sm" className="min-w-0" asChild>
-                <Link to="/knowledge">
-                  <span className="truncate">{t('common:nav.knowledge')}</span>
-                </Link>
-              </Button>
-              <Button variant="ghost" size="sm" className="min-w-0" asChild>
-                <Link to="/workflow">
-                  <span className="truncate">{t('common:nav.workflow')}</span>
-                </Link>
-              </Button>
-              <Button variant="ghost" size="sm" className="min-w-0" asChild>
-                <Link to="/settings">
-                  <span className="truncate">{t('common:nav.settings')}</span>
-                </Link>
-              </Button>
-            </div>
           </div>
         ) : null}
-        <header className="border-border bg-background/95 flex min-h-16 flex-wrap items-end gap-4 border-b px-4 py-3 md:px-6">
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">
-              {session?.title ?? t('header.noSession')}
-            </p>
-            {session ? (
-              <p className="text-muted-foreground truncate text-xs">{session.modelId}</p>
-            ) : null}
+        <header className="border-border bg-background/95 flex min-w-0 flex-col gap-3 border-b px-4 py-3 md:px-6">
+          <div className="grid w-full min-w-0 items-end gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_14rem_18rem]">
+            <div className="flex min-w-0 items-center justify-between gap-3 sm:col-span-2 xl:col-span-1">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-medium">
+                  {session?.title ?? t('header.noSession')}
+                </p>
+                {session ? (
+                  <p className="text-muted-foreground truncate text-xs">{session.modelId}</p>
+                ) : null}
+              </div>
+              <label className="flex min-h-9 shrink-0 items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={fileAccess}
+                  disabled={!sessionId || busy || !supportsTools}
+                  onChange={(event) => setFileAccess(event.target.checked)}
+                />
+                <span className="max-w-32 truncate" title={t('fileAccess.label')}>
+                  {t('fileAccess.label')}
+                </span>
+              </label>
+            </div>
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <Label htmlFor="chat-model" className="truncate" title={t('model.label')}>
+                {t('model.label')}
+              </Label>
+              <Select
+                id="chat-model"
+                value={session?.modelId ?? ''}
+                disabled={!sessionId || busy || modelMutation.isPending || modelsQuery.isPending}
+                onChange={(event) => modelMutation.mutate(event.target.value)}
+              >
+                {(modelsQuery.data ?? []).map((model: ChatModelCatalogItem) => (
+                  <option key={model.id} value={model.id} disabled={!model.installed}>
+                    {model.kind === 'untested' && !model.installed
+                      ? t('model.chatOnlyNotInstalledOption', { modelId: model.id })
+                      : model.kind === 'untested'
+                        ? t('model.chatOnlyOption', { modelId: model.id })
+                        : !model.installed
+                          ? t('model.notInstalledOption', { modelId: model.id })
+                          : model.id}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="flex min-w-0 flex-col gap-1.5">
+              <Label htmlFor="chat-dataset" className="truncate" title={t('knowledge.label')}>
+                {t('knowledge.label')}
+              </Label>
+              <Select
+                id="chat-dataset"
+                value={datasetId}
+                disabled={!sessionId || busy}
+                onChange={(event) => {
+                  void mountKnowledge(event.target.value);
+                }}
+              >
+                <option value="">{t('knowledge.none')}</option>
+                {(datasetsQuery.data ?? []).map((dataset: Dataset) => (
+                  <option key={dataset.id} value={dataset.id}>
+                    {dataset.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
           </div>
-          <div className="flex max-w-64 min-w-0 flex-1 flex-col gap-1.5 sm:min-w-[12rem]">
-            <Label htmlFor="chat-model" className="truncate">
-              {t('model.label')}
-            </Label>
-            <Select
-              id="chat-model"
-              value={session?.modelId ?? ''}
-              disabled={!sessionId || busy || modelMutation.isPending || modelsQuery.isPending}
-              onChange={(event) => modelMutation.mutate(event.target.value)}
-            >
-              {(modelsQuery.data ?? []).map((model: ChatModelCatalogItem) => (
-                <option key={model.id} value={model.id} disabled={!model.installed}>
-                  {model.kind === 'untested' && !model.installed
-                    ? t('model.chatOnlyNotInstalledOption', { modelId: model.id })
-                    : model.kind === 'untested'
-                      ? t('model.chatOnlyOption', { modelId: model.id })
-                      : !model.installed
-                        ? t('model.notInstalledOption', { modelId: model.id })
-                        : model.id}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="flex max-w-80 min-w-0 flex-1 flex-col gap-1.5 sm:min-w-[16rem]">
-            <Label htmlFor="chat-dataset" className="truncate">
-              {t('knowledge.label')}
-            </Label>
-            <Select
-              id="chat-dataset"
-              value={datasetId}
-              disabled={!sessionId || busy}
-              onChange={(event) => {
-                void mountKnowledge(event.target.value);
-              }}
-            >
-              <option value="">{t('knowledge.none')}</option>
-              {(datasetsQuery.data ?? []).map((dataset: Dataset) => (
-                <option key={dataset.id} value={dataset.id}>
-                  {dataset.name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <label className="flex min-h-10 min-w-0 items-center gap-2 text-sm">
-            <input
-              type="checkbox"
-              checked={fileAccess}
-              disabled={!sessionId || busy || !supportsTools}
-              onChange={(event) => setFileAccess(event.target.checked)}
-            />
-            <span className="truncate">{t('fileAccess.label')}</span>
-          </label>
           {session && selectedModel?.kind === 'untested' ? (
             <p className="text-muted-foreground line-clamp-2 w-full text-xs">
               {t('model.untestedNotice')}
             </p>
           ) : null}
           {fileAccess ? (
-            <>
-              <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:min-w-48">
-                <Label htmlFor="chat-workspace" className="truncate">
+            <div
+              data-testid="chat-file-access-toolbar"
+              className={cn(
+                'bg-muted/40 grid w-full min-w-0 items-end gap-3 rounded-lg border p-3',
+                platform.capabilities.nativeDirectoryPicker
+                  ? 'sm:grid-cols-[minmax(0,1fr)_auto_minmax(10rem,12rem)]'
+                  : 'sm:grid-cols-[minmax(0,1fr)_minmax(10rem,12rem)]',
+              )}
+            >
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <Label
+                  htmlFor="chat-workspace"
+                  className="truncate"
+                  title={t('fileAccess.workspaceLabel')}
+                >
                   {t('fileAccess.workspaceLabel')}
                 </Label>
                 <Input
@@ -395,14 +396,21 @@ export const ChatPage = () => {
                 <Button
                   type="button"
                   variant="outline"
+                  className="w-full shrink-0 sm:w-auto"
                   disabled={busy}
                   onClick={() => void chooseWorkspace()}
                 >
-                  <span className="truncate">{t('fileAccess.chooseDirectory')}</span>
+                  <span className="truncate" title={t('fileAccess.chooseDirectory')}>
+                    {t('fileAccess.chooseDirectory')}
+                  </span>
                 </Button>
               ) : null}
-              <div className="flex max-w-48 min-w-0 flex-1 flex-col gap-1.5">
-                <Label htmlFor="chat-file-mode" className="truncate">
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <Label
+                  htmlFor="chat-file-mode"
+                  className="truncate"
+                  title={t('fileAccess.modeLabel')}
+                >
                   {t('fileAccess.modeLabel')}
                 </Label>
                 <Select
@@ -415,7 +423,7 @@ export const ChatPage = () => {
                   <option value="read-only">{t('fileAccess.mode.readOnly')}</option>
                 </Select>
               </div>
-            </>
+            </div>
           ) : null}
         </header>
 
@@ -609,9 +617,11 @@ export const ChatSidebarPanel = ({
     <>
       <header className="border-border flex min-w-0 items-center justify-between gap-2 border-b px-4 py-3">
         <h1 className="truncate text-lg font-semibold">{t('sidebar.title')}</h1>
-        <Button type="button" size="sm" disabled={createPending} onClick={onCreate}>
-          <span className="truncate">{t('sidebar.new')}</span>
-        </Button>
+        {sessions.length > 0 ? (
+          <Button type="button" size="sm" disabled={createPending} onClick={onCreate}>
+            <span className="truncate">{t('sidebar.new')}</span>
+          </Button>
+        ) : null}
       </header>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-3">
         <SessionList
@@ -627,6 +637,8 @@ export const ChatSidebarPanel = ({
           onAskDelete={onAskDelete}
           onConfirmDelete={onConfirmDelete}
           onCancelDelete={onCancelDelete}
+          onCreate={onCreate}
+          createPending={createPending}
           onNavigate={onNavigate}
         />
         {sessionsError ? (
@@ -634,23 +646,23 @@ export const ChatSidebarPanel = ({
         ) : null}
       </div>
       <div className="border-border flex min-w-0 flex-col gap-3 border-t p-4">
-        <div className="flex min-w-0 flex-wrap gap-1">
-          <Button variant="ghost" size="sm" className="min-w-0 flex-1" asChild>
-            <Link to="/knowledge" onClick={onNavigate}>
+        <nav aria-label={t('common:nav.primary')} className="grid min-w-0 grid-cols-3 gap-1">
+          <Button variant="ghost" size="sm" className="min-w-0 px-1.5" asChild>
+            <Link to="/knowledge" title={t('common:nav.knowledge')} onClick={onNavigate}>
               <span className="truncate">{t('common:nav.knowledge')}</span>
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" className="min-w-0 flex-1" asChild>
-            <Link to="/workflow" onClick={onNavigate}>
+          <Button variant="ghost" size="sm" className="min-w-0 px-1.5" asChild>
+            <Link to="/workflow" title={t('common:nav.workflow')} onClick={onNavigate}>
               <span className="truncate">{t('common:nav.workflow')}</span>
             </Link>
           </Button>
-          <Button variant="ghost" size="sm" className="min-w-0 flex-1" asChild>
-            <Link to="/settings" onClick={onNavigate}>
+          <Button variant="ghost" size="sm" className="min-w-0 px-1.5" asChild>
+            <Link to="/settings" title={t('common:nav.settings')} onClick={onNavigate}>
               <span className="truncate">{t('common:nav.settings')}</span>
             </Link>
           </Button>
-        </div>
+        </nav>
         <ThemeToggle
           preference={preference}
           onPreferenceChange={setPreference}
@@ -718,6 +730,8 @@ export const SessionList = ({
   onAskDelete,
   onConfirmDelete,
   onCancelDelete,
+  onCreate,
+  createPending,
   basePath = '/chat',
   onNavigate,
 }: {
@@ -733,15 +747,22 @@ export const SessionList = ({
   onAskDelete: (id: string) => void;
   onConfirmDelete: (id: string) => void;
   onCancelDelete: () => void;
+  onCreate?: () => void;
+  createPending?: boolean;
   basePath?: string;
   onNavigate?: () => void;
 }) => {
   const { t } = useChatTranslation();
   if (sessions.length === 0) {
     return (
-      <p className="text-muted-foreground border-border rounded-lg border border-dashed p-4 text-center text-sm">
-        {t('sidebar.empty')}
-      </p>
+      <div className="border-border flex flex-col items-center gap-3 rounded-lg border border-dashed p-4 text-center">
+        <p className="text-muted-foreground text-sm">{t('sidebar.empty')}</p>
+        {onCreate ? (
+          <Button type="button" size="sm" disabled={createPending} onClick={onCreate}>
+            {t('sidebar.new')}
+          </Button>
+        ) : null}
+      </div>
     );
   }
   return (
@@ -771,6 +792,7 @@ export const SessionList = ({
               <Link
                 to={`${basePath}/${item.id}`}
                 className={cn('block truncate text-sm', item.id === currentId && 'font-semibold')}
+                aria-current={item.id === currentId ? 'page' : undefined}
                 onClick={onNavigate}
               >
                 {item.title}

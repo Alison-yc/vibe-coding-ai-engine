@@ -37,58 +37,64 @@ export const RunLogPanel = ({
       </header>
       {open ? (
         <div ref={parentRef} className="h-56 overflow-auto">
-          <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
-            {virtualizer.getVirtualItems().map((item) => {
-              const log = logs[item.index];
-              if (!log) return null;
-              return (
-                <div
-                  key={log.id}
-                  ref={virtualizer.measureElement}
-                  data-index={item.index}
-                  className="absolute top-0 left-0 w-full px-4 pb-2"
-                  style={{ transform: `translateY(${item.start}px)` }}
-                >
-                  <details
-                    className="border-border bg-background rounded-md border p-3"
-                    open={log.status === 'running' || Boolean(log.text) || Boolean(log.error)}
+          {logs.length === 0 ? (
+            <div className="text-muted-foreground grid h-full place-items-center px-4 text-center text-sm">
+              {t('logs.empty')}
+            </div>
+          ) : (
+            <div className="relative w-full" style={{ height: virtualizer.getTotalSize() }}>
+              {virtualizer.getVirtualItems().map((item) => {
+                const log = logs[item.index];
+                if (!log) return null;
+                return (
+                  <div
+                    key={log.id}
+                    ref={virtualizer.measureElement}
+                    data-index={item.index}
+                    className="absolute top-0 left-0 w-full px-4 pb-2"
+                    style={{ transform: `translateY(${item.start}px)` }}
                   >
-                    <summary className="flex cursor-pointer items-center justify-between gap-3">
-                      <span className="min-w-0 truncate text-sm">
-                        {log.titleKey ? t(log.titleKey) : log.title}
-                      </span>
-                      <span className="flex shrink-0 items-center gap-2">
-                        {log.elapsedMs !== undefined ? (
-                          <span className="text-muted-foreground text-xs">{log.elapsedMs}ms</span>
-                        ) : null}
-                        <Badge variant={log.status === 'failed' ? 'destructive' : 'secondary'}>
-                          {t(`status.${log.status}`)}
-                        </Badge>
-                      </span>
-                    </summary>
-                    {log.text ? (
-                      <pre className="bg-muted mt-2 max-h-32 overflow-auto rounded p-2 text-xs whitespace-pre-wrap">
-                        {log.text}
-                      </pre>
-                    ) : null}
-                    {log.error ? (
-                      <p className="text-destructive mt-2 text-xs">{log.error}</p>
-                    ) : null}
-                    {log.inputs ? (
-                      <pre className="text-muted-foreground mt-2 overflow-auto text-xs">
-                        {t('logs.input', { value: JSON.stringify(log.inputs, null, 2) })}
-                      </pre>
-                    ) : null}
-                    {log.outputs ? (
-                      <pre className="text-muted-foreground mt-2 overflow-auto text-xs">
-                        {t('logs.output', { value: JSON.stringify(log.outputs, null, 2) })}
-                      </pre>
-                    ) : null}
-                  </details>
-                </div>
-              );
-            })}
-          </div>
+                    <details
+                      className="border-border bg-background rounded-md border p-3"
+                      open={log.status === 'running' || Boolean(log.text) || Boolean(log.error)}
+                    >
+                      <summary className="flex cursor-pointer items-center justify-between gap-3">
+                        <span className="min-w-0 truncate text-sm">
+                          {log.titleKey ? t(log.titleKey) : log.title}
+                        </span>
+                        <span className="flex shrink-0 items-center gap-2">
+                          {log.elapsedMs !== undefined ? (
+                            <span className="text-muted-foreground text-xs">{log.elapsedMs}ms</span>
+                          ) : null}
+                          <Badge variant={log.status === 'failed' ? 'destructive' : 'secondary'}>
+                            {t(`status.${log.status}`)}
+                          </Badge>
+                        </span>
+                      </summary>
+                      {log.text ? (
+                        <pre className="bg-muted mt-2 max-h-32 overflow-auto rounded p-2 text-xs whitespace-pre-wrap">
+                          {log.text}
+                        </pre>
+                      ) : null}
+                      {log.error ? (
+                        <p className="text-destructive mt-2 text-xs">{log.error}</p>
+                      ) : null}
+                      {log.inputs ? (
+                        <pre className="text-muted-foreground mt-2 overflow-auto text-xs">
+                          {t('logs.input', { value: JSON.stringify(log.inputs, null, 2) })}
+                        </pre>
+                      ) : null}
+                      {log.outputs ? (
+                        <pre className="text-muted-foreground mt-2 overflow-auto text-xs">
+                          {t('logs.output', { value: JSON.stringify(log.outputs, null, 2) })}
+                        </pre>
+                      ) : null}
+                    </details>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
       ) : null}
     </section>

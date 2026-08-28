@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
-import { Link } from 'react-router';
+import { Link, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { Button, Separator } from '@ai-engine/ui';
+import { Button, Separator, cn } from '@ai-engine/ui';
 
 export const PageShell = ({
   title,
@@ -25,6 +25,7 @@ export const PageShell = ({
     <main className="bg-background text-foreground mx-auto flex min-h-dvh w-full max-w-5xl min-w-0 flex-col gap-6 p-6">
       {nav ? (
         <nav
+          aria-label={t('nav.primary')}
           data-testid="app-nav"
           className="text-muted-foreground flex w-full flex-nowrap items-center gap-1 overflow-hidden text-sm sm:gap-3"
         >
@@ -58,19 +59,32 @@ export const PageShell = ({
 
 export const AppNavLinks = () => {
   const { t } = useTranslation();
+  const { pathname } = useLocation();
   const links = [
     ['/chat', t('nav.chat')],
     ['/knowledge', t('nav.knowledge')],
     ['/workflow', t('nav.workflow')],
     ['/settings', t('nav.settings')],
   ] as const;
-  return links.map(([to, label]) => (
-    <Button key={to} variant="ghost" size="sm" className="max-w-36 min-w-0 flex-1" asChild>
-      <Link to={to} title={label}>
-        <span className="truncate">{label}</span>
-      </Link>
-    </Button>
-  ));
+  return links.map(([to, label]) => {
+    const active = pathname === to || pathname.startsWith(`${to}/`);
+    return (
+      <Button
+        key={to}
+        variant="ghost"
+        size="sm"
+        className={cn(
+          'max-w-36 min-w-0 flex-1',
+          active && 'bg-accent text-accent-foreground font-semibold',
+        )}
+        asChild
+      >
+        <Link to={to} title={label} aria-current={active ? 'page' : undefined}>
+          <span className="truncate">{label}</span>
+        </Link>
+      </Button>
+    );
+  });
 };
 
 export const EmptyState = ({

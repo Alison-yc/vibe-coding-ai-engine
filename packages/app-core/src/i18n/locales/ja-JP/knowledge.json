@@ -70,6 +70,11 @@
       "description": "方式とパラメーターを調整し、正式なドキュメントをアップロードする前にチャンクを確認します。",
       "textPlaceholder": "分割をプレビューするテキストを入力…",
       "strategyLabel": "方式",
+      "strategy": {
+        "recursive": "スマート再帰",
+        "fixed": "固定長",
+        "markdown": "Markdown 見出し"
+      },
       "chunkSizeLabel": "チャンクサイズ",
       "overlapLabel": "オーバーラップ",
       "submit": "分割をプレビュー",

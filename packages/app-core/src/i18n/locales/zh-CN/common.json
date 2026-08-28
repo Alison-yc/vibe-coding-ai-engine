@@ -1,6 +1,7 @@
 {
   "loading": "正在加载…",
   "nav": {
+    "primary": "主导航",
     "chat": "对话",
     "knowledge": "知识库",
     "workflow": "工作流",

@@ -1,6 +1,7 @@
 {
   "loading": "Loading…",
   "nav": {
+    "primary": "Main navigation",
     "chat": "Chat",
     "knowledge": "Knowledge",
     "workflow": "Workflow",

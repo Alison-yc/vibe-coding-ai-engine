@@ -184,9 +184,9 @@ export const KnowledgeDetailPage = () => {
             <div className="flex flex-col gap-2">
               <Label htmlFor="chunk-strategy">{t('detail.preview.strategyLabel')}</Label>
               <Select id="chunk-strategy" value={strategy} onChange={handlers.onStrategyChange}>
-                <option value="recursive">recursive</option>
-                <option value="fixed">fixed</option>
-                <option value="markdown">markdown</option>
+                <option value="recursive">{t('detail.preview.strategy.recursive')}</option>
+                <option value="fixed">{t('detail.preview.strategy.fixed')}</option>
+                <option value="markdown">{t('detail.preview.strategy.markdown')}</option>
               </Select>
             </div>
             <div className="flex flex-col gap-2">

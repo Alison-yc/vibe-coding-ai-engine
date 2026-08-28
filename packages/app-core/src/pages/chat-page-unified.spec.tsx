@@ -198,6 +198,9 @@ describe('统一对话文件能力', () => {
 
     const toggle = await screen.findByRole('checkbox', { name: 'File access' });
     await user.click(toggle);
+    const fileToolbar = await screen.findByTestId('chat-file-access-toolbar');
+    expect(fileToolbar.className).toContain('grid');
+    expect(fileToolbar.className).toContain('w-full');
     await user.type(screen.getByLabelText('Workspace directory'), '/workspace');
     await user.type(screen.getByPlaceholderText(/Type a message/), '读取 README.md');
     await user.click(screen.getByRole('button', { name: 'Send' }));

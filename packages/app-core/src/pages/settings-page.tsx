@@ -116,6 +116,7 @@ const BackendAddressCard = () => {
         <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
           <Input
             id="settings-backend-address"
+            className="min-w-0 flex-1"
             value={address}
             disabled={save.isPending}
             placeholder="http://localhost:3000"
@@ -123,11 +124,14 @@ const BackendAddressCard = () => {
           />
           <Button
             type="button"
-            className="min-w-0"
+            className="min-w-0 shrink-0 sm:min-w-28"
             disabled={save.isPending}
             onClick={() => save.mutate()}
           >
-            <span className="truncate">
+            <span
+              className="truncate"
+              title={save.isPending ? t('backend.testing') : t('backend.saveAndTest')}
+            >
               {save.isPending ? t('backend.testing') : t('backend.saveAndTest')}
             </span>
           </Button>

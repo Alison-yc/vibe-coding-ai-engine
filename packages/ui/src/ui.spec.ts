@@ -184,5 +184,8 @@ describe('ThemeToggle', () => {
     );
     expect(html).toContain('跟随系统');
     expect(html).toContain('蓝');
+    expect(html).toContain('grid-cols-3');
+    expect(html).toContain('grid-cols-4');
+    expect(html).not.toContain('flex-wrap');
   });
 });

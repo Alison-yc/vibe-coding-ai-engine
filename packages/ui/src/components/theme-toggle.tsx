@@ -24,42 +24,54 @@ export const ThemeToggle = ({
   onPreferenceChange: (preference: ThemePreference) => void;
   labels: ThemeToggleLabels;
 }) => (
-  <div className="flex flex-col gap-4">
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-muted-foreground text-sm">{labels.appearance}</span>
-      {THEME_MODES.map((mode) => (
-        <Button
-          key={mode}
-          type="button"
-          size="sm"
-          variant={preference.mode === mode ? 'default' : 'outline'}
-          aria-pressed={preference.mode === mode}
-          onClick={() => {
-            onPreferenceChange({ ...preference, mode });
-          }}
-        >
-          {mode === 'dark' ? <Moon size={16} /> : null}
-          {mode === 'light' ? <Sun size={16} /> : null}
-          {labels.modes[mode]}
-        </Button>
-      ))}
+  <div className="flex min-w-0 flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <span className="text-muted-foreground truncate text-xs" title={labels.appearance}>
+        {labels.appearance}
+      </span>
+      <div className="grid min-w-0 grid-cols-3 gap-1">
+        {THEME_MODES.map((mode) => (
+          <Button
+            key={mode}
+            type="button"
+            size="sm"
+            variant={preference.mode === mode ? 'default' : 'outline'}
+            className="min-w-0 px-2"
+            aria-pressed={preference.mode === mode}
+            title={labels.modes[mode]}
+            onClick={() => {
+              onPreferenceChange({ ...preference, mode });
+            }}
+          >
+            {mode === 'dark' ? <Moon size={14} /> : null}
+            {mode === 'light' ? <Sun size={14} /> : null}
+            <span className="truncate">{labels.modes[mode]}</span>
+          </Button>
+        ))}
+      </div>
     </div>
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-muted-foreground text-sm">{labels.palette}</span>
-      {THEME_PALETTES.map((palette) => (
-        <Button
-          key={palette}
-          type="button"
-          size="sm"
-          variant={preference.palette === palette ? 'default' : 'outline'}
-          aria-pressed={preference.palette === palette}
-          onClick={() => {
-            onPreferenceChange({ ...preference, palette });
-          }}
-        >
-          {labels.palettes[palette]}
-        </Button>
-      ))}
+    <div className="flex min-w-0 flex-col gap-1.5">
+      <span className="text-muted-foreground truncate text-xs" title={labels.palette}>
+        {labels.palette}
+      </span>
+      <div className="grid min-w-0 grid-cols-4 gap-1">
+        {THEME_PALETTES.map((palette) => (
+          <Button
+            key={palette}
+            type="button"
+            size="sm"
+            variant={preference.palette === palette ? 'default' : 'outline'}
+            className="min-w-0 px-2"
+            aria-pressed={preference.palette === palette}
+            title={labels.palettes[palette]}
+            onClick={() => {
+              onPreferenceChange({ ...preference, palette });
+            }}
+          >
+            <span className="truncate">{labels.palettes[palette]}</span>
+          </Button>
+        ))}
+      </div>
     </div>
   </div>
 );

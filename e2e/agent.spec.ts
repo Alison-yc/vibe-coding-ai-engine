@@ -5,6 +5,7 @@ const messageId = '22222222-2222-4222-8222-222222222222';
 const approvalId = '33333333-3333-4333-8333-333333333333';
 
 test('统一对话开启文件访问后展示工具状态并完成写入审批', async ({ page }) => {
+  await page.setViewportSize({ width: 1024, height: 768 });
   let decision = '';
   let sent = false;
   await page.route('**/chat/sessions', async (route) => {
@@ -102,6 +103,11 @@ test('统一对话开启文件访问后展示工具状态并完成写入审批',
   await page.goto(`/agent/${sessionId}`);
   await expect(page).toHaveURL(`/chat/${sessionId}`);
   await page.getByRole('checkbox', { name: '文件访问' }).check();
+  await expect(page.getByTestId('chat-file-access-toolbar')).toBeVisible();
+  const overflow = await page
+    .locator('body')
+    .evaluate((element) => element.scrollWidth - element.clientWidth);
+  expect(overflow).toBeLessThanOrEqual(1);
   await page.getByLabel('工作区目录').fill('/tmp/agent-workspace');
   await page.getByPlaceholder(/输入消息/).fill('生成 result.md');
   await page.getByRole('button', { name: '发送' }).click();

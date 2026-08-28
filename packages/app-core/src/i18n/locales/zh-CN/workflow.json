@@ -69,6 +69,7 @@
   },
   "logs": {
     "title": "运行日志",
+    "empty": "运行工作流后，节点日志会显示在这里",
     "collapse": "收起",
     "expand": "展开",
     "input": "输入：{{value}}",

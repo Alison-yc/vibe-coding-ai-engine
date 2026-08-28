@@ -102,7 +102,7 @@ export const WorkflowListPage = () => {
                   {t('list.version', { version: workflow.version })}
                 </CardDescription>
               </CardHeader>
-              <CardContent className="flex gap-2">
+              <CardContent className="flex flex-wrap gap-2">
                 <Button onClick={() => void navigate(`/workflow/${workflow.id}`)}>
                   {t('list.edit')}
                 </Button>

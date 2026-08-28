@@ -9,7 +9,7 @@ import {
   Input,
   Label,
 } from '@ai-engine/ui';
-import { useState } from 'react';
+import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
@@ -18,10 +18,22 @@ import { createKnowledgeListHandlers } from '../knowledge/knowledge-list-actions
 import { localizeApiError } from '../i18n/localize-api-error';
 import { useKnowledgeTranslation } from '../i18n/knowledge-i18n';
 
-export const KnowledgeDatasetGrid = ({ datasets }: { datasets: Dataset[] }) => {
+export const KnowledgeDatasetGrid = ({
+  datasets,
+  emptyAction,
+}: {
+  datasets: Dataset[];
+  emptyAction?: ReactNode;
+}) => {
   const t = useKnowledgeTranslation();
   if (datasets.length === 0) {
-    return <EmptyState title={t('list.empty.title')} description={t('list.empty.description')} />;
+    return (
+      <EmptyState
+        title={t('list.empty.title')}
+        description={t('list.empty.description')}
+        action={emptyAction}
+      />
+    );
   }
   return (
     <section className="grid gap-4 sm:grid-cols-2">
@@ -111,7 +123,14 @@ export const KnowledgeListPage = () => {
         </p>
       ) : null}
 
-      <KnowledgeDatasetGrid datasets={datasets} />
+      <KnowledgeDatasetGrid
+        datasets={datasets}
+        emptyAction={
+          <Button type="button" disabled={loading} onClick={handlers.onCreateClick}>
+            {t('list.create.submit')}
+          </Button>
+        }
+      />
     </PageShell>
   );
 };

@@ -70,6 +70,11 @@
       "description": "Adjust the strategy and parameters to preview chunks before uploading the final document.",
       "textPlaceholder": "Enter text to preview chunking…",
       "strategyLabel": "Strategy",
+      "strategy": {
+        "recursive": "Smart recursive",
+        "fixed": "Fixed length",
+        "markdown": "Markdown headings"
+      },
       "chunkSizeLabel": "Chunk size",
       "overlapLabel": "Overlap",
       "submit": "Preview chunks",

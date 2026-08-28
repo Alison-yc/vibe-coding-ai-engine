@@ -166,6 +166,16 @@ describe('工作流组件', () => {
       viewport: { x: 0, y: 0, zoom: 1 },
     });
     renderWithProviders(<WorkflowCanvas />);
+    act(() => {
+      useWorkflowStore
+        .getState()
+        .applyRuntimeEvent({ event: 'node_started', data: { nodeId: start.id, inputs: {} } });
+      useWorkflowStore.getState().applyRuntimeEvent({
+        event: 'node_finished',
+        data: { nodeId: start.id, outputs: {}, elapsedMs: 1, status: 'completed' },
+      });
+    });
+    expect(document.querySelector('.border-node-success')).toBeTruthy();
     fireEvent.click(screen.getByRole('button', { name: /HTTP 请求/ }));
     expect(screen.getAllByText('HTTP 请求', { exact: true }).length).toBeGreaterThan(1);
   });
@@ -405,6 +415,11 @@ describe('工作流组件', () => {
     render(<RunLogPanel open={false} onToggle={onToggle} logs={[]} />);
     fireEvent.click(screen.getByRole('button', { name: '展开' }));
     expect(onToggle).toHaveBeenCalled();
+  });
+
+  it('展开的空日志面板显示引导文案', () => {
+    render(<RunLogPanel open onToggle={() => undefined} logs={[]} />);
+    expect(screen.getByText('运行工作流后，节点日志会显示在这里')).toBeTruthy();
   });
 
   it('切换语言后用稳定 key 更新运行终态标题', async () => {

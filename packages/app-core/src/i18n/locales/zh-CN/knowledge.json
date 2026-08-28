@@ -70,6 +70,11 @@
       "description": "调整策略与参数，预览切片结果后再上传正式文档。",
       "textPlaceholder": "输入一段文本用于预览切分…",
       "strategyLabel": "策略",
+      "strategy": {
+        "recursive": "智能递归",
+        "fixed": "固定长度",
+        "markdown": "Markdown 标题"
+      },
       "chunkSizeLabel": "切片大小",
       "overlapLabel": "重叠长度",
       "submit": "预览切分",

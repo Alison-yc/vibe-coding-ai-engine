@@ -7,11 +7,11 @@ import { NodeComponentMap } from '../nodes/registry';
 import type { CanvasNode, NodeRunningStatus } from '../types';
 
 const statusClass: Record<NodeRunningStatus, string> = {
-  idle: 'border-border',
-  running: 'border-primary ring-primary/30 animate-pulse ring-2',
-  completed: 'border-chart-2 ring-chart-2/20 ring-1',
-  failed: 'border-destructive ring-destructive/20 ring-2',
-  stopped: 'border-muted-foreground',
+  idle: 'border-node-idle',
+  running: 'border-node-running ring-node-running/30 animate-pulse ring-2',
+  completed: 'border-node-success ring-node-success/20 ring-1',
+  failed: 'border-node-error ring-node-error/20 ring-2',
+  stopped: 'border-node-idle/70',
 };
 
 const BaseNode = ({

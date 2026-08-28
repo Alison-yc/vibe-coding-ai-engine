@@ -69,6 +69,7 @@
   },
   "logs": {
     "title": "Run logs",
+    "empty": "Node logs will appear here after you run the workflow",
     "collapse": "Collapse",
     "expand": "Expand",
     "input": "Input: {{value}}",

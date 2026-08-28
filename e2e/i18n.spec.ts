@@ -78,6 +78,10 @@ test('英文业务主路径在窄屏保持可用且无横向溢出', async ({ pa
   await page.goto('/settings');
   await selectLocale(page, 'en-US');
   await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+  await expect(page.getByRole('link', { name: 'Settings' })).toHaveAttribute(
+    'aria-current',
+    'page',
+  );
 
   const routes = ['/chat', '/knowledge', '/workflow'];
   for (const route of routes) {
@@ -85,12 +89,18 @@ test('英文业务主路径在窄屏保持可用且无横向溢出', async ({ pa
     if (route === '/chat') {
       await expect(page.getByRole('button', { name: 'Chat list' })).toBeVisible();
     } else {
+      const headingLabel = route === '/knowledge' ? 'Knowledge' : 'Workflows';
+      const navLabel = route === '/knowledge' ? 'Knowledge' : 'Workflow';
       await expect(
         page.getByRole('heading', {
-          name: route === '/knowledge' ? 'Knowledge' : 'Workflows',
+          name: headingLabel,
           exact: true,
         }),
       ).toBeVisible();
+      await expect(page.getByRole('link', { name: navLabel })).toHaveAttribute(
+        'aria-current',
+        'page',
+      );
     }
     const overflow = await page
       .locator('body')
