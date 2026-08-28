@@ -161,6 +161,35 @@ describe('SettingsPage', () => {
     await expect(platform.getUiLocale()).resolves.toBe('en-US');
   });
 
+  it('语言下拉不被卡片 overflow 裁切', async () => {
+    mocks.listServers.mockResolvedValue([]);
+    mocks.listExposed.mockResolvedValue({ tools: [], dropped: [], maxToolCount: 6 });
+    render(
+      <PlatformProvider value={platform}>
+        <AppI18nProvider>
+          <QueryClientProvider
+            client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+          >
+            <MemoryRouter>
+              <SettingsPage />
+            </MemoryRouter>
+          </QueryClientProvider>
+        </AppI18nProvider>
+      </PlatformProvider>,
+    );
+
+    const card = await screen.findByTestId('language-card');
+    expect(card.className).toContain('overflow-visible');
+    expect(card.className).not.toContain('overflow-hidden');
+
+    fireEvent.click(await screen.findByRole('button', { name: '语言' }));
+    const listbox = await screen.findByRole('listbox');
+    expect(listbox).toBeTruthy();
+    expect(screen.getByRole('option', { name: '中文' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: '日本語' })).toBeTruthy();
+    expect(screen.getByRole('option', { name: 'English' })).toBeTruthy();
+  });
+
   it('按 ApiError code 本地化真实查询错误', async () => {
     await kv.set('ui.locale', 'en-US');
     mocks.listServers.mockRejectedValue(

@@ -55,7 +55,7 @@ const LanguageCard = () => {
   });
 
   return (
-    <Card data-testid="language-card" className="w-full min-w-0 overflow-hidden">
+    <Card data-testid="language-card" className="w-full min-w-0 overflow-visible">
       <CardHeader>
         <CardTitle className="line-clamp-2">{t('settings.language.cardTitle')}</CardTitle>
       </CardHeader>
