@@ -11,7 +11,7 @@ const EnvironmentSchema = z.object({
   OLLAMA_NUM_PREDICT: z.coerce.number().int().positive().default(2048),
   OLLAMA_TEMPERATURE: z.coerce.number().min(0).max(2).default(0.2),
   OLLAMA_KEEP_ALIVE: z.string().min(1).default('10m'),
-  SERVER_PORT: z.coerce.number().int().min(1).max(65_535).default(3000),
+  SERVER_PORT: z.coerce.number().int().min(0).max(65_535).default(3000),
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.preprocess(

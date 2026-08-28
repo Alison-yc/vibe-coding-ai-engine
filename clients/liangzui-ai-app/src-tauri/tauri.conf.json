@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "pnpm dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "pnpm prepare:sidecar && pnpm build",
+    "beforeBuildCommand": "pnpm prepare:sidecar && pnpm --filter liangzui-ai-app... build",
     "frontendDist": "../dist"
   },
   "app": {

@@ -1,4 +1,4 @@
-import { cp, mkdir, rm, chmod } from 'node:fs/promises';
+import { access, chmod, cp, lstat, mkdir, rm } from 'node:fs/promises';
 import { execFileSync } from 'node:child_process';
 import { log } from 'node:console';
 import path from 'node:path';
@@ -33,7 +33,7 @@ await rm(serverBundleDirectory, { recursive: true, force: true });
 await mkdir(serverBundleDirectory, { recursive: true });
 await mkdir(binariesDirectory, { recursive: true });
 
-runPnpm(['--filter', 'liangzui-ai-server', 'build']);
+runPnpm(['--filter', 'liangzui-ai-server...', 'build']);
 runPnpm([
   '--config.node-linker=hoisted',
   '--filter',
@@ -60,7 +60,24 @@ await Promise.all(
 );
 
 const sidecarBinary = path.join(binariesDirectory, `node-${rustHost}`);
-await cp(process.execPath, sidecarBinary);
+const rustArchitecture = rustHost.split('-')[0];
+const nodeArchitecture =
+  process.arch === 'arm64' ? 'aarch64' : process.arch === 'x64' ? 'x86_64' : process.arch;
+if (rustArchitecture !== nodeArchitecture) {
+  throw new Error(`Node 架构 ${process.arch} 与 Rust target ${rustHost} 不匹配`);
+}
+await cp(process.execPath, sidecarBinary, { dereference: true });
 await chmod(sidecarBinary, 0o755);
+
+const requiredFiles = [
+  path.join(serverBundleDirectory, 'dist/main.js'),
+  path.join(serverBundleDirectory, 'drizzle/meta/_journal.json'),
+  path.join(serverBundleDirectory, 'mcp.json.example'),
+  path.join(serverBundleDirectory, 'node_modules/@ai-engine/contracts/dist/index.js'),
+];
+await Promise.all(requiredFiles.map((file) => access(file)));
+if ((await lstat(sidecarBinary)).isSymbolicLink()) {
+  throw new Error('sidecar Node runtime 不能是符号链接');
+}
 
 log(`sidecar 已准备：${path.relative(repositoryRoot, sidecarBinary)}`);

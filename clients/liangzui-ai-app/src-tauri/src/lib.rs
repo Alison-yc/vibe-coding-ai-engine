@@ -1,6 +1,6 @@
 mod sidecar;
 
-use tauri::{Manager, RunEvent};
+use tauri::Manager;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -26,9 +26,5 @@ pub fn run() {
             return;
         }
     };
-    app.run(|handle, event| {
-        if matches!(event, RunEvent::Exit | RunEvent::ExitRequested { .. }) {
-            sidecar::stop(handle.state::<sidecar::SidecarState>().inner());
-        }
-    });
+    app.run(|_, _| {});
 }

@@ -42,6 +42,7 @@ describe('Ollama 配置', () => {
       SIDECAR_PARENT_PID: 1234,
       DATABASE_MIGRATIONS_PATH: '/tmp/migrations',
     });
+    expect(validateEnvironment({ SERVER_PORT: '0', SIDECAR_MODE: 'true' }).SERVER_PORT).toBe(0);
     expect(() => validateEnvironment({ SERVER_PORT: '70000' })).toThrow();
   });
 });

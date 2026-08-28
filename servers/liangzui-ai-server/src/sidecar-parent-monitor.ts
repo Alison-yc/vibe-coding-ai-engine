@@ -1,3 +1,14 @@
+import type { AddressInfo } from 'node:net';
+
+export const SIDECAR_READY_PREFIX = '__AI_ENGINE_SIDECAR_READY__';
+
+export const sidecarReadyUrl = (address: AddressInfo | string | null): string => {
+  if (!address || typeof address === 'string') {
+    throw new Error('无法读取 sidecar 监听端口');
+  }
+  return `http://127.0.0.1:${address.port}`;
+};
+
 export const isProcessAlive = (pid: number): boolean => {
   try {
     process.kill(pid, 0);

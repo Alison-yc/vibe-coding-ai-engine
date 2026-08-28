@@ -2,10 +2,8 @@ use serde::Serialize;
 use std::{
     fs::{self, OpenOptions},
     io::Write,
-    net::{IpAddr, Ipv4Addr, SocketAddr, TcpStream},
     path::{Path, PathBuf},
-    sync::{Mutex, MutexGuard},
-    time::Duration,
+    sync::{Arc, Mutex, MutexGuard},
 };
 use tauri::{AppHandle, Manager, State};
 use tauri_plugin_shell::{
@@ -13,6 +11,8 @@ use tauri_plugin_shell::{
     ShellExt,
 };
 use thiserror::Error;
+
+const SIDECAR_READY_PREFIX: &str = "__AI_ENGINE_SIDECAR_READY__";
 
 #[derive(Debug, Error, Serialize)]
 #[serde(tag = "kind", content = "message")]
@@ -28,6 +28,7 @@ pub enum SidecarError {
 #[derive(Clone, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SidecarStartupInfo {
+    pub managed: bool,
     pub api_base_url: Option<String>,
     pub error: Option<String>,
     pub log_path: Option<String>,
@@ -36,7 +37,7 @@ pub struct SidecarStartupInfo {
 #[derive(Default)]
 pub struct SidecarState {
     child: Mutex<Option<CommandChild>>,
-    info: Mutex<SidecarStartupInfo>,
+    info: Arc<Mutex<SidecarStartupInfo>>,
 }
 
 fn lock<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, SidecarError> {
@@ -45,13 +46,21 @@ fn lock<T>(mutex: &Mutex<T>) -> Result<MutexGuard<'_, T>, SidecarError> {
         .map_err(|error| SidecarError::State(error.to_string()))
 }
 
-fn select_available_port(start: u16) -> Result<u16, SidecarError> {
-    (start..=65_535)
-        .find(|port| {
-            let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::LOCALHOST), *port);
-            TcpStream::connect_timeout(&address, Duration::from_millis(50)).is_err()
-        })
-        .ok_or_else(|| SidecarError::Io("没有可用的本地端口".to_owned()))
+fn record_ready_url(info: &Mutex<SidecarStartupInfo>, bytes: &[u8]) {
+    let output = String::from_utf8_lossy(bytes);
+    let Some(value) = output
+        .split(SIDECAR_READY_PREFIX)
+        .nth(1)
+        .and_then(|suffix| suffix.split_whitespace().next())
+    else {
+        return;
+    };
+    if !value.starts_with("http://127.0.0.1:") {
+        return;
+    }
+    if let Ok(mut startup) = info.lock() {
+        startup.api_base_url = Some(value.to_owned());
+    }
 }
 
 fn copy_if_missing(source: &Path, destination: &Path) -> Result<(), SidecarError> {
@@ -139,10 +148,13 @@ pub fn start(app: &AppHandle, state: &SidecarState) -> Result<(), SidecarError> 
     copy_private_if_missing(&resource_dir.join("sidecar.env.example"), &env_path)?;
     copy_if_missing(&server_dir.join("mcp.json.example"), &mcp_example_path)?;
 
-    let preferred_port = 30_000 + (std::process::id() % 20_000) as u16;
-    let port = select_available_port(preferred_port)?;
-    let api_base_url = format!("http://127.0.0.1:{port}");
     let log_path = log_dir.join("sidecar.log");
+    *lock(&state.info)? = SidecarStartupInfo {
+        managed: true,
+        api_base_url: None,
+        error: None,
+        log_path: Some(log_path.to_string_lossy().into_owned()),
+    };
     let entry = server_dir.join("dist/main.js");
     let args = vec![
         format!("--env-file-if-exists={}", env_path.display()),
@@ -155,7 +167,7 @@ pub fn start(app: &AppHandle, state: &SidecarState) -> Result<(), SidecarError> 
         .args(args)
         .current_dir(&server_dir)
         .env("NODE_ENV", "production")
-        .env("SERVER_PORT", port.to_string())
+        .env("SERVER_PORT", "0")
         .env("SIDECAR_MODE", "true")
         .env("SIDECAR_PARENT_PID", std::process::id().to_string())
         .env("DATABASE_MIGRATIONS_PATH", server_dir.join("drizzle"))
@@ -165,16 +177,25 @@ pub fn start(app: &AppHandle, state: &SidecarState) -> Result<(), SidecarError> 
         .map_err(|error| SidecarError::Spawn(error.to_string()))?;
 
     *lock(&state.child)? = Some(child);
-    *lock(&state.info)? = SidecarStartupInfo {
-        api_base_url: Some(api_base_url),
-        error: None,
-        log_path: Some(log_path.to_string_lossy().into_owned()),
-    };
 
+    let startup_info = Arc::clone(&state.info);
     tauri::async_runtime::spawn(async move {
+        let mut startup_output = Vec::new();
         while let Some(event) = receiver.recv().await {
             match event {
-                CommandEvent::Stdout(bytes) => append_log(&log_path, "[stdout] ", &bytes),
+                CommandEvent::Stdout(bytes) => {
+                    startup_output.extend_from_slice(&bytes);
+                    record_ready_url(&startup_info, &startup_output);
+                    if startup_info
+                        .lock()
+                        .is_ok_and(|info| info.api_base_url.is_some())
+                    {
+                        startup_output.clear();
+                    } else if startup_output.len() > 65_536 {
+                        startup_output.drain(..startup_output.len() - 65_536);
+                    }
+                    append_log(&log_path, "[stdout] ", &bytes);
+                }
                 CommandEvent::Stderr(bytes) => append_log(&log_path, "[stderr] ", &bytes),
                 CommandEvent::Error(error) => {
                     append_log(&log_path, "[error] ", error.as_bytes());
@@ -195,16 +216,8 @@ pub fn start(app: &AppHandle, state: &SidecarState) -> Result<(), SidecarError> 
 
 pub fn record_start_error(state: &SidecarState, error: &SidecarError) {
     if let Ok(mut info) = state.info.lock() {
+        info.managed = true;
         info.error = Some(error.to_string());
-    }
-}
-
-pub fn stop(state: &SidecarState) {
-    let child = state.child.lock().ok().and_then(|mut child| child.take());
-    if let Some(child) = child {
-        if let Err(error) = child.kill() {
-            eprintln!("无法停止 sidecar：{error}");
-        }
     }
 }
 
@@ -217,25 +230,32 @@ pub fn sidecar_startup_info(
 
 #[cfg(test)]
 mod tests {
-    use super::select_available_port;
-    use std::net::{Ipv4Addr, TcpListener};
+    use super::{record_ready_url, SidecarStartupInfo};
+    use std::sync::Mutex;
 
     #[test]
-    fn selects_an_available_local_port() {
-        let port = select_available_port(40_000).expect("port allocation should succeed");
-        TcpListener::bind((Ipv4Addr::LOCALHOST, port))
-            .expect("selected port should be available after reservation");
+    fn records_the_server_assigned_port() {
+        let info = Mutex::new(SidecarStartupInfo::default());
+        record_ready_url(
+            &info,
+            b"__AI_ENGINE_SIDECAR_READY__http://127.0.0.1:43121\n",
+        );
+        assert_eq!(
+            info.lock().expect("startup info should lock").api_base_url,
+            Some("http://127.0.0.1:43121".to_owned())
+        );
     }
 
     #[test]
-    fn skips_an_occupied_port() {
-        let listener =
-            TcpListener::bind((Ipv4Addr::LOCALHOST, 0)).expect("test listener should bind");
-        let occupied = listener
-            .local_addr()
-            .expect("test listener should have an address")
-            .port();
-        let selected = select_available_port(occupied).expect("a later port should be available");
-        assert_ne!(selected, occupied);
+    fn ignores_untrusted_ready_addresses() {
+        let info = Mutex::new(SidecarStartupInfo::default());
+        record_ready_url(
+            &info,
+            b"__AI_ENGINE_SIDECAR_READY__http://example.com:43121\n",
+        );
+        assert_eq!(
+            info.lock().expect("startup info should lock").api_base_url,
+            None
+        );
     }
 }
