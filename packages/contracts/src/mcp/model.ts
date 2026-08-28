@@ -16,6 +16,12 @@ export const McpToolFilterSchema = z.object({
   requiredParams: z
     .record(z.string().min(1).max(128), z.array(z.string().min(1).max(64)).min(1).max(8))
     .optional(),
+  fixedParams: z
+    .record(
+      z.string().min(1).max(128),
+      z.record(z.string().min(1).max(64), z.union([z.string().max(128), z.number(), z.boolean()])),
+    )
+    .optional(),
 });
 export type McpToolFilter = z.infer<typeof McpToolFilterSchema>;
 

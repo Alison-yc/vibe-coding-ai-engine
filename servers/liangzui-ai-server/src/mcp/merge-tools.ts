@@ -66,6 +66,11 @@ export const projectMcpToolInputSchema = (
   };
 };
 
+export const applyFixedMcpParams = (
+  args: Record<string, unknown>,
+  fixed: Record<string, unknown> | undefined,
+): Record<string, unknown> => (fixed ? { ...args, ...fixed } : args);
+
 export const mergeAndTrimTools = (
   builtin: AgentModelTool[],
   mcp: AgentModelTool[],

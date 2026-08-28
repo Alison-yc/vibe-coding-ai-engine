@@ -30,6 +30,23 @@ describe('MCP contracts', () => {
           weather: {
             type: 'stdio',
             command: 'npx',
+            args: ['-y', '@dangahagan/weather-mcp@1.25.6'],
+            toolFilter: {
+              include: ['get_weather_summary'],
+              inputParams: { get_weather_summary: ['city_name'] },
+              requiredParams: { get_weather_summary: ['city_name'] },
+              fixedParams: { get_weather_summary: { units: 'metric' } },
+            },
+          },
+        },
+      }).success,
+    ).toBe(true);
+    expect(
+      McpConfigFileSchema.safeParse({
+        mcpServers: {
+          weather: {
+            type: 'stdio',
+            command: 'npx',
             toolFilter: { include: ['get_weather'], inputParams: { get_weather: [] } },
           },
         },

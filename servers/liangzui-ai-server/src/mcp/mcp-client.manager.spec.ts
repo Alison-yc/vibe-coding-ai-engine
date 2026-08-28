@@ -244,4 +244,72 @@ describe('McpClientManager', () => {
     );
     expect(manager.listModelTools('edit')).toEqual([]);
   });
+
+  it('调用 MCP 工具时注入固定参数', async () => {
+    const file = path.join(dir, 'weather.json');
+    const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
+    class WeatherConnector extends FakeConnector {
+      override async connectStdio(): Promise<McpConnection> {
+        return {
+          listTools: async () => [
+            {
+              name: 'get_weather_summary',
+              description: '天气',
+              inputSchema: {
+                type: 'object',
+                properties: {
+                  city_name: { type: 'string' },
+                  units: { type: 'string' },
+                },
+              },
+            },
+          ],
+          callTool: async (name, args) => {
+            calls.push({ name, args });
+            return { content: [{ type: 'text', text: '22C' }] };
+          },
+          close: async () => undefined,
+          onClosed: () => undefined,
+        };
+      }
+    }
+    await saveMcpConfig(file, {
+      mcpServers: {
+        weather: {
+          type: 'stdio',
+          command: 'npx',
+          args: [],
+          enabled: true,
+          timeout: 10_000,
+          flattenNames: true,
+          toolFilter: {
+            include: ['get_weather_summary'],
+            inputParams: { get_weather_summary: ['city_name'] },
+            requiredParams: { get_weather_summary: ['city_name'] },
+            fixedParams: { get_weather_summary: { units: 'metric' } },
+          },
+          toolPermissions: { get_weather_summary: { kind: 'execute' } },
+        },
+      },
+    });
+    const manager = new McpClientManager(
+      new ConfigService(validateEnvironment({ NODE_ENV: 'test', MCP_CONFIG_PATH: file })),
+      new WeatherConnector(),
+    );
+    await manager.bootstrap();
+    const tool = manager.get('get_weather_summary');
+    if (!tool) throw new Error('missing weather tool');
+    const ctx = { workspaceRoot: dir, signal: new AbortController().signal };
+    await expect(tool.execute({ city_name: 'Beijing' }, ctx)).resolves.toBe('22C');
+    expect(calls).toEqual([
+      { name: 'get_weather_summary', args: { city_name: 'Beijing', units: 'metric' } },
+    ]);
+    expect(tool.model.inputSchema).toEqual({
+      type: 'object',
+      properties: { city_name: { type: 'string' } },
+      required: ['city_name'],
+      additionalProperties: false,
+    });
+    await manager.onModuleDestroy();
+  });
 });

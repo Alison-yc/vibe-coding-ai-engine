@@ -9,6 +9,7 @@ import {
   mergeAndTrimTools,
   projectMcpToolInputSchema,
   selectToolsForInput,
+  applyFixedMcpParams,
 } from './merge-tools';
 
 describe('MCP tool merge', () => {
@@ -168,5 +169,17 @@ describe('MCP tool merge', () => {
     expect(() => projectMcpToolInputSchema({ type: 'object' }, ['city_name'])).toThrow(
       'MCP 工具参数不存在',
     );
+  });
+
+  it('固定参数覆盖模型传入值，未配置时保持原参数', () => {
+    expect(
+      applyFixedMcpParams({ city_name: 'Beijing', units: 'imperial' }, { units: 'metric' }),
+    ).toEqual({
+      city_name: 'Beijing',
+      units: 'metric',
+    });
+    expect(applyFixedMcpParams({ city_name: 'Beijing' }, undefined)).toEqual({
+      city_name: 'Beijing',
+    });
   });
 });

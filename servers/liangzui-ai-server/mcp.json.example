@@ -26,10 +26,13 @@
       "toolFilter": {
         "include": ["get_weather_summary"],
         "inputParams": {
-          "get_weather_summary": ["city_name", "units"]
+          "get_weather_summary": ["city_name"]
         },
         "requiredParams": {
           "get_weather_summary": ["city_name"]
+        },
+        "fixedParams": {
+          "get_weather_summary": { "units": "metric" }
         }
       },
       "toolPermissions": {

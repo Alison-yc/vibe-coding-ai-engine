@@ -25,6 +25,7 @@ import {
   type McpRemoteToolDefinition,
 } from './mcp-connector';
 import {
+  applyFixedMcpParams,
   BUILTIN_TOOL_NAMES,
   filterMcpToolNames,
   mcpExposedName,
@@ -287,7 +288,11 @@ export class McpClientManager implements OnModuleInit, OnModuleDestroy, McpToolC
           (original, args, signal) => {
             const timed = AbortSignal.timeout(runtime.config.timeout);
             const combined = AbortSignal.any([signal, timed]);
-            return connection.callTool(original, args, combined);
+            return connection.callTool(
+              original,
+              applyFixedMcpParams(args, runtime.config.toolFilter?.fixedParams?.[tool.name]),
+              combined,
+            );
           },
         );
         const registered = wrapAdapter(adapter);
