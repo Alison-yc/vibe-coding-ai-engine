@@ -58,10 +58,75 @@ describe('ChatPage', () => {
     expect(html).toContain('对话');
     expect(html).toContain('新建会话');
     expect(html).toContain('还没有会话');
-    expect(html).toContain('从左侧新建或选择一个会话');
+    expect(html).toContain('点击上方「新建」或打开会话列表');
+    expect(html).toContain('会话列表');
     expect(html).toContain('知识库挂载');
     expect(html).toContain('文件访问');
     expect(html).not.toContain('href="/agent"');
+    vi.unstubAllGlobals();
+  });
+
+  it('桌面端常驻侧边栏始终渲染新建入口', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        json: async () => (String(url).includes('/knowledge/datasets') ? [] : { sessions: [] }),
+      })),
+    );
+    const desktopPlatform: Platform = {
+      ...stubPlatform,
+      capabilities: {
+        ...stubPlatform.capabilities,
+        persistentChatSidebar: true,
+      },
+    };
+    const html = renderToStaticMarkup(
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
+        createElement(
+          PlatformProvider,
+          { value: desktopPlatform },
+          createElement(
+            MemoryRouter,
+            { initialEntries: ['/chat'] },
+            createElement(ThemeProvider, null, createElement(ChatPage)),
+          ),
+        ),
+      ),
+    );
+    expect(html).toContain('新建');
+    expect(html).toContain('对话');
+    expect(html).not.toContain('会话列表');
+    vi.unstubAllGlobals();
+  });
+
+  it('窄屏 Web 端提供顶栏新建与会话列表入口', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        json: async () => (String(url).includes('/knowledge/datasets') ? [] : { sessions: [] }),
+      })),
+    );
+    const html = renderToStaticMarkup(
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
+        createElement(
+          PlatformProvider,
+          { value: stubPlatform },
+          createElement(
+            MemoryRouter,
+            { initialEntries: ['/chat'] },
+            createElement(ThemeProvider, null, createElement(ChatPage)),
+          ),
+        ),
+      ),
+    );
+    expect(html).toContain('会话列表');
+    expect(html).toContain('点击上方「新建」或打开会话列表');
     vi.unstubAllGlobals();
   });
 

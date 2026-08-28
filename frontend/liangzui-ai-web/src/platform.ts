@@ -1,4 +1,4 @@
-import { NotImplementedError, type Platform } from '@ai-engine/platform';
+import { API_BASE_URL_STORAGE_KEY, NotImplementedError, type Platform } from '@ai-engine/platform';
 
 const readTheme = (): 'light' | 'dark' =>
   window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
@@ -26,7 +26,9 @@ export const createWebPlatform = (): Platform => ({
       return Promise.resolve();
     },
   },
-  getApiBaseUrl: () => readViteString(import.meta.env.VITE_API_BASE_URL, 'http://localhost:3000'),
+  getApiBaseUrl: () =>
+    window.localStorage.getItem(API_BASE_URL_STORAGE_KEY) ??
+    readViteString(import.meta.env.VITE_API_BASE_URL, 'http://localhost:3000'),
   openExternal: (url) => {
     window.open(url, '_blank', 'noopener,noreferrer');
     return Promise.resolve();

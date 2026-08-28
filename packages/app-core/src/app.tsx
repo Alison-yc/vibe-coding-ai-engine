@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { BrowserRouter, HashRouter } from 'react-router';
 import { AppErrorBoundary } from './components/app-error-boundary';
+import { BackendConnectionGate } from './components/backend-connection-gate';
 import { AppRoutes } from './app-routes';
 import { ThemeProvider } from './theme-provider';
 
@@ -23,7 +24,9 @@ export const App = () => {
       <Router>
         <ThemeProvider>
           <AppErrorBoundary platform={platform}>
-            <AppRoutes />
+            <BackendConnectionGate>
+              <AppRoutes />
+            </BackendConnectionGate>
           </AppErrorBoundary>
         </ThemeProvider>
       </Router>

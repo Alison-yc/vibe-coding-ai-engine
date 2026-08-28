@@ -1,7 +1,22 @@
 import type { McpRemoteTool, McpServerStatus } from '@ai-engine/contracts';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle, Label } from '@ai-engine/ui';
+import {
+  Badge,
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  Input,
+  Label,
+} from '@ai-engine/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState } from 'react';
 import { usePlatform } from '@ai-engine/platform';
+import {
+  checkBackendConnection,
+  normalizeApiBaseUrl,
+  persistApiBaseUrl,
+} from '../backend-connection';
 import { AppNavLinks, EmptyState, PageShell } from '../components/page-shell';
 import {
   listExposedAgentTools,
@@ -15,6 +30,52 @@ const statusLabel: Record<McpServerStatus['status'], string> = {
   connected: '已连接',
   disconnected: '未连接',
   error: '连接失败',
+};
+
+const BackendAddressCard = () => {
+  const platform = usePlatform();
+  const queryClient = useQueryClient();
+  const [address, setAddress] = useState(() => platform.getApiBaseUrl());
+  const save = useMutation({
+    mutationFn: async () => {
+      const normalized = normalizeApiBaseUrl(address);
+      await checkBackendConnection(normalized);
+      await persistApiBaseUrl(platform, normalized);
+      return normalized;
+    },
+    onSuccess: async (normalized) => {
+      setAddress(normalized);
+      await queryClient.invalidateQueries();
+    },
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>后端连接</CardTitle>
+      </CardHeader>
+      <CardContent className="flex flex-col gap-3">
+        <Label htmlFor="settings-backend-address">后端地址</Label>
+        <div className="flex flex-col gap-2 sm:flex-row">
+          <Input
+            id="settings-backend-address"
+            value={address}
+            disabled={save.isPending}
+            placeholder="http://localhost:3000"
+            onChange={(event) => setAddress(event.target.value)}
+          />
+          <Button type="button" disabled={save.isPending} onClick={() => save.mutate()}>
+            {save.isPending ? '正在测试…' : '保存并测试'}
+          </Button>
+        </div>
+        <p className="text-muted-foreground text-xs">
+          仅支持本机 localhost 或 127.0.0.1，可修改端口。
+        </p>
+        {save.isSuccess ? <p className="text-sm">连接成功，地址已保存。</p> : null}
+        {save.error ? <p className="text-destructive text-sm">{save.error.message}</p> : null}
+      </CardContent>
+    </Card>
+  );
 };
 
 const ServerCard = ({ server }: { server: McpServerStatus }) => {
@@ -139,6 +200,7 @@ export const SettingsPage = () => {
       description="管理 MCP server。command 只能写在服务端配置文件里，页面只能开关与勾选工具。"
       nav={<AppNavLinks />}
     >
+      {platform.capabilities.backendConnectionSetup ? <BackendAddressCard /> : null}
       {servers.error || exposed.error ? (
         <p className="text-destructive text-sm">
           {(servers.error ?? exposed.error)?.message ?? '加载失败'}

@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="background" x1="128" y1="96" x2="896" y2="928" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#172554"/>
+      <stop offset="1" stop-color="#0F766E"/>
+    </linearGradient>
+    <linearGradient id="spark" x1="344" y1="272" x2="704" y2="744" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F8FAFC"/>
+      <stop offset="1" stop-color="#99F6E4"/>
+    </linearGradient>
+  </defs>
+  <rect x="48" y="48" width="928" height="928" rx="224" fill="url(#background)"/>
+  <path
+    d="M260 296C260 234.144 310.144 184 372 184H652C713.856 184 764 234.144 764 296V582C764 643.856 713.856 694 652 694H488L337 830V694H372C310.144 694 260 643.856 260 582V296Z"
+    fill="#0B132B"
+    fill-opacity=".42"
+    stroke="#CCFBF1"
+    stroke-width="32"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M512 270L552 390L672 430L552 470L512 590L472 470L352 430L472 390L512 270Z"
+    fill="url(#spark)"
+  />
+  <circle cx="674" cy="286" r="38" fill="#5EEAD4"/>
+</svg>

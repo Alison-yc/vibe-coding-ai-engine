@@ -9,7 +9,12 @@ export type PlatformCapabilities = {
   windowControls: boolean;
   routerMode: 'hash' | 'history';
   devTools: boolean;
+  backendConnectionSetup?: boolean;
+  /** 桌面壳默认展示对话侧边栏，不依赖 lg 断点 */
+  persistentChatSidebar?: boolean;
 };
+
+export const API_BASE_URL_STORAGE_KEY = 'api.baseUrl';
 
 export type KeyValueStore = {
   get: (key: string) => Promise<string | null>;

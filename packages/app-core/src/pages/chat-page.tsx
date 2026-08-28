@@ -180,63 +180,94 @@ export const ChatPage = () => {
     await platform.kv.set('agent.workspaceRoot', selected);
   };
 
+  const persistentSidebar = platform.capabilities.persistentChatSidebar === true;
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  const sidebarProps = {
+    preference,
+    setPreference,
+    createPending: createMutation.isPending,
+    onCreate: () => createMutation.mutate(),
+    sessions: chatSessions,
+    currentId: sessionId,
+    renameId,
+    renameValue,
+    pendingDeleteId,
+    sessionsError: sessionsQuery.isError,
+    onRenameValue: setRenameValue,
+    onStartRename: (item: ChatSession) => {
+      setRenameId(item.id);
+      setRenameValue(item.title);
+    },
+    onConfirmRename: () => {
+      if (renameId && renameValue.trim()) {
+        renameMutation.mutate({ id: renameId, title: renameValue.trim() });
+      }
+    },
+    onCancelRename: () => setRenameId(null),
+    onAskDelete: setPendingDeleteId,
+    onConfirmDelete: (id: string) => deleteMutation.mutate(id),
+    onCancelDelete: () => setPendingDeleteId(null),
+    onNavigate: () => setMobileSidebarOpen(false),
+  };
+
   return (
     <div className="bg-background text-foreground flex h-dvh overflow-hidden">
-      <aside className="border-border bg-muted/20 hidden w-64 shrink-0 flex-col border-r lg:flex">
-        <header className="border-border flex items-center justify-between gap-2 border-b px-4 py-3">
-          <h1 className="text-lg font-semibold">对话</h1>
-          <Button
-            type="button"
-            size="sm"
-            disabled={createMutation.isPending}
-            onClick={() => createMutation.mutate()}
-          >
-            新建
-          </Button>
-        </header>
-        <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
-          <SessionList
-            sessions={chatSessions}
-            currentId={sessionId}
-            renameId={renameId}
-            renameValue={renameValue}
-            pendingDeleteId={pendingDeleteId}
-            onRenameValue={setRenameValue}
-            onStartRename={(item) => {
-              setRenameId(item.id);
-              setRenameValue(item.title);
-            }}
-            onConfirmRename={() => {
-              if (renameId && renameValue.trim()) {
-                renameMutation.mutate({ id: renameId, title: renameValue.trim() });
-              }
-            }}
-            onCancelRename={() => setRenameId(null)}
-            onAskDelete={setPendingDeleteId}
-            onConfirmDelete={(id) => deleteMutation.mutate(id)}
-            onCancelDelete={() => setPendingDeleteId(null)}
-          />
-          {sessionsQuery.isError ? (
-            <p className="text-destructive text-sm">无法加载会话列表</p>
-          ) : null}
-        </div>
-        <div className="border-border flex flex-col gap-3 border-t p-4">
-          <div className="flex flex-wrap gap-1">
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/knowledge">知识库</Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/workflow">工作流</Link>
-            </Button>
-            <Button variant="ghost" size="sm" asChild>
-              <Link to="/settings">设置</Link>
-            </Button>
-          </div>
-          <ThemeToggle preference={preference} onPreferenceChange={setPreference} />
-        </div>
+      <aside
+        className={cn(
+          'border-border bg-muted/20 w-64 shrink-0 flex-col border-r',
+          persistentSidebar ? 'flex' : 'hidden lg:flex',
+        )}
+      >
+        <ChatSidebarPanel {...sidebarProps} />
       </aside>
 
+      {!persistentSidebar && mobileSidebarOpen ? (
+        <>
+          <button
+            type="button"
+            aria-label="关闭会话列表"
+            className="bg-background/60 fixed inset-0 z-40 lg:hidden"
+            onClick={() => setMobileSidebarOpen(false)}
+          />
+          <aside className="border-border bg-muted/20 fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r shadow-xl lg:hidden">
+            <ChatSidebarPanel {...sidebarProps} />
+          </aside>
+        </>
+      ) : null}
+
       <section className="flex min-w-0 flex-1 flex-col">
+        {!persistentSidebar ? (
+          <div className="border-border bg-muted/30 flex items-center gap-2 border-b px-4 py-2 lg:hidden">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => setMobileSidebarOpen(true)}
+            >
+              会话列表
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              disabled={createMutation.isPending}
+              onClick={() => createMutation.mutate()}
+            >
+              新建
+            </Button>
+            <div className="ml-auto flex flex-wrap gap-1">
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/knowledge">知识库</Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/workflow">工作流</Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/settings">设置</Link>
+              </Button>
+            </div>
+          </div>
+        ) : null}
         <header className="border-border bg-background/95 flex min-h-16 flex-wrap items-end gap-4 border-b px-4 py-3 md:px-6">
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{session?.title ?? '选择或新建会话'}</p>
@@ -322,7 +353,9 @@ export const ChatPage = () => {
         >
           {!sessionId ? (
             <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-              从左侧新建或选择一个会话。
+              {persistentSidebar
+                ? '从左侧新建或选择一个会话。'
+                : '点击上方「新建」或打开会话列表。'}
             </div>
           ) : messages.length === 0 ? (
             <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
@@ -427,6 +460,95 @@ export const ChatPage = () => {
   );
 };
 
+type ChatSidebarPanelProps = {
+  preference: ReturnType<typeof useTheme>['preference'];
+  setPreference: ReturnType<typeof useTheme>['setPreference'];
+  createPending: boolean;
+  onCreate: () => void;
+  sessions: ChatSession[];
+  currentId?: string;
+  renameId: string | null;
+  renameValue: string;
+  pendingDeleteId: string | null;
+  sessionsError: boolean;
+  onRenameValue: (value: string) => void;
+  onStartRename: (session: ChatSession) => void;
+  onConfirmRename: () => void;
+  onCancelRename: () => void;
+  onAskDelete: (id: string) => void;
+  onConfirmDelete: (id: string) => void;
+  onCancelDelete: () => void;
+  onNavigate?: () => void;
+};
+
+export const ChatSidebarPanel = ({
+  preference,
+  setPreference,
+  createPending,
+  onCreate,
+  sessions,
+  currentId,
+  renameId,
+  renameValue,
+  pendingDeleteId,
+  sessionsError,
+  onRenameValue,
+  onStartRename,
+  onConfirmRename,
+  onCancelRename,
+  onAskDelete,
+  onConfirmDelete,
+  onCancelDelete,
+  onNavigate,
+}: ChatSidebarPanelProps) => (
+  <>
+    <header className="border-border flex items-center justify-between gap-2 border-b px-4 py-3">
+      <h1 className="text-lg font-semibold">对话</h1>
+      <Button type="button" size="sm" disabled={createPending} onClick={onCreate}>
+        新建
+      </Button>
+    </header>
+    <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
+      <SessionList
+        sessions={sessions}
+        currentId={currentId}
+        renameId={renameId}
+        renameValue={renameValue}
+        pendingDeleteId={pendingDeleteId}
+        onRenameValue={onRenameValue}
+        onStartRename={onStartRename}
+        onConfirmRename={onConfirmRename}
+        onCancelRename={onCancelRename}
+        onAskDelete={onAskDelete}
+        onConfirmDelete={onConfirmDelete}
+        onCancelDelete={onCancelDelete}
+        onNavigate={onNavigate}
+      />
+      {sessionsError ? <p className="text-destructive text-sm">无法加载会话列表</p> : null}
+    </div>
+    <div className="border-border flex flex-col gap-3 border-t p-4">
+      <div className="flex flex-wrap gap-1">
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/knowledge" onClick={onNavigate}>
+            知识库
+          </Link>
+        </Button>
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/workflow" onClick={onNavigate}>
+            工作流
+          </Link>
+        </Button>
+        <Button variant="ghost" size="sm" asChild>
+          <Link to="/settings" onClick={onNavigate}>
+            设置
+          </Link>
+        </Button>
+      </div>
+      <ThemeToggle preference={preference} onPreferenceChange={setPreference} />
+    </div>
+  </>
+);
+
 export const ChatBubble = ({ message }: { message: ChatMessage }) => {
   const isUser = message.role === 'user';
   const liveText = useChatStreamStore((state) => {
@@ -482,6 +604,7 @@ export const SessionList = ({
   onConfirmDelete,
   onCancelDelete,
   basePath = '/chat',
+  onNavigate,
 }: {
   sessions: ChatSession[];
   currentId?: string;
@@ -496,6 +619,7 @@ export const SessionList = ({
   onConfirmDelete: (id: string) => void;
   onCancelDelete: () => void;
   basePath?: string;
+  onNavigate?: () => void;
 }) => {
   if (sessions.length === 0) {
     return (
@@ -531,6 +655,7 @@ export const SessionList = ({
               <Link
                 to={`${basePath}/${item.id}`}
                 className={cn('block truncate text-sm', item.id === currentId && 'font-semibold')}
+                onClick={onNavigate}
               >
                 {item.title}
               </Link>

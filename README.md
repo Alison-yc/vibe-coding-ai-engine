@@ -9,18 +9,19 @@
 
 ## 当前状态
 
-**愿景与架构已冻结**（`.plan/00`、`.plan/01`）。工程底座尚未实施：`packages/` 仍为空，`scripts/` 尚未创建，Web 壳目录尚未建立。当前执行点是 [CR-01](./.plan/README.md#当前执行点模型每次开工先看这里)：完成 `02` 与 `15-A` 的测试运行器底座。**不要跳到对话页或工作流。**
+M0～M4、通用 Agent 实用工具扩展和统一对话改造已完成。当前执行点见
+[`.plan/README.md`](./.plan/README.md#当前执行点模型每次开工先看这里)。
 
-| 模块                                     | 状态             |
-| ---------------------------------------- | ---------------- |
-| 愿景与范围                               | 已冻结           |
-| 整体架构与分层不变量                     | 已冻结           |
-| 工程底座（monorepo、契约层、工具链、CI） | 计划就绪，未实施 |
-| 模型能力基线测评                         | 计划就绪，未实施 |
-| RAG 知识库 + 对话助手                    | 计划就绪，未实施 |
-| 工作流编排引擎                           | 计划就绪，未实施 |
-| 本地文件 Agent                           | 计划就绪，未实施 |
-| 双端交付与 dmg 打包                      | 计划就绪，未实施 |
+| 模块                                     | 状态           |
+| ---------------------------------------- | -------------- |
+| 愿景与范围                               | 已冻结         |
+| 整体架构与分层不变量                     | 已冻结         |
+| 工程底座（monorepo、契约层、工具链、CI） | 已完成         |
+| 模型能力基线测评                         | 已完成         |
+| RAG 知识库 + 统一对话助手                | 已完成         |
+| 工作流编排引擎                           | 已完成         |
+| 文件访问与 MCP 工具                      | 已并入统一对话 |
+| macOS dmg 阶段一                         | 已完成         |
 
 进度看板见 [`.plan/README.md`](./.plan/README.md)。
 
@@ -60,8 +61,6 @@
 ├── frontend/liangzui-ai-web/ 浏览器 Web 壳（薄）
 └── servers/liangzui-ai-server/  NestJS
 ```
-
-`packages/` 下的多数子目录与 `frontend/liangzui-ai-web` 尚未创建，由 [`.plan/02`](./.plan/02-monorepo-and-toolchain.md) 负责建立。
 
 ## 快速开始
 
@@ -122,13 +121,24 @@ pnpm tauri:build       # 打包 dmg
 
 ## 桌面端安装说明
 
-本项目**未做 Apple 开发者签名**（需付费账号）。从 dmg 安装后首次打开会被 Gatekeeper 拦截，这是正常的，不是应用损坏：
+先启动数据库、Ollama 与 NestJS 后端，再构建并安装桌面端：
+
+```bash
+pnpm dev:db
+pnpm db:migrate
+pnpm dev:server
+pnpm tauri:build
+```
+
+打开生成的 dmg，将 `liangzui-ai-app.app` 拖入 `/Applications`。桌面端默认连接
+`http://localhost:3000`；后端未启动时会显示连接引导，也可在引导页或设置页修改本机端口。
+
+本项目**未做 Apple 开发者签名和公证**（需要付费账号）。从 dmg 安装后首次打开可能被
+Gatekeeper 拦截，这是正常的，不是应用损坏。可先在 Finder 中右键选择“打开”；仍被拦截时执行：
 
 ```bash
 xattr -cr /Applications/liangzui-ai-app.app
 ```
-
-桌面端默认连接 `http://localhost:3000`，可在应用内的设置页修改地址与端口。后端与数据库需要单独启动。
 
 ## 已知限制
 
