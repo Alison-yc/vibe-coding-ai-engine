@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
 import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ai-engine/ui';
 import type { WorkflowGraph } from '@ai-engine/contracts';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { AppNavLinks, EmptyState, PageShell } from '../components/page-shell';
 import { createWorkflow, deleteWorkflow, listWorkflows } from '../workflow/workflow-api';
 
-const initialGraph = (): WorkflowGraph => ({
+const initialGraph = (t: TFunction<'workflow'>): WorkflowGraph => ({
   nodes: [
     {
       id: 'start',
@@ -14,7 +16,7 @@ const initialGraph = (): WorkflowGraph => ({
       position: { x: 80, y: 160 },
       data: {
         type: 'start',
-        title: '开始',
+        title: t('nodes.start.title'),
         config: { fields: [{ name: 'query', type: 'string', required: true }] },
       },
     },
@@ -24,7 +26,7 @@ const initialGraph = (): WorkflowGraph => ({
       position: { x: 440, y: 160 },
       data: {
         type: 'end',
-        title: '结束',
+        title: t('nodes.end.title'),
         config: { outputs: [{ name: 'result', selector: ['start', 'query'] }] },
       },
     },
@@ -34,6 +36,7 @@ const initialGraph = (): WorkflowGraph => ({
 });
 
 export const WorkflowListPage = () => {
+  const { t, i18n } = useTranslation('workflow');
   const platform = usePlatform();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -44,8 +47,13 @@ export const WorkflowListPage = () => {
   const create = useMutation({
     mutationFn: () =>
       createWorkflow(platform, {
-        name: `工作流 ${new Date().toLocaleString('zh-CN')}`,
-        graph: initialGraph(),
+        name: t('list.defaultName', {
+          date: new Intl.DateTimeFormat(i18n.language, {
+            dateStyle: 'medium',
+            timeStyle: 'short',
+          }).format(new Date()),
+        }),
+        graph: initialGraph(t),
       }),
     onSuccess: async (workflow) => {
       await queryClient.invalidateQueries({ queryKey: ['workflows'] });
@@ -58,38 +66,42 @@ export const WorkflowListPage = () => {
   });
   return (
     <PageShell
-      title="工作流"
-      description="拖拽节点编排本地 AI 流程"
+      title={t('list.title')}
+      description={t('list.description')}
       nav={<AppNavLinks />}
       actions={
         <Button disabled={create.isPending} onClick={() => create.mutate()}>
-          新建工作流
+          {t('list.create')}
         </Button>
       }
     >
       {workflows.error ? (
         <p className="text-destructive text-sm">
-          {workflows.error instanceof Error ? workflows.error.message : '加载失败'}
+          {workflows.error instanceof Error ? workflows.error.message : t('list.loadFailed')}
         </p>
       ) : null}
       {!workflows.isPending && (workflows.data?.length ?? 0) === 0 ? (
         <EmptyState
-          title="还没有工作流"
-          description="新建一个工作流，从开始节点连接到结束节点。"
-          action={<Button onClick={() => create.mutate()}>新建工作流</Button>}
+          title={t('list.emptyTitle')}
+          description={t('list.emptyDescription')}
+          action={<Button onClick={() => create.mutate()}>{t('list.create')}</Button>}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {(workflows.data ?? []).map((workflow) => (
             <Card key={workflow.id}>
               <CardHeader>
-                <CardTitle>{workflow.name}</CardTitle>
-                <CardDescription>版本 {workflow.version}</CardDescription>
+                <CardTitle className="truncate">{workflow.name}</CardTitle>
+                <CardDescription>
+                  {t('list.version', { version: workflow.version })}
+                </CardDescription>
               </CardHeader>
               <CardContent className="flex gap-2">
-                <Button onClick={() => void navigate(`/workflow/${workflow.id}`)}>编辑</Button>
+                <Button onClick={() => void navigate(`/workflow/${workflow.id}`)}>
+                  {t('list.edit')}
+                </Button>
                 <Button variant="outline" onClick={() => remove.mutate(workflow.id)}>
-                  删除
+                  {t('list.delete')}
                 </Button>
               </CardContent>
             </Card>

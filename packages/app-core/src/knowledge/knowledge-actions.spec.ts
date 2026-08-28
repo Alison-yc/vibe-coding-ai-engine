@@ -214,7 +214,7 @@ describe('knowledge-detail-actions', () => {
     handlers.onAnswerClick();
     vi.mocked(api.createPasteDocument).mockRejectedValueOnce('bad');
     await handlers.paste();
-    expect(setters.setError).toHaveBeenCalledWith('上传失败');
+    expect(setters.setError).toHaveBeenCalledWith('索引失败');
     vi.mocked(api.uploadDocument).mockRejectedValueOnce(new Error('上传挂了'));
     await handlers.upload({
       target: { files: { 0: new File(['x'], 'a.txt'), length: 1 } as unknown as FileList },

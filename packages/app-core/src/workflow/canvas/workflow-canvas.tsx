@@ -16,7 +16,9 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { NodeTypeSchema, type NodeType } from '@ai-engine/contracts';
+import { useTranslation } from 'react-i18next';
 import { NodeDefinitions } from '../nodes/registry';
+import { getNodePresentation } from '../nodes/metadata';
 import { useWorkflowStore } from '../store/workflow-store';
 import type { CanvasEdge, CanvasNode } from '../types';
 import { canConnectNodes } from '../graph-utils';
@@ -39,6 +41,7 @@ const canvasTheme = {
 } as CSSProperties;
 
 const CanvasInner = () => {
+  const { t } = useTranslation('workflow');
   const nodes = useWorkflowStore((state) => state.nodes);
   const edges = useWorkflowStore((state) => state.edges);
   const viewport = useWorkflowStore((state) => state.viewport);
@@ -71,7 +74,7 @@ const CanvasInner = () => {
             },
             data: {
               type,
-              title: definition.title,
+              title: getNodePresentation(t, type).title,
               config: structuredClone(definition.defaultConfig),
               _runningStatus: 'idle',
             },
@@ -82,7 +85,7 @@ const CanvasInner = () => {
         panelOpen: true,
       }));
     },
-    [nodes, recordSnapshot],
+    [nodes, recordSnapshot, t],
   );
 
   const isValidConnection = useCallback(

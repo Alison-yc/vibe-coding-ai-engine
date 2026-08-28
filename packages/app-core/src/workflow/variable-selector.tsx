@@ -1,7 +1,9 @@
 import { Select } from '@ai-engine/ui';
 import { StartNodeConfigSchema, type ValueSelector } from '@ai-engine/contracts';
+import type { TFunction } from 'i18next';
+import { useTranslation } from 'react-i18next';
 import { collectUpstreamNodeIds } from './graph-utils';
-import { NodeMetadataMap } from './nodes/metadata';
+import { getNodePresentation, NodeMetadataMap } from './nodes/metadata';
 import type { VariableOption } from './nodes/types';
 import type { CanvasEdge, CanvasNode } from './types';
 
@@ -11,6 +13,7 @@ export const variableOptionsForNode = (
   nodeId: string,
   nodes: CanvasNode[],
   edges: CanvasEdge[],
+  t: TFunction<'workflow'>,
 ): VariableOption[] => {
   const upstream = collectUpstreamNodeIds(nodeId, edges);
   const start = nodes.find((node) => node.data.type === 'start');
@@ -19,7 +22,7 @@ export const variableOptionsForNode = (
     start && upstream.has(start.id) && startConfig.success
       ? startConfig.data.fields.map((field) => ({
           nodeId: 'sys',
-          nodeTitle: '系统变量',
+          nodeTitle: t('variables.system'),
           variable: { name: field.name, type: field.type },
           selector: ['sys', field.name],
         }))
@@ -30,7 +33,7 @@ export const variableOptionsForNode = (
     for (const variable of metadata.getOutputVars(node.data.config)) {
       options.push({
         nodeId: node.id,
-        nodeTitle: node.data.title ?? metadata.title,
+        nodeTitle: node.data.title ?? getNodePresentation(t, node.data.type).title,
         variable,
         selector: [node.id, variable.name],
       });
@@ -54,7 +57,8 @@ export const VariableSelector = ({
   onChange: (selector: ValueSelector) => void;
   label: string;
 }) => {
-  const options = variableOptionsForNode(nodeId, nodes, edges);
+  const { t } = useTranslation('workflow');
+  const options = variableOptionsForNode(nodeId, nodes, edges, t);
   const current = keyOf(value);
   const valid = options.some((option) => keyOf(option.selector) === current);
   return (
@@ -69,15 +73,23 @@ export const VariableSelector = ({
           if (source && field) onChange([source, field]);
         }}
       >
-        {!valid ? <option value={current}>失效引用：{value.join('.')}</option> : null}
+        {!valid ? (
+          <option value={current}>
+            {t('variables.invalidReference', { selector: value.join('.') })}
+          </option>
+        ) : null}
         {options.map((option) => (
           <option key={keyOf(option.selector)} value={keyOf(option.selector)}>
-            {option.nodeTitle} / {option.variable.name} · {option.variable.type}
+            {t('variables.option', {
+              nodeTitle: option.nodeTitle,
+              variable: option.variable.name,
+              type: option.variable.type,
+            })}
           </option>
         ))}
       </Select>
       {!valid ? (
-        <span className="text-destructive text-xs">来源节点不存在或不是上游节点</span>
+        <span className="text-destructive text-xs">{t('variables.invalidDescription')}</span>
       ) : null}
     </div>
   );

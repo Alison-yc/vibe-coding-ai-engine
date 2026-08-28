@@ -1,0 +1,18 @@
+{
+  "api": {
+    "BAD_REQUEST": "请求无效，请检查输入后重试。",
+    "UNAUTHORIZED": "当前操作未获授权。",
+    "NOT_FOUND": "请求的资源不存在。",
+    "CONFLICT": "当前状态与请求冲突，请刷新后重试。",
+    "PAYLOAD_TOO_LARGE": "提交的内容过大。",
+    "RATE_LIMITED": "请求过于频繁，请稍后重试。",
+    "SERVICE_UNAVAILABLE": "服务暂时不可用，请稍后重试。",
+    "INTERNAL": "服务发生内部错误。"
+  },
+  "boundary": {
+    "title": "页面发生错误",
+    "description": "应用遇到未捕获异常，已写入本地错误日志。你可以复制详情用于排查。",
+    "copyDetails": "复制错误详情",
+    "reload": "重新加载"
+  }
+}

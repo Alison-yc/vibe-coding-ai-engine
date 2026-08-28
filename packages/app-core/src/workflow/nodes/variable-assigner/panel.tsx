@@ -1,5 +1,6 @@
 import { Button, Input, Select, Textarea } from '@ai-engine/ui';
 import { VariableAssignerNodeConfigSchema } from '@ai-engine/contracts';
+import { useTranslation } from 'react-i18next';
 import { VariableSelector, variableOptionsForNode } from '../../variable-selector';
 import { configWithDraft, formatConfigValue, PanelSection } from '../common';
 import type { NodePanelProps } from '../types';
@@ -7,13 +8,14 @@ import { useConfigDraft } from '../use-config-draft';
 import { variableAssignerDefaultConfig } from './default';
 
 export const VariableAssignerNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps) => {
+  const { t } = useTranslation('workflow');
   const [draft, setDraft] = useConfigDraft(node.id, node.data.config, onChange);
   const parsed = VariableAssignerNodeConfigSchema.safeParse(draft);
   const assignments = parsed.success
     ? parsed.data.assignments
     : configWithDraft(VariableAssignerNodeConfigSchema.parse(variableAssignerDefaultConfig), draft)
         .assignments;
-  const fallbackSelector = variableOptionsForNode(node.id, nodes, edges)[0]?.selector ?? [
+  const fallbackSelector = variableOptionsForNode(node.id, nodes, edges, t)[0]?.selector ?? [
     'sys',
     'query',
   ];
@@ -24,16 +26,16 @@ export const VariableAssignerNodePanel = ({ node, nodes, edges, onChange }: Node
       ),
     });
   return (
-    <PanelSection title="变量赋值">
+    <PanelSection title={t('panels.variableAssigner.title')}>
       {assignments.map((assignment, index) => (
         <div className="border-border flex flex-col gap-2 rounded-md border p-3" key={`${index}`}>
           <Input
-            aria-label={`变量 ${index + 1} 名称`}
+            aria-label={t('panels.variableAssigner.name', { index: index + 1 })}
             value={assignment.name}
             onChange={(event) => update(index, { name: event.target.value })}
           />
           <Select
-            aria-label={`变量 ${index + 1} 来源`}
+            aria-label={t('panels.variableAssigner.source', { index: index + 1 })}
             value={assignment.value.source}
             onChange={(event) => {
               const source = event.target.value;
@@ -46,13 +48,13 @@ export const VariableAssignerNodePanel = ({ node, nodes, edges, onChange }: Node
               update(index, { value });
             }}
           >
-            <option value="constant">常量</option>
-            <option value="selector">变量引用</option>
-            <option value="template">模板</option>
+            <option value="constant">{t('panels.variableAssigner.constant')}</option>
+            <option value="selector">{t('panels.variableAssigner.reference')}</option>
+            <option value="template">{t('panels.variableAssigner.template')}</option>
           </Select>
           {assignment.value.source === 'selector' ? (
             <VariableSelector
-              label="来源变量"
+              label={t('variables.source')}
               nodeId={node.id}
               nodes={nodes}
               edges={edges}
@@ -62,7 +64,7 @@ export const VariableAssignerNodePanel = ({ node, nodes, edges, onChange }: Node
           ) : null}
           {assignment.value.source === 'template' ? (
             <Textarea
-              aria-label={`变量 ${index + 1} 模板`}
+              aria-label={t('panels.variableAssigner.templateLabel', { index: index + 1 })}
               value={assignment.value.template}
               onChange={(event) =>
                 update(index, {
@@ -73,7 +75,7 @@ export const VariableAssignerNodePanel = ({ node, nodes, edges, onChange }: Node
           ) : null}
           {assignment.value.source === 'constant' ? (
             <Input
-              aria-label={`变量 ${index + 1} 常量`}
+              aria-label={t('panels.variableAssigner.constantLabel', { index: index + 1 })}
               value={formatConfigValue(assignment.value.value)}
               onChange={(event) =>
                 update(index, { value: { source: 'constant', value: event.target.value } })
@@ -90,7 +92,7 @@ export const VariableAssignerNodePanel = ({ node, nodes, edges, onChange }: Node
               })
             }
           >
-            删除变量
+            {t('panels.variableAssigner.delete')}
           </Button>
         </div>
       ))}
@@ -106,7 +108,7 @@ export const VariableAssignerNodePanel = ({ node, nodes, edges, onChange }: Node
           })
         }
       >
-        添加变量
+        {t('panels.variableAssigner.add')}
       </Button>
     </PanelSection>
   );

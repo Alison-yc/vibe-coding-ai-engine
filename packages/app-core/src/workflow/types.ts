@@ -25,6 +25,7 @@ export type RuntimeLog = {
   nodeId?: string;
   status: NodeRunningStatus;
   title: string;
+  titleKey?: 'editor.workflowStopped' | 'editor.workflowCompleted' | 'editor.workflowFailed';
   inputs?: Record<string, unknown>;
   outputs?: Record<string, unknown>;
   text: string;

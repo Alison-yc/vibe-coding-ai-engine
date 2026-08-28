@@ -1,0 +1,106 @@
+{
+  "sidebar": {
+    "title": "チャット",
+    "new": "新規作成",
+    "loadError": "チャット一覧を読み込めません",
+    "empty": "チャットはまだありません"
+  },
+  "mobile": {
+    "closeSidebar": "チャット一覧を閉じる",
+    "openSidebar": "チャット一覧"
+  },
+  "header": {
+    "noSession": "チャットを選択または新規作成"
+  },
+  "model": {
+    "label": "チャットモデル",
+    "chatOnlyOption": "{{modelId}}（チャットのみ）",
+    "notInstalledOption": "{{modelId}}（未インストール）",
+    "chatOnlyNotInstalledOption": "{{modelId}}（チャットのみ、未インストール）",
+    "untestedNotice": "このモデルのツール機能は未評価のため、通常のチャットとナレッジベースの質問応答のみ利用できます。"
+  },
+  "knowledge": {
+    "label": "ナレッジベース",
+    "none": "使用しない",
+    "skippedForFileAccess": "ファイルアクセスが有効です。このリクエストでは接続中のナレッジベースを検索しません。"
+  },
+  "fileAccess": {
+    "label": "ファイルアクセス",
+    "workspaceLabel": "ワークスペースのディレクトリ",
+    "workspacePlaceholder": "サーバーからアクセス可能な絶対パスを入力",
+    "chooseDirectory": "ディレクトリを選択",
+    "modeLabel": "ファイルモード",
+    "mode": {
+      "edit": "編集",
+      "readOnly": "読み取り専用"
+    }
+  },
+  "empty": {
+    "persistent": "左側からチャットを新規作成または選択してください。",
+    "mobile": "上の「新規作成」を押すか、チャット一覧を開いてください。",
+    "messages": "メッセージはまだありません。下に入力してチャットを始めましょう。"
+  },
+  "composer": {
+    "placeholder": "メッセージを入力。Enter で送信、Shift+Enter で改行",
+    "noSessionPlaceholder": "先にチャットを新規作成してください",
+    "stop": "生成を停止",
+    "send": "送信"
+  },
+  "approval": {
+    "title": "ツール呼び出しの承認が必要です",
+    "summary": "ツール {{tool}} · {{resource}}",
+    "noWrite": "この呼び出しは内容を書き込みませんが、確認が必要です。",
+    "deny": "拒否",
+    "allowOnce": "今回のみ許可",
+    "allowSession": "このチャットでは常に許可"
+  },
+  "message": {
+    "role": {
+      "user": "自分",
+      "assistant": "アシスタント"
+    },
+    "interrupted": "停止しました"
+  },
+  "session": {
+    "save": "保存",
+    "cancel": "キャンセル",
+    "rename": "名前を変更",
+    "confirmDelete": "確認",
+    "delete": "削除"
+  },
+  "reasoning": {
+    "summary": "思考過程"
+  },
+  "tool": {
+    "summary": "ツール {{name}} · {{state}}",
+    "viewInput": "引数を表示",
+    "state": {
+      "pending": "承認待ち",
+      "running": "実行中",
+      "completed": "完了",
+      "error": "失敗"
+    }
+  },
+  "theme": {
+    "appearance": "外観",
+    "palette": "テーマカラー",
+    "mode": {
+      "light": "ライト",
+      "dark": "ダーク",
+      "system": "システム設定"
+    },
+    "paletteName": {
+      "neutral": "デフォルト",
+      "blue": "ブルー",
+      "green": "グリーン",
+      "purple": "パープル"
+    }
+  },
+  "errors": {
+    "selectSession": "先にチャットを選択してください",
+    "approvalExpired": "承認情報の有効期限が切れました",
+    "modelSwitch": "モデルを切り替えられませんでした：{{message}}",
+    "generationFailed": "生成に失敗しました",
+    "generationHttp": "生成を開始できません：HTTP {{status}}"
+  }
+}

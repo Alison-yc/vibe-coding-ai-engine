@@ -2,7 +2,7 @@ import { usePlatform } from '@ai-engine/platform';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useState } from 'react';
 import { BrowserRouter, HashRouter } from 'react-router';
-import { AppErrorBoundary } from './components/app-error-boundary';
+import { LocalizedAppErrorBoundary } from './components/app-error-boundary';
 import { BackendConnectionGate } from './components/backend-connection-gate';
 import { AppI18nProvider } from './i18n/i18n-provider';
 import { AppRoutes } from './app-routes';
@@ -25,11 +25,11 @@ export const App = () => {
       <Router>
         <ThemeProvider>
           <AppI18nProvider>
-            <AppErrorBoundary platform={platform}>
+            <LocalizedAppErrorBoundary platform={platform}>
               <BackendConnectionGate>
                 <AppRoutes />
               </BackendConnectionGate>
-            </AppErrorBoundary>
+            </LocalizedAppErrorBoundary>
           </AppI18nProvider>
         </ThemeProvider>
       </Router>

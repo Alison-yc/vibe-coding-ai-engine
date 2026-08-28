@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@ai-engine/ui';
 import type { ValueSelector } from '@ai-engine/contracts';
+import { useTranslation } from 'react-i18next';
 import { CodeEditor } from './code-editor';
 import { VariableSelector, variableOptionsForNode } from './variable-selector';
 import type { CanvasEdge, CanvasNode } from './types';
@@ -20,7 +21,8 @@ export const TemplateEditor = ({
   edges: CanvasEdge[];
   onChange: (value: string) => void;
 }) => {
-  const options = variableOptionsForNode(nodeId, nodes, edges);
+  const { t } = useTranslation('workflow');
+  const options = variableOptionsForNode(nodeId, nodes, edges, t);
   const [selector, setSelector] = useState<ValueSelector>(
     () => options[0]?.selector ?? ['sys', 'query'],
   );
@@ -31,7 +33,7 @@ export const TemplateEditor = ({
       <span className="text-xs font-medium">{label}</span>
       <CodeEditor ariaLabel={label} language="template" value={value} onChange={onChange} />
       {references.length > 0 ? (
-        <div aria-label={`${label}变量高亮`} className="flex flex-wrap gap-1">
+        <div aria-label={t('variables.highlight', { label })} className="flex flex-wrap gap-1">
           {references.map((reference, index) => (
             <code
               className={
@@ -47,7 +49,7 @@ export const TemplateEditor = ({
         </div>
       ) : null}
       <VariableSelector
-        label="插入上游变量"
+        label={t('variables.insertSource')}
         nodeId={nodeId}
         nodes={nodes}
         edges={edges}
@@ -59,7 +61,7 @@ export const TemplateEditor = ({
         variant="outline"
         onClick={() => onChange(`${value}{{#${selector.join('.')}#}}`)}
       >
-        插入变量
+        {t('variables.insert')}
       </Button>
     </div>
   );

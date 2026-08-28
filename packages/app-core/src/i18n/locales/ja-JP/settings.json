@@ -1,0 +1,50 @@
+{
+  "backend": {
+    "cardTitle": "バックエンド接続",
+    "addressLabel": "バックエンドアドレス",
+    "localOnlyDescription": "ローカルの localhost または 127.0.0.1 のみ使用でき、ポートは変更できます。",
+    "testing": "テスト中…",
+    "saveAndTest": "保存してテスト",
+    "success": "接続に成功し、アドレスを保存しました。"
+  },
+  "mcp": {
+    "status": {
+      "connected": "接続済み",
+      "disconnected": "未接続",
+      "error": "接続失敗"
+    },
+    "selectedCount": "{{selected}}/{{total}} 件を選択済み",
+    "stdioWarning": "有効にすると、設定されたサードパーティープロセスがサーバーで起動します。信頼できる MCP のみ有効にしてください。",
+    "httpWarning": "有効にすると、サーバーが外部 MCP アドレスへ接続します。信頼できるサービスのみ有効にしてください。",
+    "enabled": "有効",
+    "remoteTools": "リモート MCP ツール",
+    "toolsEmpty": "接続後にツールを選択できます。選択していないツールはモデルに送信されません。",
+    "reconnect": "再接続",
+    "loadError": "読み込みに失敗しました",
+    "emptyTitle": "MCP server はまだ設定されていません",
+    "emptyDescription": "mcp.json.example を mcp.json にコピーし、信頼できる stdio/HTTP server を設定してからバックエンドを再起動してください。"
+  },
+  "automaticTools": {
+    "cardTitle": "現在自動選択されるツール",
+    "limit": "上限 {{count}}（.plan/04 の qwen3.5:2b ベースラインに基づきます）。",
+    "builtinDescription": "datetime、calculate、generate_uuid は組み込みツールのため、上の MCP 選択欄には表示されません。",
+    "dropped": "除外済み：{{names}}"
+  },
+  "connectionGate": {
+    "checkingTitle": "バックエンドサービスに接続中",
+    "disconnectedTitle": "バックエンドサービスに接続できません",
+    "description": "デスクトップ版は NestJS バックエンドを自動起動しますが、ローカルで PostgreSQL と Ollama を実行する必要があります。開発モードではプロジェクトディレクトリで次を実行してください：",
+    "addressLabel": "バックエンドアドレス",
+    "localOnlyDescription": "デスクトップ版のセキュリティポリシーにより、localhost または 127.0.0.1 のみ使用でき、ポートは変更できます。",
+    "fallbackError": "バックエンドサービスに接続できません",
+    "testing": "テスト中…",
+    "saveAndTest": "保存して接続をテスト"
+  },
+  "connectionErrors": {
+    "invalidUrl": "http://localhost:3000 のような有効なバックエンドアドレスを入力してください",
+    "httpRequired": "ローカルバックエンドのアドレスには HTTP を使用してください",
+    "hostNotAllowed": "デスクトップ版は localhost または 127.0.0.1 にのみ接続できます",
+    "urlPartsNotAllowed": "バックエンドアドレスにはプロトコル、ホスト、ポートのみ指定できます",
+    "healthCheckFailed": "バックエンドのヘルスチェックに失敗しました：HTTP {{status}}"
+  }
+}

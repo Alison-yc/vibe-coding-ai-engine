@@ -99,6 +99,8 @@ type DetailSetters = {
   setHits: (hits: RetrieveHit[]) => void;
   setAnswer: (answer: string | null) => void;
   setError: (message: string | null) => void;
+  indexErrorFallback?: string;
+  uploadErrorFallback?: string;
 };
 
 export const createKnowledgeDetailHandlers = (
@@ -120,12 +122,14 @@ export const createKnowledgeDetailHandlers = (
         setters.pasteName,
         setters.pasteText,
       );
-      if (indexed.status === 'failed') setters.setError(indexed.error ?? '索引失败');
+      if (indexed.status === 'failed') {
+        setters.setError(indexed.error ?? setters.indexErrorFallback ?? '索引失败');
+      }
       const detail = await loadKnowledgeDetail(platform, datasetId);
       setters.setDataset(detail.dataset);
       setters.setDocuments(detail.documents);
     } catch (loadError) {
-      setters.setError(knowledgeActionError(loadError, '上传失败'));
+      setters.setError(knowledgeActionError(loadError, setters.indexErrorFallback ?? '索引失败'));
     }
   };
   const upload = async (event: { target: { files?: FileList | null } }) => {
@@ -133,12 +137,14 @@ export const createKnowledgeDetailHandlers = (
     if (!file) return;
     try {
       const indexed = await indexUploadedDocument(platform, datasetId, file);
-      if (indexed.status === 'failed') setters.setError(indexed.error ?? '索引失败');
+      if (indexed.status === 'failed') {
+        setters.setError(indexed.error ?? setters.indexErrorFallback ?? '索引失败');
+      }
       const detail = await loadKnowledgeDetail(platform, datasetId);
       setters.setDataset(detail.dataset);
       setters.setDocuments(detail.documents);
     } catch (loadError) {
-      setters.setError(knowledgeActionError(loadError, '上传失败'));
+      setters.setError(knowledgeActionError(loadError, setters.uploadErrorFallback ?? '上传失败'));
     }
   };
   const remove = async (documentId: string) => {

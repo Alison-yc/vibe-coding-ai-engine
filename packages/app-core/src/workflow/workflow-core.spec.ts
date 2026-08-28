@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import type { TFunction } from 'i18next';
 import { NodeTypeSchema, WorkflowGraphSchema } from '@ai-engine/contracts';
 import { canConnectNodes, collectUpstreamNodeIds, syncSourceHandleEdges } from './graph-utils';
 import { NodeDefinitions } from './nodes/registry';
@@ -46,6 +47,7 @@ const edges: CanvasEdge[] = [
   { id: 'one', source: 'start', target: 'llm' },
   { id: 'two', source: 'llm', target: 'end' },
 ];
+const t = ((key: string) => key) as TFunction<'workflow'>;
 
 describe('工作流画布核心', () => {
   it('序列化时统一移除下划线开头的运行态字段', () => {
@@ -62,17 +64,18 @@ describe('工作流画布核心', () => {
     expect(
       collectUpstreamNodeIds('end', [...edges, { id: 'cycle', source: 'end', target: 'llm' }]),
     ).toEqual(new Set(['llm', 'start']));
-    const options = variableOptionsForNode('llm', nodes, edges);
+    const options = variableOptionsForNode('llm', nodes, edges, t);
     expect(options.map((option) => option.selector.join('.'))).toEqual([
       'sys.query',
       'start.query',
     ]);
-    expect(variableOptionsForNode('llm', nodes, [])).toEqual([]);
+    expect(variableOptionsForNode('llm', nodes, [], t)).toEqual([]);
     expect(
       variableOptionsForNode(
         'llm',
         nodes.filter((node) => node.data.type !== 'start'),
         [],
+        t,
       ),
     ).toEqual([]);
   });

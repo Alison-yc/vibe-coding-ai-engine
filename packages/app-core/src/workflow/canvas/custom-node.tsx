@@ -1,6 +1,7 @@
 import { memo, type ReactNode } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { cn } from '@ai-engine/ui';
+import { useTranslation } from 'react-i18next';
 import { NodeMetadataMap } from '../nodes/metadata';
 import { NodeComponentMap } from '../nodes/registry';
 import type { CanvasNode, NodeRunningStatus } from '../types';
@@ -18,6 +19,7 @@ const BaseNode = ({
   selected,
   children,
 }: Pick<NodeProps<CanvasNode>, 'data' | 'selected'> & { children: ReactNode }) => {
+  const { t } = useTranslation('workflow');
   const status = data._runningStatus ?? 'idle';
   const metadata = NodeMetadataMap[data.type];
   const sourceHandles = metadata.getSourceHandles?.(data.config) ?? [];
@@ -30,7 +32,7 @@ const BaseNode = ({
       )}
     >
       {metadata.acceptsInput ? (
-        <Handle type="target" position={Position.Left} aria-label="输入连接桩" />
+        <Handle type="target" position={Position.Left} aria-label={t('canvas.inputHandle')} />
       ) : null}
       {children}
       {data._validationErrors?.length ? (
@@ -42,7 +44,7 @@ const BaseNode = ({
         </span>
       ) : null}
       {metadata.providesOutput && sourceHandles.length === 0 ? (
-        <Handle type="source" position={Position.Right} aria-label="输出连接桩" />
+        <Handle type="source" position={Position.Right} aria-label={t('canvas.outputHandle')} />
       ) : null}
       {sourceHandles.map((handle, index) => (
         <Handle
@@ -50,7 +52,7 @@ const BaseNode = ({
           id={handle}
           type="source"
           position={Position.Right}
-          aria-label={`分支 ${handle}`}
+          aria-label={t('canvas.branchHandle', { branch: handle })}
           style={{ top: `${((index + 1) / (sourceHandles.length + 1)) * 100}%` }}
         />
       ))}

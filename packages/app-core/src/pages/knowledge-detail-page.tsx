@@ -24,6 +24,7 @@ import { useParams } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
 import { AppNavLinks, PageShell } from '../components/page-shell';
 import { createKnowledgeDetailHandlers } from '../knowledge/knowledge-detail-actions';
+import { useKnowledgeTranslation } from '../i18n/knowledge-i18n';
 import {
   KnowledgeDocumentList,
   KnowledgeHitsTable,
@@ -32,6 +33,7 @@ import {
 
 export const KnowledgeDetailPage = () => {
   const platform = usePlatform();
+  const t = useKnowledgeTranslation();
   const { id } = useParams();
   const [dataset, setDataset] = useState<Dataset | null>(null);
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
@@ -50,8 +52,8 @@ export const KnowledgeDetailPage = () => {
 
   if (!id) {
     return (
-      <PageShell title="知识库详情" nav={<AppNavLinks />}>
-        <p className="text-destructive text-sm">缺少知识库 id</p>
+      <PageShell title={t('detail.fallbackTitle')} nav={<AppNavLinks />}>
+        <p className="text-destructive text-sm">{t('detail.missingId')}</p>
       </PageShell>
     );
   }
@@ -75,69 +77,86 @@ export const KnowledgeDetailPage = () => {
     setHits,
     setAnswer,
     setError,
+    indexErrorFallback: t('errors.index'),
+    uploadErrorFallback: t('errors.upload'),
   });
 
   return (
     <PageShell
-      title={dataset?.name ?? '知识库详情'}
-      description="上传文档、预览切分，并在不经过 LLM 的情况下测试检索。"
+      title={dataset?.name ?? t('detail.fallbackTitle')}
+      description={t('detail.description')}
       backTo="/knowledge"
-      backLabel="知识库列表"
+      backLabel={t('detail.backToList')}
       nav={<AppNavLinks />}
       actions={
-        <Button type="button" variant="outline" onClick={handlers.onRefreshClick}>
-          刷新
+        <Button
+          type="button"
+          variant="outline"
+          className="max-w-full min-w-0 truncate"
+          onClick={handlers.onRefreshClick}
+        >
+          {t('detail.refresh')}
         </Button>
       }
     >
       {error ? (
-        <p className="text-destructive bg-destructive/10 rounded-md px-3 py-2 text-sm">{error}</p>
+        <p className="text-destructive bg-destructive/10 min-w-0 rounded-md px-3 py-2 text-sm break-words">
+          {error}
+        </p>
       ) : null}
 
       <Card>
         <CardHeader>
-          <CardTitle>粘贴文本</CardTitle>
-          <CardDescription>直接粘贴 Markdown 或纯文本，立即进入索引流水线。</CardDescription>
+          <CardTitle className="line-clamp-2 min-w-0">{t('detail.paste.title')}</CardTitle>
+          <CardDescription className="line-clamp-3 min-w-0">
+            {t('detail.paste.description')}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="paste-name">文件名</Label>
+            <Label htmlFor="paste-name">{t('detail.paste.fileNameLabel')}</Label>
             <Input id="paste-name" value={pasteName} onChange={handlers.onPasteNameChange} />
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="paste-text">内容</Label>
+            <Label htmlFor="paste-text">{t('detail.paste.contentLabel')}</Label>
             <Textarea
               id="paste-text"
               className="min-h-32"
               value={pasteText}
               onChange={handlers.onPasteTextChange}
-              placeholder="粘贴要索引的文本…"
+              placeholder={t('detail.paste.contentPlaceholder')}
             />
           </div>
-          <Button type="button" className="self-start" onClick={handlers.onPasteClick}>
-            索引粘贴内容
+          <Button
+            type="button"
+            className="max-w-full min-w-0 self-start truncate"
+            onClick={handlers.onPasteClick}
+          >
+            {t('detail.paste.submit')}
           </Button>
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>上传文档</CardTitle>
-          <CardDescription>支持 txt、md、pdf。上传后自动进入五阶段索引。</CardDescription>
+          <CardTitle className="line-clamp-2 min-w-0">{t('detail.upload.title')}</CardTitle>
+          <CardDescription className="line-clamp-3 min-w-0">
+            {t('detail.upload.description')}
+          </CardDescription>
         </CardHeader>
         <CardContent>
           <FileInput
             accept=".txt,.md,.pdf"
             onChange={handlers.onUploadChange}
-            buttonLabel="上传文件"
-            emptyHint="未选择文件"
+            buttonLabel={t('detail.upload.button')}
+            emptyHint={t('detail.upload.emptyHint')}
           />
         </CardContent>
       </Card>
 
       <Card>
         <CardHeader>
-          <CardTitle>文档列表</CardTitle>
+          <CardTitle className="line-clamp-2 min-w-0">{t('detail.documents.title')}</CardTitle>
         </CardHeader>
         <CardContent>
           <KnowledgeDocumentList documents={documents} onRemove={handlers.onRemoveClick} />
@@ -146,18 +165,20 @@ export const KnowledgeDetailPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>切分预览</CardTitle>
-          <CardDescription>调整策略与参数，预览切片结果后再上传正式文档。</CardDescription>
+          <CardTitle className="line-clamp-2 min-w-0">{t('detail.preview.title')}</CardTitle>
+          <CardDescription className="line-clamp-3 min-w-0">
+            {t('detail.preview.description')}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <Textarea
             value={previewText}
             onChange={handlers.onPreviewTextChange}
-            placeholder="输入一段文本用于预览切分…"
+            placeholder={t('detail.preview.textPlaceholder')}
           />
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="chunk-strategy">策略</Label>
+              <Label htmlFor="chunk-strategy">{t('detail.preview.strategyLabel')}</Label>
               <Select id="chunk-strategy" value={strategy} onChange={handlers.onStrategyChange}>
                 <option value="recursive">recursive</option>
                 <option value="fixed">fixed</option>
@@ -165,7 +186,7 @@ export const KnowledgeDetailPage = () => {
               </Select>
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="chunk-size">chunkSize</Label>
+              <Label htmlFor="chunk-size">{t('detail.preview.chunkSizeLabel')}</Label>
               <Input
                 id="chunk-size"
                 type="number"
@@ -174,7 +195,7 @@ export const KnowledgeDetailPage = () => {
               />
             </div>
             <div className="flex flex-col gap-2">
-              <Label htmlFor="chunk-overlap">overlap</Label>
+              <Label htmlFor="chunk-overlap">{t('detail.preview.overlapLabel')}</Label>
               <Input
                 id="chunk-overlap"
                 type="number"
@@ -186,10 +207,10 @@ export const KnowledgeDetailPage = () => {
               <Button
                 type="button"
                 variant="outline"
-                className="w-full"
+                className="w-full max-w-full min-w-0 truncate"
                 onClick={handlers.onPreviewClick}
               >
-                预览切分
+                {t('detail.preview.submit')}
               </Button>
             </div>
           </div>
@@ -199,29 +220,40 @@ export const KnowledgeDetailPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>检索测试</CardTitle>
-          <CardDescription>只走向量检索，不调用 LLM。用于排查召回问题。</CardDescription>
+          <CardTitle className="line-clamp-2 min-w-0">{t('detail.retrieve.title')}</CardTitle>
+          <CardDescription className="line-clamp-3 min-w-0">
+            {t('detail.retrieve.description')}
+          </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="retrieve-query">查询</Label>
+            <Label htmlFor="retrieve-query">{t('detail.retrieve.queryLabel')}</Label>
             <Input
               id="retrieve-query"
               value={query}
               onChange={handlers.onQueryChange}
-              placeholder="输入要检索的问题…"
+              placeholder={t('detail.retrieve.queryPlaceholder')}
             />
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button type="button" onClick={handlers.onRetrieveClick}>
-              检索
+            <Button
+              type="button"
+              className="max-w-full min-w-0 truncate"
+              onClick={handlers.onRetrieveClick}
+            >
+              {t('detail.retrieve.submit')}
             </Button>
-            <Button type="button" variant="secondary" onClick={handlers.onAnswerClick}>
-              试答
+            <Button
+              type="button"
+              variant="secondary"
+              className="max-w-full min-w-0 truncate"
+              onClick={handlers.onAnswerClick}
+            >
+              {t('detail.retrieve.answer')}
             </Button>
           </div>
           {answer ? (
-            <div className="bg-muted/50 rounded-md border px-4 py-3 text-sm whitespace-pre-wrap">
+            <div className="bg-muted/50 min-w-0 rounded-md border px-4 py-3 text-sm break-words whitespace-pre-wrap">
               {answer}
             </div>
           ) : null}

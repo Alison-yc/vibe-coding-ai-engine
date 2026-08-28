@@ -1,9 +1,12 @@
 import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createElement } from 'react';
+import { createInstance } from 'i18next';
+import { createElement, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nOptions } from '../i18n/resources';
 import { ThemeProvider } from '../theme-provider';
 import { useChatStreamStore } from '../chat/chat-stream-store';
 import { ChatBubble, ChatPage, SessionList } from './chat-page';
@@ -31,6 +34,13 @@ const stubPlatform: Platform = {
   },
 };
 
+const i18n = createInstance();
+beforeAll(async () => {
+  await i18n.init(createI18nOptions('zh-CN'));
+});
+const renderLocalized = (element: ReactElement) =>
+  renderToStaticMarkup(createElement(I18nextProvider, { i18n }, element));
+
 describe('ChatPage', () => {
   it('渲染侧边栏、空态与输入区', () => {
     vi.stubGlobal(
@@ -40,7 +50,7 @@ describe('ChatPage', () => {
         json: async () => (String(url).includes('/knowledge/datasets') ? [] : { sessions: [] }),
       })),
     );
-    const html = renderToStaticMarkup(
+    const html = renderLocalized(
       createElement(
         QueryClientProvider,
         { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
@@ -81,7 +91,7 @@ describe('ChatPage', () => {
         persistentChatSidebar: true,
       },
     };
-    const html = renderToStaticMarkup(
+    const html = renderLocalized(
       createElement(
         QueryClientProvider,
         { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
@@ -110,7 +120,7 @@ describe('ChatPage', () => {
         json: async () => (String(url).includes('/knowledge/datasets') ? [] : { sessions: [] }),
       })),
     );
-    const html = renderToStaticMarkup(
+    const html = renderLocalized(
       createElement(
         QueryClientProvider,
         { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
@@ -139,7 +149,7 @@ describe('ChatPage', () => {
       createdAt: '2026-08-27T00:00:00.000Z',
       updatedAt: '2026-08-27T00:00:00.000Z',
     };
-    const listed = renderToStaticMarkup(
+    const listed = renderLocalized(
       createElement(
         MemoryRouter,
         null,
@@ -161,7 +171,7 @@ describe('ChatPage', () => {
     );
     expect(listed).toContain('问候');
     expect(listed).toContain('重命名');
-    const renaming = renderToStaticMarkup(
+    const renaming = renderLocalized(
       createElement(
         MemoryRouter,
         null,
@@ -182,7 +192,7 @@ describe('ChatPage', () => {
       ),
     );
     expect(renaming).toContain('保存');
-    const deleting = renderToStaticMarkup(
+    const deleting = renderLocalized(
       createElement(
         MemoryRouter,
         null,
@@ -224,7 +234,7 @@ describe('ChatPage', () => {
       status: 'interrupted' as const,
     };
     useChatStreamStore.getState().hydrate(sessionId, [user, assistant]);
-    const html = renderToStaticMarkup(
+    const html = renderLocalized(
       createElement(
         'ol',
         null,

@@ -7,6 +7,18 @@ const stubSettingsApis = async (page: Page) => {
   await page.route('**/agent/tools', async (route) => {
     await route.fulfill({ json: { tools: [], dropped: [], maxToolCount: 6 } });
   });
+  await page.route('**/chat/sessions', async (route) => {
+    await route.fulfill({ json: { sessions: [] } });
+  });
+  await page.route('**/models', async (route) => {
+    await route.fulfill({ json: { models: [] } });
+  });
+  await page.route('**/knowledge/datasets', async (route) => {
+    await route.fulfill({ json: [] });
+  });
+  await page.route('**/workflows', async (route) => {
+    await route.fulfill({ json: { workflows: [] } });
+  });
 };
 
 const selectLocale = async (page: Page, locale: string) => {
@@ -59,3 +71,30 @@ for (const width of [375, 1280]) {
     await expect(page.locator('html')).toHaveAttribute('lang', 'ja-JP');
   });
 }
+
+test('英文业务主路径在窄屏保持可用且无横向溢出', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 800 });
+  await stubSettingsApis(page);
+  await page.goto('/settings');
+  await selectLocale(page, 'en-US');
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
+
+  const routes = ['/chat', '/knowledge', '/workflow'];
+  for (const route of routes) {
+    await page.goto(route);
+    if (route === '/chat') {
+      await expect(page.getByRole('button', { name: 'Chat list' })).toBeVisible();
+    } else {
+      await expect(
+        page.getByRole('heading', {
+          name: route === '/knowledge' ? 'Knowledge' : 'Workflows',
+          exact: true,
+        }),
+      ).toBeVisible();
+    }
+    const overflow = await page
+      .locator('body')
+      .evaluate((element) => element.scrollWidth - element.clientWidth);
+    expect(overflow).toBeLessThanOrEqual(1);
+  }
+});

@@ -2,11 +2,11 @@ import type { Dataset } from '@ai-engine/contracts';
 import type { Platform } from '@ai-engine/platform';
 import { createDataset, listDatasets } from './knowledge-api';
 
-export const loadKnowledgeListError = (error: unknown): string =>
-  error instanceof Error ? error.message : '加载失败';
+export const loadKnowledgeListError = (error: unknown, fallback = '加载失败'): string =>
+  error instanceof Error ? error.message : fallback;
 
-export const createKnowledgeListError = (error: unknown): string =>
-  error instanceof Error ? error.message : '创建失败';
+export const createKnowledgeListError = (error: unknown, fallback = '创建失败'): string =>
+  error instanceof Error ? error.message : fallback;
 
 export const refreshKnowledgeList = async (platform: Platform): Promise<Dataset[]> =>
   listDatasets(platform);
@@ -21,6 +21,8 @@ type ListStateSetters = {
   setDatasets: (datasets: Dataset[]) => void;
   setError: (message: string | null) => void;
   setLoading: (value: boolean) => void;
+  loadErrorFallback?: string;
+  createErrorFallback?: string;
 };
 
 export const createKnowledgeListHandlers = (platform: Platform, setters: ListStateSetters) => {
@@ -30,7 +32,7 @@ export const createKnowledgeListHandlers = (platform: Platform, setters: ListSta
     try {
       setters.setDatasets(await refreshKnowledgeList(platform));
     } catch (loadError) {
-      setters.setError(loadKnowledgeListError(loadError));
+      setters.setError(loadKnowledgeListError(loadError, setters.loadErrorFallback));
     } finally {
       setters.setLoading(false);
     }
@@ -42,7 +44,7 @@ export const createKnowledgeListHandlers = (platform: Platform, setters: ListSta
       setters.setLoading(true);
       setters.setDatasets(await refreshKnowledgeList(platform));
     } catch (loadError) {
-      setters.setError(createKnowledgeListError(loadError));
+      setters.setError(createKnowledgeListError(loadError, setters.createErrorFallback));
     } finally {
       setters.setLoading(false);
     }

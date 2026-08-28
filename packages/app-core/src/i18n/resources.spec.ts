@@ -11,17 +11,22 @@ const leafKeys = (value: unknown, prefix = ''): string[] => {
 };
 
 describe('i18n 资源', () => {
-  it('三种语言具有完全相同的 key 树', () => {
-    const expected = leafKeys(i18nResources['zh-CN'].common).sort();
+  it('每个命名空间的三种语言具有完全相同的 key 树', () => {
+    const namespaces = Object.keys(i18nResources['zh-CN']) as Array<
+      keyof (typeof i18nResources)['zh-CN']
+    >;
     expect(UI_LOCALES).toEqual(Object.keys(i18nResources));
-    for (const locale of UI_LOCALES) {
-      expect(leafKeys(i18nResources[locale].common).sort()).toEqual(expected);
+    for (const namespace of namespaces) {
+      const expected = leafKeys(i18nResources['zh-CN'][namespace]).sort();
+      for (const locale of UI_LOCALES) {
+        expect(leafKeys(i18nResources[locale][namespace]).sort()).toEqual(expected);
+      }
     }
   });
 
   it('所有叶子文案都非空', () => {
     for (const locale of UI_LOCALES) {
-      const values = Object.values(i18nResources[locale].common);
+      const values = Object.values(i18nResources[locale]);
       expect(values.length).toBeGreaterThan(0);
       expect(JSON.stringify(values)).not.toContain('""');
     }

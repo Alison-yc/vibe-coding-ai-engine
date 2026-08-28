@@ -18,9 +18,6 @@ export type NodePanelProps = {
 
 export type NodeDefinition = {
   type: NodeType;
-  title: string;
-  description: string;
-  category: '流程' | '数据' | 'AI' | '工具';
   acceptsInput: boolean;
   providesOutput: boolean;
   singleton?: boolean;

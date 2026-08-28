@@ -23,6 +23,7 @@ import { useTranslation } from 'react-i18next';
 import { usePlatform } from '@ai-engine/platform';
 import {
   checkBackendConnection,
+  localizeBackendConnectionError,
   normalizeApiBaseUrl,
   persistApiBaseUrl,
 } from '../backend-connection';
@@ -34,12 +35,7 @@ import {
   patchMcpServer,
   reconnectMcpServer,
 } from '../mcp/mcp-api';
-
-const statusLabel: Record<McpServerStatus['status'], string> = {
-  connected: '已连接',
-  disconnected: '未连接',
-  error: '连接失败',
-};
+import { useFeatureTranslation } from '../i18n/feature-resources';
 
 const LANGUAGE_LABELS: Record<UiLocale, string> = {
   'zh-CN': '中文',
@@ -94,6 +90,7 @@ const LanguageCard = () => {
 const BackendAddressCard = () => {
   const platform = usePlatform();
   const queryClient = useQueryClient();
+  const { t } = useFeatureTranslation('settings');
   const [address, setAddress] = useState(() => platform.getApiBaseUrl());
   const save = useMutation({
     mutationFn: async () => {
@@ -109,13 +106,13 @@ const BackendAddressCard = () => {
   });
 
   return (
-    <Card>
+    <Card className="w-full min-w-0 overflow-hidden">
       <CardHeader>
-        <CardTitle>后端连接</CardTitle>
+        <CardTitle className="line-clamp-2">{t('backend.cardTitle')}</CardTitle>
       </CardHeader>
-      <CardContent className="flex flex-col gap-3">
-        <Label htmlFor="settings-backend-address">后端地址</Label>
-        <div className="flex flex-col gap-2 sm:flex-row">
+      <CardContent className="flex min-w-0 flex-col gap-3">
+        <Label htmlFor="settings-backend-address">{t('backend.addressLabel')}</Label>
+        <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
           <Input
             id="settings-backend-address"
             value={address}
@@ -123,15 +120,26 @@ const BackendAddressCard = () => {
             placeholder="http://localhost:3000"
             onChange={(event) => setAddress(event.target.value)}
           />
-          <Button type="button" disabled={save.isPending} onClick={() => save.mutate()}>
-            {save.isPending ? '正在测试…' : '保存并测试'}
+          <Button
+            type="button"
+            className="min-w-0"
+            disabled={save.isPending}
+            onClick={() => save.mutate()}
+          >
+            <span className="truncate">
+              {save.isPending ? t('backend.testing') : t('backend.saveAndTest')}
+            </span>
           </Button>
         </div>
-        <p className="text-muted-foreground text-xs">
-          仅支持本机 localhost 或 127.0.0.1，可修改端口。
+        <p className="text-muted-foreground line-clamp-3 text-xs">
+          {t('backend.localOnlyDescription')}
         </p>
-        {save.isSuccess ? <p className="text-sm">连接成功，地址已保存。</p> : null}
-        {save.error ? <p className="text-destructive text-sm">{save.error.message}</p> : null}
+        {save.isSuccess ? <p className="line-clamp-2 text-sm">{t('backend.success')}</p> : null}
+        {save.error ? (
+          <p className="text-destructive text-sm">
+            {localizeBackendConnectionError(save.error, t)}
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );
@@ -140,6 +148,7 @@ const BackendAddressCard = () => {
 const ServerCard = ({ server }: { server: McpServerStatus }) => {
   const platform = usePlatform();
   const queryClient = useQueryClient();
+  const { t } = useFeatureTranslation('settings');
   const tools = useQuery({
     queryKey: ['mcp-tools', server.name],
     queryFn: () => listMcpServerTools(platform, server.name),
@@ -174,24 +183,29 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
   };
 
   return (
-    <Card>
+    <Card className="w-full min-w-0 overflow-hidden">
       <CardHeader className="flex flex-row items-start justify-between gap-3">
-        <div>
-          <CardTitle>{server.name}</CardTitle>
-          <p className="text-muted-foreground mt-1 text-sm">
-            {server.type} · 已选 {server.selectedToolCount}/{server.toolCount}
+        <div className="min-w-0">
+          <CardTitle className="truncate">{server.name}</CardTitle>
+          <p className="text-muted-foreground mt-1 truncate text-sm">
+            {server.type} ·{' '}
+            {t('mcp.selectedCount', {
+              selected: server.selectedToolCount,
+              total: server.toolCount,
+            })}
           </p>
         </div>
-        <Badge variant={server.status === 'connected' ? 'secondary' : 'outline'}>
-          {statusLabel[server.status]}
+        <Badge
+          className="max-w-40 min-w-0 shrink-0 truncate"
+          variant={server.status === 'connected' ? 'secondary' : 'outline'}
+        >
+          {t(`mcp.status.${server.status}`)}
         </Badge>
       </CardHeader>
-      <CardContent className="flex flex-col gap-4">
+      <CardContent className="flex min-w-0 flex-col gap-4">
         {server.error ? <p className="text-destructive text-sm">{server.error}</p> : null}
-        <p className="text-muted-foreground text-sm">
-          {server.type === 'stdio'
-            ? '启用后会在服务端启动配置中的第三方进程；仅启用你信任的 MCP。'
-            : '启用后服务端会连接外部 MCP 地址；仅启用你信任的服务。'}
+        <p className="text-muted-foreground line-clamp-3 text-sm">
+          {server.type === 'stdio' ? t('mcp.stdioWarning') : t('mcp.httpWarning')}
         </p>
         <label className="flex items-center gap-2 text-sm">
           <input
@@ -200,17 +214,15 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
             disabled={patch.isPending}
             onChange={(event) => patch.mutate({ enabled: event.target.checked })}
           />
-          启用
+          {t('mcp.enabled')}
         </label>
-        <div className="flex flex-col gap-2">
-          <Label>远程 MCP 工具</Label>
+        <div className="flex min-w-0 flex-col gap-2">
+          <Label>{t('mcp.remoteTools')}</Label>
           {(tools.data ?? []).length === 0 ? (
-            <p className="text-muted-foreground text-sm">
-              连接后可勾选工具。未勾选的不会发给模型。
-            </p>
+            <p className="text-muted-foreground line-clamp-3 text-sm">{t('mcp.toolsEmpty')}</p>
           ) : (
             (tools.data ?? []).map((tool) => (
-              <label key={tool.name} className="flex items-start gap-2 text-sm">
+              <label key={tool.name} className="flex min-w-0 items-start gap-2 text-sm">
                 <input
                   type="checkbox"
                   className="mt-1"
@@ -219,10 +231,12 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
                   disabled={patch.isPending || !server.enabled}
                   onChange={(event) => toggleTool(tool, event.target.checked)}
                 />
-                <span>
-                  <span className="font-medium">{tool.name}</span>
-                  <span className="text-muted-foreground"> → {tool.exposedName}</span>
-                  <span className="text-muted-foreground block">{tool.description}</span>
+                <span className="min-w-0">
+                  <span className="block truncate">
+                    <span className="font-medium">{tool.name}</span>
+                    <span className="text-muted-foreground"> → {tool.exposedName}</span>
+                  </span>
+                  <span className="text-muted-foreground line-clamp-2">{tool.description}</span>
                 </span>
               </label>
             ))
@@ -232,10 +246,11 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
           type="button"
           variant="outline"
           size="sm"
+          className="min-w-0"
           disabled={reconnect.isPending}
           onClick={() => reconnect.mutate()}
         >
-          重新连接
+          <span className="truncate">{t('mcp.reconnect')}</span>
         </Button>
       </CardContent>
     </Card>
@@ -244,7 +259,8 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
 
 export const SettingsPage = () => {
   const platform = usePlatform();
-  const { t } = useTranslation();
+  const { t: commonT } = useTranslation();
+  const { t } = useFeatureTranslation('settings');
   const servers = useQuery({
     queryKey: ['mcp-servers'],
     queryFn: () => listMcpServers(platform),
@@ -256,39 +272,36 @@ export const SettingsPage = () => {
 
   return (
     <PageShell
-      title={t('settings.title')}
-      description={t('settings.description')}
+      title={commonT('settings.title')}
+      description={commonT('settings.description')}
       nav={<AppNavLinks />}
     >
       <LanguageCard />
       {platform.capabilities.backendConnectionSetup ? <BackendAddressCard /> : null}
       {servers.error || exposed.error ? (
         <p className="text-destructive text-sm">
-          {(servers.error ?? exposed.error)?.message ?? '加载失败'}
+          {(servers.error ?? exposed.error)?.message ?? t('mcp.loadError')}
         </p>
       ) : null}
       {(servers.data ?? []).length === 0 ? (
-        <EmptyState
-          title="还没有配置 MCP server"
-          description="复制 mcp.json.example 为 mcp.json，填写可信的 stdio/HTTP server 后重启后端。"
-        />
+        <EmptyState title={t('mcp.emptyTitle')} description={t('mcp.emptyDescription')} />
       ) : (
-        <section className="flex flex-col gap-4">
+        <section className="flex min-w-0 flex-col gap-4">
           {(servers.data ?? []).map((server) => (
             <ServerCard key={server.name} server={server} />
           ))}
         </section>
       )}
-      <Card>
+      <Card className="w-full min-w-0 overflow-hidden">
         <CardHeader>
-          <CardTitle>当前自动装配的工具</CardTitle>
+          <CardTitle className="line-clamp-2">{t('automaticTools.cardTitle')}</CardTitle>
         </CardHeader>
-        <CardContent className="text-sm">
-          <p className="text-muted-foreground mb-2">
-            上限 {exposed.data?.maxToolCount ?? 6}（依据 .plan/04 的 qwen3.5:2b 基线）。
+        <CardContent className="min-w-0 text-sm">
+          <p className="text-muted-foreground mb-2 line-clamp-3">
+            {t('automaticTools.limit', { count: exposed.data?.maxToolCount ?? 6 })}
           </p>
-          <p className="text-muted-foreground mb-2">
-            datetime、calculate、generate_uuid 属于内置工具，不会出现在上方 MCP 勾选框中。
+          <p className="text-muted-foreground mb-2 line-clamp-3">
+            {t('automaticTools.builtinDescription')}
           </p>
           <ul className="flex flex-col gap-1">
             {(exposed.data?.tools ?? []).map((tool) => (
@@ -299,7 +312,9 @@ export const SettingsPage = () => {
             ))}
           </ul>
           {(exposed.data?.dropped ?? []).length > 0 ? (
-            <p className="text-muted-foreground mt-2">已裁剪：{exposed.data?.dropped.join('、')}</p>
+            <p className="text-muted-foreground mt-2 truncate">
+              {t('automaticTools.dropped', { names: exposed.data?.dropped.join(', ') })}
+            </p>
           ) : null}
         </CardContent>
       </Card>

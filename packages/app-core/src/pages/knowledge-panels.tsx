@@ -5,6 +5,7 @@ import type {
   DocumentStatus,
 } from '@ai-engine/contracts';
 import { Badge, Button, Card, CardContent } from '@ai-engine/ui';
+import { useKnowledgeTranslation } from '../i18n/knowledge-i18n';
 
 const statusVariant = (
   status: DocumentStatus,
@@ -16,17 +17,6 @@ const statusVariant = (
   return 'outline';
 };
 
-const statusLabel: Record<DocumentStatus, string> = {
-  pending: '等待索引',
-  extracting: '提取中',
-  cleaning: '清洗中',
-  splitting: '切分中',
-  embedding: '向量化',
-  indexing: '写入索引',
-  completed: '已完成',
-  failed: '失败',
-};
-
 export const KnowledgeDocumentList = ({
   documents,
   onRemove,
@@ -34,8 +24,9 @@ export const KnowledgeDocumentList = ({
   documents: KnowledgeDocument[];
   onRemove: (event: { currentTarget: { getAttribute: (name: string) => string | null } }) => void;
 }) => {
+  const t = useKnowledgeTranslation();
   if (documents.length === 0) {
-    return <p className="text-muted-foreground text-sm">还没有文档，请上传或粘贴内容。</p>;
+    return <p className="text-muted-foreground text-sm">{t('detail.documents.empty')}</p>;
   }
   return (
     <ul className="flex flex-col gap-2">
@@ -47,10 +38,12 @@ export const KnowledgeDocumentList = ({
                 <p className="truncate text-sm font-medium">{document.name}</p>
                 <div className="flex flex-wrap items-center gap-2">
                   <Badge variant={statusVariant(document.status)}>
-                    {statusLabel[document.status]}
+                    {t(`detail.documents.status.${document.status}`)}
                   </Badge>
                   {document.error ? (
-                    <span className="text-destructive text-xs">{document.error}</span>
+                    <span className="text-destructive line-clamp-2 min-w-0 text-xs break-words">
+                      {document.error}
+                    </span>
                   ) : null}
                 </div>
               </div>
@@ -60,8 +53,9 @@ export const KnowledgeDocumentList = ({
                 size="sm"
                 data-document-id={document.id}
                 onClick={onRemove}
+                className="max-w-full min-w-0 truncate"
               >
-                删除
+                {t('detail.documents.remove')}
               </Button>
             </CardContent>
           </Card>
@@ -71,31 +65,43 @@ export const KnowledgeDocumentList = ({
   );
 };
 
-export const KnowledgePreviewBlocks = ({ chunks }: { chunks: SplitPreviewChunk[] }) => (
-  <>
-    <p className="text-muted-foreground text-xs">{chunks.length} 个切片</p>
-    <pre className="bg-code-bg border-code-border max-h-48 overflow-auto rounded-md border p-3 text-xs">
-      {chunks.length === 0
-        ? '点击「预览切分」查看结果'
-        : chunks
-            .map((chunk) => `#${chunk.position} ${chunk.headingPath ?? ''}\n${chunk.content}`)
-            .join('\n---\n')}
-    </pre>
-  </>
-);
+export const KnowledgePreviewBlocks = ({ chunks }: { chunks: SplitPreviewChunk[] }) => {
+  const t = useKnowledgeTranslation();
+  return (
+    <>
+      <p className="text-muted-foreground text-xs">
+        {t('detail.preview.chunkCount', { count: chunks.length })}
+      </p>
+      <pre className="bg-code-bg border-code-border max-h-48 overflow-auto rounded-md border p-3 text-xs">
+        {chunks.length === 0
+          ? t('detail.preview.empty')
+          : chunks
+              .map((chunk) => `#${chunk.position} ${chunk.headingPath ?? ''}\n${chunk.content}`)
+              .join('\n---\n')}
+      </pre>
+    </>
+  );
+};
 
 export const KnowledgeHitsTable = ({ hits }: { hits: RetrieveHit[] }) => {
+  const t = useKnowledgeTranslation();
   if (hits.length === 0) {
-    return <p className="text-muted-foreground text-sm">还没有检索结果。</p>;
+    return <p className="text-muted-foreground text-sm">{t('detail.retrieve.empty')}</p>;
   }
   return (
     <div className="overflow-auto rounded-lg border">
       <table className="min-w-full text-left text-sm">
         <thead className="bg-muted/50 border-b">
           <tr>
-            <th className="text-muted-foreground px-3 py-2 font-medium">来源</th>
-            <th className="text-muted-foreground px-3 py-2 font-medium">分数</th>
-            <th className="text-muted-foreground px-3 py-2 font-medium">内容</th>
+            <th className="text-muted-foreground px-3 py-2 font-medium">
+              {t('detail.retrieve.table.source')}
+            </th>
+            <th className="text-muted-foreground px-3 py-2 font-medium">
+              {t('detail.retrieve.table.score')}
+            </th>
+            <th className="text-muted-foreground px-3 py-2 font-medium">
+              {t('detail.retrieve.table.content')}
+            </th>
           </tr>
         </thead>
         <tbody>

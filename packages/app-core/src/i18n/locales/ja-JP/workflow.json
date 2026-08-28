@@ -1,0 +1,218 @@
+{
+  "list": {
+    "title": "ワークフロー",
+    "description": "ノードをドラッグしてローカル AI フローを構築します",
+    "create": "ワークフローを作成",
+    "defaultName": "ワークフロー {{date}}",
+    "loadFailed": "読み込みに失敗しました",
+    "emptyTitle": "ワークフローはまだありません",
+    "emptyDescription": "ワークフローを作成し、開始ノードから終了ノードへ接続してください。",
+    "version": "バージョン {{version}}",
+    "edit": "編集",
+    "delete": "削除"
+  },
+  "editor": {
+    "loading": "ワークフローを読み込んでいます…",
+    "loadFailed": "ワークフローの読み込みに失敗しました",
+    "back": "← ワークフロー",
+    "name": "ワークフロー名",
+    "saveState": {
+      "saving": "保存中",
+      "unsaved": "未保存",
+      "saved": "保存済み"
+    },
+    "saveFailed": "保存に失敗しました",
+    "saveAndValidate": "保存して検証",
+    "stop": "停止",
+    "preparing": "準備中…",
+    "run": "実行",
+    "runFailed": "実行に失敗しました",
+    "stopFailed": "停止に失敗しました",
+    "stopWorkflowFailed": "ワークフローの停止に失敗しました",
+    "nodeFallback": "ノード {{nodeId}}",
+    "latestRun": "最新の実行",
+    "workflowStopped": "ワークフローは停止しました",
+    "workflowCompleted": "ワークフローが完了しました",
+    "workflowFailed": "ワークフローの実行に失敗しました"
+  },
+  "status": {
+    "idle": "待機中",
+    "running": "実行中",
+    "completed": "成功",
+    "failed": "失敗",
+    "stopped": "停止済み"
+  },
+  "canvas": {
+    "nodes": "ノード",
+    "addHint": "ドラッグまたはクリックで追加",
+    "categories": {
+      "flow": "フロー",
+      "data": "データ",
+      "ai": "AI",
+      "tools": "ツール"
+    },
+    "inputHandle": "入力コネクター",
+    "outputHandle": "出力コネクター",
+    "branchHandle": "分岐 {{branch}}",
+    "configTitle": "ノード設定",
+    "close": "閉じる",
+    "nodeTitle": "ノードタイトル"
+  },
+  "runDialog": {
+    "title": "ワークフローを実行",
+    "description": "開始ノードで定義した入力パラメーターを入力してください",
+    "invalidJson": "オブジェクトと配列には有効な JSON を入力してください",
+    "cancel": "キャンセル",
+    "start": "実行を開始"
+  },
+  "logs": {
+    "title": "実行ログ",
+    "collapse": "折りたたむ",
+    "expand": "展開",
+    "input": "入力：{{value}}",
+    "output": "出力：{{value}}"
+  },
+  "debug": {
+    "title": "単一ノードのデバッグ",
+    "description": "上流変数のスナップショットを入力して、このノードを単独で実行します",
+    "upstreamJson": "デバッグ用上流変数 JSON",
+    "invalidJson": "無効な JSON",
+    "running": "デバッグ中…",
+    "run": "現在のノードを実行",
+    "failed": "デバッグに失敗しました"
+  },
+  "variables": {
+    "system": "システム変数",
+    "invalidReference": "無効な参照：{{selector}}",
+    "invalidDescription": "参照元ノードが存在しないか、上流ノードではありません",
+    "option": "{{nodeTitle}} / {{variable}} · {{type}}",
+    "highlight": "{{label}} の変数ハイライト",
+    "insertSource": "挿入する上流変数",
+    "insert": "変数を挿入",
+    "source": "参照元変数",
+    "right": "右辺変数"
+  },
+  "nodes": {
+    "start": {
+      "title": "開始",
+      "description": "ワークフローの入力パラメーターを定義"
+    },
+    "end": {
+      "title": "終了",
+      "description": "ワークフローの最終出力を構成"
+    },
+    "variableAssigner": {
+      "title": "変数代入",
+      "description": "定数を作成、または変数を参照"
+    },
+    "ifElse": {
+      "title": "条件分岐",
+      "description": "条件に基づいて実行パスを選択"
+    },
+    "llm": {
+      "title": "LLM",
+      "description": "ローカルモデルでテキストを生成"
+    },
+    "knowledgeRetrieval": {
+      "title": "ナレッジ検索",
+      "description": "ナレッジベースから関連コンテンツを検索"
+    },
+    "httpRequest": {
+      "title": "HTTP リクエスト",
+      "description": "公開 HTTP(S) エンドポイントを呼び出す"
+    },
+    "code": {
+      "title": "コード",
+      "description": "QuickJS サンドボックスでデータを処理"
+    },
+    "summary": {
+      "inputFields": "入力フィールド {{count}} 件",
+      "outputFields": "出力フィールド {{count}} 件",
+      "variables": "変数 {{count}} 件",
+      "branches": "分岐 {{count}} 件",
+      "codeLines": "JavaScript {{count}} 行",
+      "incomplete": "設定が未完了です",
+      "configurePrompt": "プロンプトを設定",
+      "selectKnowledgeBase": "ナレッジベースを選択してください",
+      "configureRequest": "リクエストを設定",
+      "configureCode": "コードを設定"
+    }
+  },
+  "panels": {
+    "start": {
+      "title": "実行入力",
+      "description": "これらのフィールドから実行フォームを生成します",
+      "fieldName": "フィールド {{index}} の名前",
+      "fieldType": "フィールド {{index}} の型",
+      "defaultValue": "フィールド {{index}} のデフォルト値",
+      "defaultPlaceholder": "任意のデフォルト値",
+      "required": "必須",
+      "delete": "フィールドを削除",
+      "add": "入力フィールドを追加"
+    },
+    "end": {
+      "title": "ワークフロー出力",
+      "outputName": "出力 {{index}} の名前",
+      "delete": "出力を削除",
+      "add": "出力を追加"
+    },
+    "variableAssigner": {
+      "title": "変数代入",
+      "name": "変数 {{index}} の名前",
+      "source": "変数 {{index}} の参照元",
+      "constant": "定数",
+      "reference": "変数参照",
+      "template": "テンプレート",
+      "templateLabel": "変数 {{index}} のテンプレート",
+      "constantLabel": "変数 {{index}} の定数",
+      "delete": "変数を削除",
+      "add": "変数を追加"
+    },
+    "ifElse": {
+      "title": "条件分岐",
+      "description": "各分岐はノード右側のコネクターになります",
+      "branchName": "分岐名",
+      "relation": "分岐 {{branch}} の条件関係",
+      "all": "すべて一致（AND）",
+      "any": "いずれか一致（OR）",
+      "left": "条件 {{condition}} の左辺値",
+      "operator": "分岐 {{branch}} 条件 {{condition}} の演算子",
+      "rightSource": "分岐 {{branch}} 条件 {{condition}} の右辺値の参照元",
+      "rightValue": "分岐 {{branch}} 条件 {{condition}} の右辺値",
+      "deleteCondition": "条件を削除",
+      "addCondition": "条件を追加",
+      "deleteBranch": "分岐を削除",
+      "addBranch": "分岐を追加",
+      "defaultBranch": "デフォルト分岐"
+    },
+    "llm": {
+      "title": "ローカルモデルのプロンプト",
+      "systemPrompt": "システムプロンプト",
+      "userPrompt": "ユーザープロンプト",
+      "maxTokens": "最大生成トークン数"
+    },
+    "knowledgeRetrieval": {
+      "title": "ナレッジ検索",
+      "knowledgeBase": "ナレッジベース",
+      "selectKnowledgeBase": "ナレッジベースを選択",
+      "query": "検索クエリ",
+      "scoreThreshold": "類似度しきい値"
+    },
+    "httpRequest": {
+      "title": "HTTP リクエスト",
+      "description": "公開 HTTP(S) アドレスのみアクセスできます",
+      "method": "リクエストメソッド",
+      "headers": "リクエストヘッダー JSON",
+      "invalidHeaders": "ヘッダーは文字列のキーと値を持つオブジェクトである必要があります",
+      "body": "リクエストボディ"
+    },
+    "code": {
+      "title": "JavaScript コード",
+      "description": "コードは QuickJS WASM サンドボックス内で実行されます",
+      "inputName": "コード入力 {{index}} の名前",
+      "deleteInput": "入力を削除",
+      "addInput": "コード入力を追加",
+      "editor": "JavaScript コード"
+    }
+  }
+}

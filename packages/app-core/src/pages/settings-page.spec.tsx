@@ -155,6 +155,8 @@ describe('SettingsPage', () => {
     fireEvent.change(select!, { target: { value: 'en-US' } });
 
     expect(await screen.findByRole('heading', { name: 'Settings' })).toBeTruthy();
+    expect(screen.getByText('No MCP server configured')).toBeTruthy();
+    expect(screen.getByText('Automatically selected tools')).toBeTruthy();
     await waitFor(() => expect(document.documentElement.lang).toBe('en-US'));
     await expect(platform.getUiLocale()).resolves.toBe('en-US');
   });

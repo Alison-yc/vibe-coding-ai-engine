@@ -64,7 +64,9 @@ export const applyRuntimeEvent = (
           id: `node:${event.data.nodeId}`,
           nodeId: event.data.nodeId,
           status: 'running',
-          title: `节点 ${event.data.nodeId}`,
+          title:
+            state.nodes.find((node) => node.id === event.data.nodeId)?.data.title ??
+            event.data.nodeId,
           inputs: event.data.inputs,
           text: '',
         },
@@ -117,7 +119,9 @@ export const applyRuntimeEvent = (
         {
           id: `workflow:${event.data.runId}`,
           status: event.data.status,
-          title: event.data.status === 'stopped' ? '工作流已停止' : '工作流执行完成',
+          title: '',
+          titleKey:
+            event.data.status === 'stopped' ? 'editor.workflowStopped' : 'editor.workflowCompleted',
           outputs: event.data.outputs,
           elapsedMs: event.data.totalElapsedMs,
           text: '',
@@ -134,7 +138,8 @@ export const applyRuntimeEvent = (
         id: `workflow:${event.data.runId}`,
         nodeId: event.data.failedNodeId,
         status: 'failed',
-        title: '工作流执行失败',
+        title: '',
+        titleKey: 'editor.workflowFailed',
         error: event.data.error,
         text: '',
       },

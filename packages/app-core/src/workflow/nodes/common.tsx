@@ -3,12 +3,12 @@ import { Badge, Input, Label } from '@ai-engine/ui';
 import type { NodeBodyProps } from './types';
 
 export const NodeSummary = ({ data, children }: NodeBodyProps & { children?: ReactNode }) => (
-  <div className="flex min-w-44 flex-col gap-2">
+  <div className="flex w-44 min-w-0 flex-col gap-2">
     <div className="flex items-center justify-between gap-2">
       <strong className="truncate text-sm">{data.title ?? data.type}</strong>
       <Badge variant="secondary">{data.type}</Badge>
     </div>
-    {children ? <div className="text-muted-foreground text-xs">{children}</div> : null}
+    {children ? <div className="text-muted-foreground line-clamp-2 text-xs">{children}</div> : null}
   </div>
 );
 

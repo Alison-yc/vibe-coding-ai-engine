@@ -3,11 +3,24 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
+import { createInstance } from 'i18next';
+import { type ReactNode } from 'react';
+import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { useChatStreamStore } from '../chat/chat-stream-store';
+import { createI18nOptions } from '../i18n/resources';
 import { ThemeProvider } from '../theme-provider';
 import { ChatPage } from './chat-page';
+
+const i18n = createInstance();
+beforeAll(async () => {
+  await i18n.init(createI18nOptions('en-US'));
+});
+
+const EnglishI18n = ({ children }: { children: ReactNode }) => (
+  <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
+);
 
 const mocks = vi.hoisted(() => ({
   listSessions: vi.fn(),
@@ -54,6 +67,8 @@ const platform = {
   pickDirectory: async () => null,
   pickFiles: async () => [],
   kv: createMemoryKeyValueStore(),
+  getUiLocale: async () => 'en-US',
+  setUiLocale: async () => undefined,
   getApiBaseUrl: () => 'http://localhost:3000',
   openExternal: async () => undefined,
   getAppInfo: async () => ({ name: 'test', version: '0' }),
@@ -126,22 +141,24 @@ describe('统一对话文件能力', () => {
     mocks.updateSession.mockResolvedValue(unknownSession);
     const user = userEvent.setup();
     render(
-      <PlatformProvider value={platform}>
-        <ThemeProvider>
-          <QueryClientProvider
-            client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-          >
-            <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
-              <Routes>
-                <Route path="/chat/:sessionId" element={<ChatPage />} />
-              </Routes>
-            </MemoryRouter>
-          </QueryClientProvider>
-        </ThemeProvider>
-      </PlatformProvider>,
+      <EnglishI18n>
+        <PlatformProvider value={platform}>
+          <ThemeProvider>
+            <QueryClientProvider
+              client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+            >
+              <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
+                <Routes>
+                  <Route path="/chat/:sessionId" element={<ChatPage />} />
+                </Routes>
+              </MemoryRouter>
+            </QueryClientProvider>
+          </ThemeProvider>
+        </PlatformProvider>
+      </EnglishI18n>,
     );
 
-    const modelSelect = await screen.findByLabelText('对话模型');
+    const modelSelect = await screen.findByLabelText('Chat model');
     await waitFor(() => expect((modelSelect as HTMLSelectElement).disabled).toBe(false));
     await user.selectOptions(modelSelect, 'other-chat:latest');
     await waitFor(() =>
@@ -149,10 +166,10 @@ describe('统一对话文件能力', () => {
         modelId: 'other-chat:latest',
       }),
     );
-    expect(await screen.findByText(/仅支持普通对话与知识库问答/)).toBeDefined();
-    expect((screen.getByRole('checkbox', { name: '文件访问' }) as HTMLInputElement).disabled).toBe(
-      true,
-    );
+    expect(await screen.findByText(/Only regular chat and knowledge-base questions/)).toBeDefined();
+    expect(
+      (screen.getByRole('checkbox', { name: 'File access' }) as HTMLInputElement).disabled,
+    ).toBe(true);
   });
 
   it('按轮次开启文件访问并通过 chat stream 发送', async () => {
@@ -162,26 +179,28 @@ describe('统一对话文件能力', () => {
     mocks.streamChat.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(
-      <PlatformProvider value={platform}>
-        <ThemeProvider>
-          <QueryClientProvider
-            client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-          >
-            <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
-              <Routes>
-                <Route path="/chat/:sessionId" element={<ChatPage />} />
-              </Routes>
-            </MemoryRouter>
-          </QueryClientProvider>
-        </ThemeProvider>
-      </PlatformProvider>,
+      <EnglishI18n>
+        <PlatformProvider value={platform}>
+          <ThemeProvider>
+            <QueryClientProvider
+              client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+            >
+              <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
+                <Routes>
+                  <Route path="/chat/:sessionId" element={<ChatPage />} />
+                </Routes>
+              </MemoryRouter>
+            </QueryClientProvider>
+          </ThemeProvider>
+        </PlatformProvider>
+      </EnglishI18n>,
     );
 
-    const toggle = await screen.findByRole('checkbox', { name: '文件访问' });
+    const toggle = await screen.findByRole('checkbox', { name: 'File access' });
     await user.click(toggle);
-    await user.type(screen.getByLabelText('工作区目录'), '/workspace');
-    await user.type(screen.getByPlaceholderText(/输入消息/), '读取 README.md');
-    await user.click(screen.getByRole('button', { name: '发送' }));
+    await user.type(screen.getByLabelText('Workspace directory'), '/workspace');
+    await user.type(screen.getByPlaceholderText(/Type a message/), '读取 README.md');
+    await user.click(screen.getByRole('button', { name: 'Send' }));
 
     await waitFor(() =>
       expect(mocks.streamChat).toHaveBeenCalledWith(
@@ -198,7 +217,7 @@ describe('统一对话文件能力', () => {
       ),
     );
     await user.click(toggle);
-    expect(screen.queryByLabelText('工作区目录')).toBeNull();
+    expect(screen.queryByLabelText('Workspace directory')).toBeNull();
   });
 
   it('在统一页面响应工具审批', async () => {
@@ -208,19 +227,21 @@ describe('统一对话文件能力', () => {
     mocks.respondPermission.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(
-      <PlatformProvider value={platform}>
-        <ThemeProvider>
-          <QueryClientProvider
-            client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-          >
-            <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
-              <Routes>
-                <Route path="/chat/:sessionId" element={<ChatPage />} />
-              </Routes>
-            </MemoryRouter>
-          </QueryClientProvider>
-        </ThemeProvider>
-      </PlatformProvider>,
+      <EnglishI18n>
+        <PlatformProvider value={platform}>
+          <ThemeProvider>
+            <QueryClientProvider
+              client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+            >
+              <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
+                <Routes>
+                  <Route path="/chat/:sessionId" element={<ChatPage />} />
+                </Routes>
+              </MemoryRouter>
+            </QueryClientProvider>
+          </ThemeProvider>
+        </PlatformProvider>
+      </EnglishI18n>,
     );
 
     await screen.findAllByText('统一会话');
@@ -234,7 +255,11 @@ describe('统一对话文件能力', () => {
         diff: '+内容',
       },
     });
-    await user.click(await screen.findByRole('button', { name: '允许一次' }));
+    expect(
+      await screen.findByRole('heading', { name: 'Tool call approval required' }),
+    ).toBeDefined();
+    expect(screen.getByText('Tool write · README.md')).toBeDefined();
+    await user.click(await screen.findByRole('button', { name: 'Allow once' }));
     await waitFor(() =>
       expect(mocks.respondPermission).toHaveBeenCalledWith(
         platform,
@@ -260,26 +285,28 @@ describe('统一对话文件能力', () => {
     mocks.listDatasets.mockResolvedValue([]);
 
     render(
-      <PlatformProvider value={platform}>
-        <ThemeProvider>
-          <QueryClientProvider
-            client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
-          >
-            <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
-              <Routes>
-                <Route path="/chat/:sessionId" element={<ChatPage />} />
-              </Routes>
-            </MemoryRouter>
-          </QueryClientProvider>
-        </ThemeProvider>
-      </PlatformProvider>,
+      <EnglishI18n>
+        <PlatformProvider value={platform}>
+          <ThemeProvider>
+            <QueryClientProvider
+              client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+            >
+              <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
+                <Routes>
+                  <Route path="/chat/:sessionId" element={<ChatPage />} />
+                </Routes>
+              </MemoryRouter>
+            </QueryClientProvider>
+          </ThemeProvider>
+        </PlatformProvider>
+      </EnglishI18n>,
     );
 
-    const input = await screen.findByPlaceholderText(/输入消息/);
+    const input = await screen.findByPlaceholderText(/Type a message/);
     await waitFor(() => expect((input as HTMLTextAreaElement).disabled).toBe(true));
-    expect((screen.getByRole('checkbox', { name: '文件访问' }) as HTMLInputElement).disabled).toBe(
-      true,
-    );
-    expect((screen.getByRole('button', { name: '发送' }) as HTMLButtonElement).disabled).toBe(true);
+    expect(
+      (screen.getByRole('checkbox', { name: 'File access' }) as HTMLInputElement).disabled,
+    ).toBe(true);
+    expect((screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled).toBe(true);
   });
 });

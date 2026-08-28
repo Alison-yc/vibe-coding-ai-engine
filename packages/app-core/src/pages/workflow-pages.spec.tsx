@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import type { ReactNode } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import enUS from '../i18n/locales/en-US/workflow.json';
 import { WorkflowListPage } from './workflow-list-page';
 import { WorkflowEditorPage } from './workflow-editor-page';
 
@@ -23,6 +26,8 @@ const platform = {
   pickFiles: async () => [],
   kv: createMemoryKeyValueStore(),
   getApiBaseUrl: () => 'http://localhost:3000',
+  getUiLocale: async () => 'en-US',
+  setUiLocale: async () => undefined,
   openExternal: async () => undefined,
   getAppInfo: async () => ({ name: 'test', version: '0' }),
   getSystemTheme: () => 'light',
@@ -71,6 +76,16 @@ const workflow = {
   createdAt: '2026-08-28T00:00:00.000Z',
 };
 
+beforeAll(async () => {
+  await i18n.use(initReactI18next).init({
+    lng: 'en-US',
+    resources: { 'en-US': { workflow: enUS } },
+    ns: ['workflow'],
+    defaultNS: 'workflow',
+    interpolation: { escapeValue: false },
+  });
+});
+
 const renderPage = (path: string, element: ReactNode) =>
   render(
     <PlatformProvider value={platform}>
@@ -105,12 +120,12 @@ describe('工作流页面', () => {
     vi.stubGlobal('fetch', fetchMock);
     renderPage('/workflow', <WorkflowListPage />);
     expect(await screen.findByText('页面测试工作流')).toBeTruthy();
-    fireEvent.click(screen.getByRole('button', { name: '编辑' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Edit' }));
     renderPage('/workflow', <WorkflowListPage />);
-    fireEvent.click(await screen.findByRole('button', { name: '新建工作流' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'New workflow' }));
     await waitFor(() => expect(fetchMock).toHaveBeenCalled());
     renderPage('/workflow', <WorkflowListPage />);
-    fireEvent.click(await screen.findByRole('button', { name: '删除' }));
+    fireEvent.click(await screen.findByRole('button', { name: 'Delete' }));
     await waitFor(() =>
       expect(fetchMock.mock.calls.some((call) => call[1]?.method === 'DELETE')).toBe(true),
     );
@@ -136,15 +151,15 @@ describe('工作流页面', () => {
     });
     vi.stubGlobal('fetch', fetchMock);
     renderPage(`/workflow/${workflowId}`, <WorkflowEditorPage />);
-    const name = await screen.findByLabelText('工作流名称');
+    const name = await screen.findByLabelText('Workflow name');
     fireEvent.change(name, { target: { value: '新工作流名称' } });
-    fireEvent.click(screen.getByRole('button', { name: '保存并校验' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Save and validate' }));
     await waitFor(() =>
       expect(fetchMock.mock.calls.some((call) => call[1]?.method === 'PATCH')).toBe(true),
     );
-    fireEvent.click(screen.getByRole('button', { name: '运行', exact: true }));
+    fireEvent.click(screen.getByRole('button', { name: 'Run', exact: true }));
     fireEvent.change(screen.getByLabelText('query *'), { target: { value: '问题' } });
-    fireEvent.click(screen.getByRole('button', { name: '开始运行' }));
-    expect(await screen.findByText('completed')).toBeTruthy();
+    fireEvent.click(screen.getByRole('button', { name: 'Start run' }));
+    expect(await screen.findByText('Succeeded')).toBeTruthy();
   });
 });

@@ -1,0 +1,95 @@
+{
+  "list": {
+    "title": "ナレッジ",
+    "description": "ドキュメントのインデックスを管理し、詳細画面で検索と試験回答を確認します。",
+    "actions": {
+      "refresh": "更新",
+      "load": "ナレッジを読み込む"
+    },
+    "create": {
+      "title": "ナレッジを作成",
+      "nameLabel": "名前",
+      "defaultName": "テスト用ナレッジ",
+      "submit": "作成"
+    },
+    "empty": {
+      "title": "ナレッジはまだありません",
+      "description": "ナレッジを作成し、txt、md、pdf のドキュメントをアップロードしてインデックスを開始します。"
+    },
+    "dataset": {
+      "documentCount_one": "{{count}} 件のドキュメント",
+      "documentCount_other": "{{count}} 件のドキュメント",
+      "chunkCount_one": "{{count}} 件のチャンク",
+      "chunkCount_other": "{{count}} 件のチャンク",
+      "openDetails": "詳細を開く →"
+    }
+  },
+  "errors": {
+    "load": "ナレッジの読み込みに失敗しました",
+    "create": "ナレッジの作成に失敗しました",
+    "index": "インデックス作成に失敗しました",
+    "upload": "アップロードに失敗しました"
+  },
+  "detail": {
+    "fallbackTitle": "ナレッジの詳細",
+    "missingId": "ナレッジ ID がありません",
+    "description": "ドキュメントのアップロード、分割のプレビュー、LLM を使わない検索テストを行います。",
+    "backToList": "ナレッジ一覧",
+    "refresh": "更新",
+    "paste": {
+      "title": "テキストを貼り付け",
+      "description": "Markdown またはプレーンテキストを貼り付けると、すぐにインデックス処理が始まります。",
+      "fileNameLabel": "ファイル名",
+      "contentLabel": "内容",
+      "contentPlaceholder": "インデックスするテキストを貼り付け…",
+      "submit": "貼り付けた内容をインデックス"
+    },
+    "upload": {
+      "title": "ドキュメントをアップロード",
+      "description": "txt、md、pdf に対応しています。アップロード後、5 段階のインデックス処理が自動で始まります。",
+      "button": "ファイルをアップロード",
+      "emptyHint": "ファイルが選択されていません"
+    },
+    "documents": {
+      "title": "ドキュメント一覧",
+      "empty": "ドキュメントはまだありません。ファイルをアップロードするか、テキストを貼り付けてください。",
+      "remove": "削除",
+      "status": {
+        "pending": "インデックス待ち",
+        "extracting": "抽出中",
+        "cleaning": "クリーニング中",
+        "splitting": "分割中",
+        "embedding": "ベクトル化中",
+        "indexing": "インデックス書き込み中",
+        "completed": "完了",
+        "failed": "失敗"
+      }
+    },
+    "preview": {
+      "title": "分割プレビュー",
+      "description": "方式とパラメーターを調整し、正式なドキュメントをアップロードする前にチャンクを確認します。",
+      "textPlaceholder": "分割をプレビューするテキストを入力…",
+      "strategyLabel": "方式",
+      "chunkSizeLabel": "チャンクサイズ",
+      "overlapLabel": "オーバーラップ",
+      "submit": "分割をプレビュー",
+      "chunkCount_one": "{{count}} 件のチャンク",
+      "chunkCount_other": "{{count}} 件のチャンク",
+      "empty": "「分割をプレビュー」を選択すると結果が表示されます"
+    },
+    "retrieve": {
+      "title": "検索テスト",
+      "description": "LLM を呼び出さず、ベクトル検索のみを実行します。再現率の問題を調査するために使用します。",
+      "queryLabel": "クエリ",
+      "queryPlaceholder": "検索する質問を入力…",
+      "submit": "検索",
+      "answer": "試験回答を生成",
+      "empty": "検索結果はまだありません。",
+      "table": {
+        "source": "出典",
+        "score": "スコア",
+        "content": "内容"
+      }
+    }
+  }
+}

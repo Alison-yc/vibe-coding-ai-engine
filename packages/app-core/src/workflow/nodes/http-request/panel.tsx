@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Select, Textarea } from '@ai-engine/ui';
 import { HttpRequestNodeConfigSchema } from '@ai-engine/contracts';
+import { useTranslation } from 'react-i18next';
 import { TemplateEditor } from '../../template-editor';
 import { configWithDraft, PanelSection } from '../common';
 import type { NodePanelProps } from '../types';
@@ -8,6 +9,7 @@ import { useConfigDraft } from '../use-config-draft';
 import { httpRequestDefaultConfig } from './default';
 
 export const HttpRequestNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps) => {
+  const { t } = useTranslation('workflow');
   const [draft, setDraft] = useConfigDraft(node.id, node.data.config, onChange);
   const parsed = HttpRequestNodeConfigSchema.safeParse(draft);
   const config = parsed.success
@@ -16,9 +18,12 @@ export const HttpRequestNodePanel = ({ node, nodes, edges, onChange }: NodePanel
   const [headersText, setHeadersText] = useState(() => JSON.stringify(config.headers, null, 2));
   const [headersError, setHeadersError] = useState('');
   return (
-    <PanelSection title="HTTP 请求" description="仅允许访问公网 HTTP(S) 地址">
+    <PanelSection
+      title={t('panels.httpRequest.title')}
+      description={t('panels.httpRequest.description')}
+    >
       <Select
-        aria-label="请求方法"
+        aria-label={t('panels.httpRequest.method')}
         value={config.method}
         onChange={(event) => setDraft({ ...config, method: event.target.value })}
       >
@@ -37,9 +42,9 @@ export const HttpRequestNodePanel = ({ node, nodes, edges, onChange }: NodePanel
         onChange={(url) => setDraft({ ...config, url })}
       />
       <div className="flex flex-col gap-1.5">
-        <span className="text-xs font-medium">请求头 JSON</span>
+        <span className="text-xs font-medium">{t('panels.httpRequest.headers')}</span>
         <Textarea
-          aria-label="请求头 JSON"
+          aria-label={t('panels.httpRequest.headers')}
           className="font-mono text-xs"
           value={headersText}
           onChange={(event) => {
@@ -51,7 +56,7 @@ export const HttpRequestNodePanel = ({ node, nodes, edges, onChange }: NodePanel
               setHeadersError('');
               setDraft({ ...config, headers });
             } catch {
-              setHeadersError('请求头必须是字符串键值对象');
+              setHeadersError(t('panels.httpRequest.invalidHeaders'));
             }
           }}
         />
@@ -59,7 +64,7 @@ export const HttpRequestNodePanel = ({ node, nodes, edges, onChange }: NodePanel
       </div>
       {config.method !== 'GET' ? (
         <TemplateEditor
-          label="请求体"
+          label={t('panels.httpRequest.body')}
           value={config.body ?? ''}
           nodeId={node.id}
           nodes={nodes}

@@ -1,0 +1,218 @@
+{
+  "list": {
+    "title": "Workflows",
+    "description": "Arrange local AI workflows by dragging nodes",
+    "create": "New workflow",
+    "defaultName": "Workflow {{date}}",
+    "loadFailed": "Failed to load",
+    "emptyTitle": "No workflows yet",
+    "emptyDescription": "Create a workflow and connect the start node to the end node.",
+    "version": "Version {{version}}",
+    "edit": "Edit",
+    "delete": "Delete"
+  },
+  "editor": {
+    "loading": "Loading workflow…",
+    "loadFailed": "Failed to load workflow",
+    "back": "← Workflows",
+    "name": "Workflow name",
+    "saveState": {
+      "saving": "Saving",
+      "unsaved": "Unsaved",
+      "saved": "Saved"
+    },
+    "saveFailed": "Failed to save",
+    "saveAndValidate": "Save and validate",
+    "stop": "Stop",
+    "preparing": "Preparing…",
+    "run": "Run",
+    "runFailed": "Run failed",
+    "stopFailed": "Failed to stop",
+    "stopWorkflowFailed": "Failed to stop workflow",
+    "nodeFallback": "Node {{nodeId}}",
+    "latestRun": "Latest run",
+    "workflowStopped": "Workflow stopped",
+    "workflowCompleted": "Workflow completed",
+    "workflowFailed": "Workflow failed"
+  },
+  "status": {
+    "idle": "Waiting",
+    "running": "Running",
+    "completed": "Succeeded",
+    "failed": "Failed",
+    "stopped": "Stopped"
+  },
+  "canvas": {
+    "nodes": "Nodes",
+    "addHint": "Drag or click to add",
+    "categories": {
+      "flow": "Flow",
+      "data": "Data",
+      "ai": "AI",
+      "tools": "Tools"
+    },
+    "inputHandle": "Input connector",
+    "outputHandle": "Output connector",
+    "branchHandle": "Branch {{branch}}",
+    "configTitle": "Node configuration",
+    "close": "Close",
+    "nodeTitle": "Node title"
+  },
+  "runDialog": {
+    "title": "Run workflow",
+    "description": "Enter the parameters defined by the start node",
+    "invalidJson": "Enter valid JSON for objects and arrays",
+    "cancel": "Cancel",
+    "start": "Start run"
+  },
+  "logs": {
+    "title": "Run logs",
+    "collapse": "Collapse",
+    "expand": "Expand",
+    "input": "Input: {{value}}",
+    "output": "Output: {{value}}"
+  },
+  "debug": {
+    "title": "Debug node",
+    "description": "Run this node independently with an upstream variable snapshot",
+    "upstreamJson": "Upstream variables JSON for debugging",
+    "invalidJson": "Invalid JSON",
+    "running": "Debugging…",
+    "run": "Run current node",
+    "failed": "Debug failed"
+  },
+  "variables": {
+    "system": "System variables",
+    "invalidReference": "Invalid reference: {{selector}}",
+    "invalidDescription": "The source node does not exist or is not upstream",
+    "option": "{{nodeTitle}} / {{variable}} · {{type}}",
+    "highlight": "{{label}} variable highlights",
+    "insertSource": "Upstream variable to insert",
+    "insert": "Insert variable",
+    "source": "Source variable",
+    "right": "Right-hand variable"
+  },
+  "nodes": {
+    "start": {
+      "title": "Start",
+      "description": "Define workflow input parameters"
+    },
+    "end": {
+      "title": "End",
+      "description": "Assemble the final workflow output"
+    },
+    "variableAssigner": {
+      "title": "Assign variables",
+      "description": "Create constants or reference variables"
+    },
+    "ifElse": {
+      "title": "Conditional branch",
+      "description": "Choose an execution path by condition"
+    },
+    "llm": {
+      "title": "LLM",
+      "description": "Generate text with a local model"
+    },
+    "knowledgeRetrieval": {
+      "title": "Knowledge retrieval",
+      "description": "Retrieve relevant content from a knowledge base"
+    },
+    "httpRequest": {
+      "title": "HTTP request",
+      "description": "Call a public HTTP(S) endpoint"
+    },
+    "code": {
+      "title": "Code",
+      "description": "Process data in the QuickJS sandbox"
+    },
+    "summary": {
+      "inputFields": "{{count}} input fields",
+      "outputFields": "{{count}} output fields",
+      "variables": "{{count}} variables",
+      "branches": "{{count}} branches",
+      "codeLines": "{{count}} lines of JavaScript",
+      "incomplete": "Configuration incomplete",
+      "configurePrompt": "Configure prompt",
+      "selectKnowledgeBase": "Select a knowledge base",
+      "configureRequest": "Configure request",
+      "configureCode": "Configure code"
+    }
+  },
+  "panels": {
+    "start": {
+      "title": "Run inputs",
+      "description": "Generate the run form from these fields",
+      "fieldName": "Field {{index}} name",
+      "fieldType": "Field {{index}} type",
+      "defaultValue": "Field {{index}} default value",
+      "defaultPlaceholder": "Optional default value",
+      "required": "Required",
+      "delete": "Delete field",
+      "add": "Add input field"
+    },
+    "end": {
+      "title": "Workflow output",
+      "outputName": "Output {{index}} name",
+      "delete": "Delete output",
+      "add": "Add output"
+    },
+    "variableAssigner": {
+      "title": "Assign variables",
+      "name": "Variable {{index}} name",
+      "source": "Variable {{index}} source",
+      "constant": "Constant",
+      "reference": "Variable reference",
+      "template": "Template",
+      "templateLabel": "Variable {{index}} template",
+      "constantLabel": "Variable {{index}} constant",
+      "delete": "Delete variable",
+      "add": "Add variable"
+    },
+    "ifElse": {
+      "title": "Conditional branch",
+      "description": "Each branch becomes a connector on the right side of the node",
+      "branchName": "Branch name",
+      "relation": "Branch {{branch}} condition relation",
+      "all": "Match all (AND)",
+      "any": "Match any (OR)",
+      "left": "Condition {{condition}} left value",
+      "operator": "Branch {{branch}} condition {{condition}} operator",
+      "rightSource": "Branch {{branch}} condition {{condition}} right value source",
+      "rightValue": "Branch {{branch}} condition {{condition}} right value",
+      "deleteCondition": "Delete condition",
+      "addCondition": "Add condition",
+      "deleteBranch": "Delete branch",
+      "addBranch": "Add branch",
+      "defaultBranch": "Default branch"
+    },
+    "llm": {
+      "title": "Local model prompts",
+      "systemPrompt": "System prompt",
+      "userPrompt": "User prompt",
+      "maxTokens": "Maximum generated tokens"
+    },
+    "knowledgeRetrieval": {
+      "title": "Knowledge retrieval",
+      "knowledgeBase": "Knowledge base",
+      "selectKnowledgeBase": "Select a knowledge base",
+      "query": "Retrieval query",
+      "scoreThreshold": "Similarity threshold"
+    },
+    "httpRequest": {
+      "title": "HTTP request",
+      "description": "Only public HTTP(S) addresses are allowed",
+      "method": "Request method",
+      "headers": "Request headers JSON",
+      "invalidHeaders": "Headers must be an object with string keys and values",
+      "body": "Request body"
+    },
+    "code": {
+      "title": "JavaScript code",
+      "description": "Code runs in a QuickJS WASM sandbox",
+      "inputName": "Code input {{index}} name",
+      "deleteInput": "Delete input",
+      "addInput": "Add code input",
+      "editor": "JavaScript code"
+    }
+  }
+}

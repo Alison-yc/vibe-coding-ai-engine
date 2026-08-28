@@ -3,14 +3,17 @@ import { useEffect, useState, type ReactNode } from 'react';
 import { usePlatform } from '@ai-engine/platform';
 import {
   checkBackendConnection,
+  localizeBackendConnectionError,
   normalizeApiBaseUrl,
   persistApiBaseUrl,
 } from '../backend-connection';
+import { useFeatureTranslation } from '../i18n/feature-resources';
 
 type ConnectionState = 'checking' | 'connected' | 'disconnected';
 
 export const BackendConnectionGate = ({ children }: { children: ReactNode }) => {
   const platform = usePlatform();
+  const { t } = useFeatureTranslation('settings');
   const required = platform.capabilities.backendConnectionSetup === true;
   const [address, setAddress] = useState(() => platform.getApiBaseUrl());
   const [state, setState] = useState<ConnectionState>(required ? 'checking' : 'connected');
@@ -41,7 +44,11 @@ export const BackendConnectionGate = ({ children }: { children: ReactNode }) => 
       setAddress(normalized);
       setState('connected');
     } catch (cause) {
-      setError(cause instanceof Error ? cause.message : '无法连接后端服务');
+      setError(
+        cause instanceof Error
+          ? localizeBackendConnectionError(cause, t)
+          : t('connectionGate.fallbackError'),
+      );
       setState('disconnected');
     }
   };
@@ -50,20 +57,23 @@ export const BackendConnectionGate = ({ children }: { children: ReactNode }) => 
 
   return (
     <main className="bg-background text-foreground flex min-h-dvh items-center justify-center p-6">
-      <Card className="w-full max-w-xl">
+      <Card className="w-full max-w-xl min-w-0 overflow-hidden">
         <CardHeader>
-          <CardTitle>{state === 'checking' ? '正在连接后端服务' : '无法连接到后端服务'}</CardTitle>
+          <CardTitle className="line-clamp-2">
+            {state === 'checking'
+              ? t('connectionGate.checkingTitle')
+              : t('connectionGate.disconnectedTitle')}
+          </CardTitle>
         </CardHeader>
-        <CardContent className="flex flex-col gap-5">
-          <p className="text-muted-foreground text-sm">
-            桌面版会自动启动 NestJS 后端，但仍需本机运行 PostgreSQL 与
-            Ollama。开发模式下可在项目目录执行：
+        <CardContent className="flex min-w-0 flex-col gap-5">
+          <p className="text-muted-foreground line-clamp-4 text-sm">
+            {t('connectionGate.description')}
           </p>
           <pre className="bg-muted overflow-x-auto rounded-md p-4 text-sm">
             {'pnpm dev:db\npnpm db:migrate\npnpm dev:server'}
           </pre>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="backend-address">后端地址</Label>
+          <div className="flex min-w-0 flex-col gap-2">
+            <Label htmlFor="backend-address">{t('connectionGate.addressLabel')}</Label>
             <Input
               id="backend-address"
               value={address}
@@ -71,14 +81,23 @@ export const BackendConnectionGate = ({ children }: { children: ReactNode }) => 
               placeholder="http://localhost:3000"
               onChange={(event) => setAddress(event.target.value)}
             />
-            <p className="text-muted-foreground text-xs">
-              出于桌面端安全策略，仅支持 localhost 或 127.0.0.1，可自定义端口。
+            <p className="text-muted-foreground line-clamp-3 text-xs">
+              {t('connectionGate.localOnlyDescription')}
             </p>
           </div>
           {error ? <p className="text-destructive text-sm">{error}</p> : null}
-          <div className="flex justify-end">
-            <Button type="button" disabled={state === 'checking'} onClick={() => void connect()}>
-              {state === 'checking' ? '正在测试…' : '保存并测试连接'}
+          <div className="flex min-w-0 justify-end">
+            <Button
+              type="button"
+              className="min-w-0"
+              disabled={state === 'checking'}
+              onClick={() => void connect()}
+            >
+              <span className="truncate">
+                {state === 'checking'
+                  ? t('connectionGate.testing')
+                  : t('connectionGate.saveAndTest')}
+              </span>
             </Button>
           </div>
         </CardContent>

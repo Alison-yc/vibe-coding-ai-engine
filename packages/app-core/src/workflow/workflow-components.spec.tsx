@@ -1,10 +1,13 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 import { Profiler, type Dispatch, type ReactNode, type SetStateAction } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
 import { NodeTypeSchema } from '@ai-engine/contracts';
+import i18n from 'i18next';
+import { initReactI18next } from 'react-i18next';
+import zhCN from '../i18n/locales/zh-CN/workflow.json';
 import { NodeComponentMap, PanelComponentMap } from './nodes/registry';
 import { NodeMetadataMap } from './nodes/metadata';
 import { VariableSelector } from './variable-selector';
@@ -61,6 +64,8 @@ const platform = {
   pickFiles: async () => [],
   kv: createMemoryKeyValueStore(),
   getApiBaseUrl: () => 'http://localhost:3000',
+  getUiLocale: async () => 'zh-CN',
+  setUiLocale: async () => undefined,
   openExternal: async () => undefined,
   getAppInfo: async () => ({ name: 'test', version: '0' }),
   getSystemTheme: () => 'light',
@@ -94,7 +99,7 @@ const nodes: CanvasNode[] = [
         position: { x: index * 10, y: 10 },
         data: {
           type,
-          title: metadata.title,
+          title: type,
           config: metadata.defaultConfig,
         },
       };
@@ -107,6 +112,16 @@ const end = nodes.find((node) => node.data.type === 'end');
 const condition = nodes.find((node) => node.data.type === 'if-else');
 if (!start || !end || !condition) throw new Error('测试关键节点缺失');
 const edges = [{ id: 'edge', source: 'start', target: target.id }];
+
+beforeAll(async () => {
+  await i18n.use(initReactI18next).init({
+    lng: 'zh-CN',
+    resources: { 'zh-CN': { workflow: zhCN } },
+    ns: ['workflow'],
+    defaultNS: 'workflow',
+    interpolation: { escapeValue: false },
+  });
+});
 
 const renderWithProviders = (element: ReactNode) =>
   render(
@@ -139,7 +154,7 @@ describe('工作流组件', () => {
       edges: [],
       viewport: { x: 0, y: 0, zoom: 1 },
     });
-    render(<WorkflowCanvas />);
+    renderWithProviders(<WorkflowCanvas />);
     fireEvent.click(screen.getByRole('button', { name: /HTTP 请求/ }));
     expect(screen.getAllByText('HTTP 请求', { exact: true }).length).toBeGreaterThan(1);
   });
@@ -229,7 +244,7 @@ describe('工作流组件', () => {
         debugPanel={<span>调试区域</span>}
       />,
     );
-    fireEvent.change(screen.getByDisplayValue('LLM'), { target: { value: '生成回答' } });
+    fireEvent.change(screen.getByDisplayValue('llm'), { target: { value: '生成回答' } });
     fireEvent.blur(screen.getByDisplayValue('生成回答'));
     fireEvent.click(screen.getByRole('button', { name: '关闭' }));
     expect(onTitleChange).toHaveBeenCalledWith('生成回答');

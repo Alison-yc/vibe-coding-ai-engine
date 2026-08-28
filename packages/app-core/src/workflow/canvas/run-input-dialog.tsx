@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button, Input, Label } from '@ai-engine/ui';
 import type { StartNodeConfig } from '@ai-engine/contracts';
+import { useTranslation } from 'react-i18next';
 
 type StartInputField = StartNodeConfig['fields'][number];
 const parseValue = (field: StartInputField, value: string): unknown => {
@@ -19,6 +20,7 @@ export const RunInputDialog = ({
   onClose: () => void;
   onRun: (inputs: Record<string, unknown>) => void;
 }) => {
+  const { t } = useTranslation('workflow');
   const [values, setValues] = useState<Record<string, string>>(() =>
     Object.fromEntries(
       fields.map((field) => [
@@ -45,13 +47,13 @@ export const RunInputDialog = ({
             setError('');
             onRun(inputs);
           } catch {
-            setError('对象和数组请输入合法 JSON');
+            setError(t('runDialog.invalidJson'));
           }
         }}
       >
         <div>
-          <h2 className="font-semibold">运行工作流</h2>
-          <p className="text-muted-foreground text-sm">填写开始节点定义的输入参数</p>
+          <h2 className="font-semibold">{t('runDialog.title')}</h2>
+          <p className="text-muted-foreground text-sm">{t('runDialog.description')}</p>
         </div>
         {fields.map((field) => (
           <div className="flex flex-col gap-1.5" key={field.name}>
@@ -87,9 +89,9 @@ export const RunInputDialog = ({
         {error ? <p className="text-destructive text-sm">{error}</p> : null}
         <div className="flex justify-end gap-2">
           <Button type="button" variant="ghost" onClick={onClose}>
-            取消
+            {t('runDialog.cancel')}
           </Button>
-          <Button type="submit">开始运行</Button>
+          <Button type="submit">{t('runDialog.start')}</Button>
         </div>
       </form>
     </div>

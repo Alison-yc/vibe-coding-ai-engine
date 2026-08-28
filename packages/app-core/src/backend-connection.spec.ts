@@ -1,7 +1,9 @@
 import { createMemoryKeyValueStore, type Platform } from '@ai-engine/platform';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  BackendConnectionError,
   checkBackendConnection,
+  localizeBackendConnectionError,
   normalizeApiBaseUrl,
   persistApiBaseUrl,
 } from './backend-connection';
@@ -21,6 +23,14 @@ describe('backend connection', () => {
     expect(() => normalizeApiBaseUrl('https://localhost:3000')).toThrow('http');
     expect(() => normalizeApiBaseUrl('http://192.168.1.2:3000')).toThrow('localhost');
     expect(() => normalizeApiBaseUrl('not-a-url')).toThrow('有效');
+  });
+
+  it('按稳定错误码本地化地址校验错误', () => {
+    const error = new BackendConnectionError('hostNotAllowed', 'raw');
+    expect(localizeBackendConnectionError(error, (key) => `translated:${key}`)).toBe(
+      'translated:connectionErrors.hostNotAllowed',
+    );
+    expect(localizeBackendConnectionError(new Error('offline'), (key) => key)).toBe('offline');
   });
 
   it('健康检查通过契约校验并持久化地址', async () => {

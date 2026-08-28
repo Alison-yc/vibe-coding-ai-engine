@@ -1,4 +1,5 @@
 import type { NodeType } from '@ai-engine/contracts';
+import type { TFunction } from 'i18next';
 import type { OutputVariable } from './types';
 import { startDefaultConfig, startOutputVars, validateStartConfig } from './start/default';
 import { endDefaultConfig, endOutputVars, validateEndConfig } from './end/default';
@@ -27,9 +28,6 @@ import {
 import { codeDefaultConfig, codeOutputVars, validateCodeConfig } from './code/default';
 
 export type NodeMetadata = {
-  title: string;
-  description: string;
-  category: '流程' | '数据' | 'AI' | '工具';
   acceptsInput: boolean;
   providesOutput: boolean;
   singleton?: boolean;
@@ -41,9 +39,6 @@ export type NodeMetadata = {
 
 export const NodeMetadataMap: Record<NodeType, NodeMetadata> = {
   start: {
-    title: '开始',
-    description: '定义工作流运行入参',
-    category: '流程',
     acceptsInput: false,
     providesOutput: true,
     singleton: true,
@@ -52,9 +47,6 @@ export const NodeMetadataMap: Record<NodeType, NodeMetadata> = {
     checkValid: validateStartConfig,
   },
   end: {
-    title: '结束',
-    description: '组装工作流最终输出',
-    category: '流程',
     acceptsInput: true,
     providesOutput: false,
     singleton: true,
@@ -63,9 +55,6 @@ export const NodeMetadataMap: Record<NodeType, NodeMetadata> = {
     checkValid: validateEndConfig,
   },
   'variable-assigner': {
-    title: '变量赋值',
-    description: '创建常量或引用变量',
-    category: '数据',
     acceptsInput: true,
     providesOutput: true,
     defaultConfig: variableAssignerDefaultConfig,
@@ -73,9 +62,6 @@ export const NodeMetadataMap: Record<NodeType, NodeMetadata> = {
     checkValid: validateVariableAssignerConfig,
   },
   'if-else': {
-    title: '条件分支',
-    description: '根据条件选择执行路径',
-    category: '流程',
     acceptsInput: true,
     providesOutput: true,
     defaultConfig: ifElseDefaultConfig,
@@ -84,9 +70,6 @@ export const NodeMetadataMap: Record<NodeType, NodeMetadata> = {
     checkValid: validateIfElseConfig,
   },
   llm: {
-    title: 'LLM',
-    description: '调用本地模型生成文本',
-    category: 'AI',
     acceptsInput: true,
     providesOutput: true,
     defaultConfig: llmDefaultConfig,
@@ -94,9 +77,6 @@ export const NodeMetadataMap: Record<NodeType, NodeMetadata> = {
     checkValid: validateLlmConfig,
   },
   'knowledge-retrieval': {
-    title: '知识检索',
-    description: '从知识库检索相关内容',
-    category: 'AI',
     acceptsInput: true,
     providesOutput: true,
     defaultConfig: knowledgeRetrievalDefaultConfig,
@@ -104,9 +84,6 @@ export const NodeMetadataMap: Record<NodeType, NodeMetadata> = {
     checkValid: validateKnowledgeRetrievalConfig,
   },
   'http-request': {
-    title: 'HTTP 请求',
-    description: '请求公网 HTTP(S) 接口',
-    category: '工具',
     acceptsInput: true,
     providesOutput: true,
     defaultConfig: httpRequestDefaultConfig,
@@ -114,13 +91,32 @@ export const NodeMetadataMap: Record<NodeType, NodeMetadata> = {
     checkValid: validateHttpRequestConfig,
   },
   code: {
-    title: '代码',
-    description: '在 QuickJS 沙箱中处理数据',
-    category: '工具',
     acceptsInput: true,
     providesOutput: true,
     defaultConfig: codeDefaultConfig,
     getOutputVars: codeOutputVars,
     checkValid: validateCodeConfig,
   },
+};
+
+export type NodeCategory = 'flow' | 'data' | 'ai' | 'tools';
+
+const presentationKeys: Record<NodeType, { key: string; category: NodeCategory }> = {
+  start: { key: 'start', category: 'flow' },
+  end: { key: 'end', category: 'flow' },
+  'variable-assigner': { key: 'variableAssigner', category: 'data' },
+  'if-else': { key: 'ifElse', category: 'flow' },
+  llm: { key: 'llm', category: 'ai' },
+  'knowledge-retrieval': { key: 'knowledgeRetrieval', category: 'ai' },
+  'http-request': { key: 'httpRequest', category: 'tools' },
+  code: { key: 'code', category: 'tools' },
+};
+
+export const getNodePresentation = (t: TFunction<'workflow'>, type: NodeType) => {
+  const presentation = presentationKeys[type];
+  return {
+    title: t(`nodes.${presentation.key}.title`),
+    description: t(`nodes.${presentation.key}.description`),
+    category: presentation.category,
+  };
 };

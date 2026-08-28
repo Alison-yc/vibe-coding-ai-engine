@@ -1,14 +1,17 @@
 import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createElement } from 'react';
+import { createInstance } from 'i18next';
+import { createElement, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { App } from './app';
 import { AppRoutes } from './app-routes';
 import { createApiClient, createExampleChatRequest } from './api/client';
 import { ThemeProvider, useTheme } from './theme-provider';
 import { applyThemeToDocument, bindThemeRuntime, persistThemePreference } from './theme-sync';
+import { createI18nOptions } from './i18n/resources';
 
 vi.mock('react-router', async () => {
   const actual = await vi.importActual<typeof import('react-router')>('react-router');
@@ -41,6 +44,13 @@ const stubPlatform = {
     reload: async () => undefined,
   },
 } satisfies Platform;
+
+const i18n = createInstance();
+beforeAll(async () => {
+  await i18n.init(createI18nOptions('zh-CN'));
+});
+const renderLocalized = (element: ReactElement) =>
+  renderToStaticMarkup(createElement(I18nextProvider, { i18n }, element));
 
 describe('createExampleChatRequest', () => {
   it('产出符合 ChatRequest 契约的对象', () => {
@@ -114,7 +124,7 @@ describe('createApiClient', () => {
 
 describe('App', () => {
   it('在 history 模式下渲染占位路由', () => {
-    const html = renderToStaticMarkup(
+    const html = renderLocalized(
       createElement(PlatformProvider, { value: stubPlatform }, createElement(App)),
     );
     // MemoryRouter 默认落在 `/`，SSR 不会跟随 Navigate，因此 markup 为空。
@@ -122,7 +132,7 @@ describe('App', () => {
   });
 
   it('在 hash 模式下也能渲染占位路由', () => {
-    const html = renderToStaticMarkup(
+    const html = renderLocalized(
       createElement(
         PlatformProvider,
         {
@@ -147,7 +157,7 @@ describe('AppRoutes', () => {
         json: async () => (String(url).includes('/knowledge/datasets') ? [] : { sessions: [] }),
       })),
     );
-    const html = renderToStaticMarkup(
+    const html = renderLocalized(
       createElement(
         QueryClientProvider,
         { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
@@ -168,7 +178,7 @@ describe('AppRoutes', () => {
   });
 
   it('在 /dev/tokens 渲染令牌页', () => {
-    const html = renderToStaticMarkup(
+    const html = renderLocalized(
       createElement(
         PlatformProvider,
         { value: stubPlatform },
@@ -184,7 +194,7 @@ describe('AppRoutes', () => {
   });
 
   it('在 /dev/observability 渲染可观测性页', () => {
-    const html = renderToStaticMarkup(
+    const html = renderLocalized(
       createElement(
         PlatformProvider,
         { value: stubPlatform },
@@ -200,7 +210,7 @@ describe('AppRoutes', () => {
   });
 
   it('在 /knowledge 渲染知识库列表', () => {
-    const html = renderToStaticMarkup(
+    const html = renderLocalized(
       createElement(
         PlatformProvider,
         { value: stubPlatform },

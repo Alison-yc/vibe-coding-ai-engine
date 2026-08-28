@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { usePlatform } from '@ai-engine/platform';
 import { Input, Select } from '@ai-engine/ui';
 import { KnowledgeRetrievalNodeConfigSchema } from '@ai-engine/contracts';
+import { useTranslation } from 'react-i18next';
 import { listDatasets } from '../../../knowledge/knowledge-api';
 import { TemplateEditor } from '../../template-editor';
 import { configWithDraft, PanelSection } from '../common';
@@ -10,6 +11,7 @@ import { useConfigDraft } from '../use-config-draft';
 import { knowledgeRetrievalDefaultConfig } from './default';
 
 export const KnowledgeRetrievalNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps) => {
+  const { t } = useTranslation('workflow');
   const platform = usePlatform();
   const datasets = useQuery({
     queryKey: ['knowledge-datasets'],
@@ -21,13 +23,13 @@ export const KnowledgeRetrievalNodePanel = ({ node, nodes, edges, onChange }: No
     ? parsed.data
     : configWithDraft({ ...knowledgeRetrievalDefaultConfig, datasetId: '' }, draft);
   return (
-    <PanelSection title="知识检索">
+    <PanelSection title={t('panels.knowledgeRetrieval.title')}>
       <Select
-        aria-label="知识库"
+        aria-label={t('panels.knowledgeRetrieval.knowledgeBase')}
         value={config.datasetId}
         onChange={(event) => setDraft({ ...config, datasetId: event.target.value })}
       >
-        <option value="">选择知识库</option>
+        <option value="">{t('panels.knowledgeRetrieval.selectKnowledgeBase')}</option>
         {(datasets.data ?? []).map((dataset) => (
           <option key={dataset.id} value={dataset.id}>
             {dataset.name}
@@ -35,7 +37,7 @@ export const KnowledgeRetrievalNodePanel = ({ node, nodes, edges, onChange }: No
         ))}
       </Select>
       <TemplateEditor
-        label="检索问题"
+        label={t('panels.knowledgeRetrieval.query')}
         value={config.query}
         nodeId={node.id}
         nodes={nodes}
@@ -51,7 +53,7 @@ export const KnowledgeRetrievalNodePanel = ({ node, nodes, edges, onChange }: No
         onChange={(event) => setDraft({ ...config, topK: Number(event.target.value) })}
       />
       <Input
-        aria-label="相似度阈值"
+        aria-label={t('panels.knowledgeRetrieval.scoreThreshold')}
         type="number"
         min={0}
         max={1}

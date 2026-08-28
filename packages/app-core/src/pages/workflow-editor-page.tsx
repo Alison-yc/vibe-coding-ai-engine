@@ -4,6 +4,7 @@ import { Link, useParams } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
 import { Badge, Button, Input } from '@ai-engine/ui';
 import { StartNodeConfigSchema } from '@ai-engine/contracts';
+import { useTranslation } from 'react-i18next';
 import { WorkflowCanvas } from '../workflow/canvas/workflow-canvas';
 import { WorkflowConfigPanel } from '../workflow/canvas/config-panel';
 import { RunInputDialog } from '../workflow/canvas/run-input-dialog';
@@ -26,6 +27,7 @@ import {
 } from '../workflow/store/workflow-store';
 
 export const WorkflowEditorPage = () => {
+  const { t } = useTranslation('workflow');
   const { id = '' } = useParams();
   const platform = usePlatform();
   const queryClient = useQueryClient();
@@ -85,7 +87,7 @@ export const WorkflowEditorPage = () => {
           status: nodeRun.status,
           title:
             state.nodes.find((node) => node.id === nodeRun.nodeId)?.data.title ??
-            `节点 ${nodeRun.nodeId}`,
+            t('editor.nodeFallback', { nodeId: nodeRun.nodeId }),
           inputs: nodeRun.inputs,
           outputs: nodeRun.outputs ?? undefined,
           elapsedMs: nodeRun.elapsedMs,
@@ -95,14 +97,15 @@ export const WorkflowEditorPage = () => {
         {
           id: `workflow:${detail.run.id}`,
           status: detail.run.status,
-          title: detail.run.status === 'stopped' ? '工作流已停止' : '最近一次运行',
+          title:
+            detail.run.status === 'stopped' ? t('editor.workflowStopped') : t('editor.latestRun'),
           outputs: detail.run.outputs ?? undefined,
           error: detail.run.error ?? undefined,
           text: '',
         },
       ],
     }));
-  }, [latestRun.data]);
+  }, [latestRun.data, t]);
   useEffect(
     () => () => {
       activeRun.current += 1;
@@ -180,8 +183,8 @@ export const WorkflowEditorPage = () => {
             {
               id: `client:${Date.now()}`,
               status: 'failed',
-              title: '运行失败',
-              error: error instanceof Error ? error.message : '运行失败',
+              title: t('editor.runFailed'),
+              error: error instanceof Error ? error.message : t('editor.runFailed'),
               text: '',
             },
           ],
@@ -208,8 +211,8 @@ export const WorkflowEditorPage = () => {
           {
             id: `stop-error:${Date.now()}`,
             status: 'failed',
-            title: '停止失败',
-            error: error instanceof Error ? error.message : '停止工作流失败',
+            title: t('editor.stopFailed'),
+            error: error instanceof Error ? error.message : t('editor.stopWorkflowFailed'),
             text: '',
           },
         ],
@@ -233,7 +236,7 @@ export const WorkflowEditorPage = () => {
         {
           id: `stopped:${Date.now()}`,
           status: 'stopped',
-          title: '工作流已停止',
+          title: t('editor.workflowStopped'),
           text: '',
         },
       ],
@@ -242,38 +245,44 @@ export const WorkflowEditorPage = () => {
 
   const startConfig = StartNodeConfigSchema.safeParse(startNode?.data.config);
 
-  if (workflow.isPending) return <main className="p-6">正在加载工作流…</main>;
+  if (workflow.isPending) return <main className="p-6">{t('editor.loading')}</main>;
   if (workflow.error)
     return (
       <main className="text-destructive p-6">
-        {workflow.error instanceof Error ? workflow.error.message : '工作流加载失败'}
+        {workflow.error instanceof Error ? workflow.error.message : t('editor.loadFailed')}
       </main>
     );
 
   return (
     <main className="bg-background text-foreground relative flex h-dvh min-h-0 flex-col overflow-hidden">
-      <header className="border-border flex h-14 shrink-0 items-center gap-3 border-b px-4">
+      <header className="border-border flex h-14 min-w-0 shrink-0 items-center gap-3 border-b px-4">
         <Button size="sm" variant="ghost" asChild>
-          <Link to="/workflow">← 工作流</Link>
+          <Link className="max-w-32 truncate" to="/workflow">
+            {t('editor.back')}
+          </Link>
         </Button>
         <Input
-          aria-label="工作流名称"
-          className="max-w-72"
+          aria-label={t('editor.name')}
+          className="max-w-72 min-w-0"
           value={name}
           onChange={(event) => {
             setName(event.target.value);
             setNameDirty(true);
           }}
         />
-        <Badge variant="secondary">
-          {save.isPending ? '保存中' : dirty || nameDirty ? '未保存' : '已保存'}
+        <Badge className="max-w-28 truncate" variant="secondary">
+          {save.isPending
+            ? t('editor.saveState.saving')
+            : dirty || nameDirty
+              ? t('editor.saveState.unsaved')
+              : t('editor.saveState.saved')}
         </Badge>
         <Badge variant={workflowStatus === 'failed' ? 'destructive' : 'outline'}>
-          {workflowStatus}
+          {t(`status.${workflowStatus}`)}
         </Badge>
         {save.error ? (
           <span className="text-destructive min-w-0 flex-1 truncate text-xs">
-            {save.error instanceof Error ? save.error.message : '保存失败'}
+            {save.error instanceof Error ? save.error.message : t('editor.saveFailed')}
           </span>
         ) : (
           <span className="flex-1" />
@@ -284,11 +293,11 @@ export const WorkflowEditorPage = () => {
           disabled={save.isPending || running || starting}
           onClick={() => save.mutate({ validate: true })}
         >
-          保存并校验
+          <span className="max-w-32 truncate">{t('editor.saveAndValidate')}</span>
         </Button>
         {running ? (
           <Button size="sm" variant="destructive" onClick={() => void stopRun()}>
-            停止
+            {t('editor.stop')}
           </Button>
         ) : (
           <Button
@@ -296,7 +305,7 @@ export const WorkflowEditorPage = () => {
             disabled={!startConfig.success || starting}
             onClick={() => setRunDialogOpen(true)}
           >
-            {starting ? '准备中…' : '运行'}
+            {starting ? t('editor.preparing') : t('editor.run')}
           </Button>
         )}
       </header>

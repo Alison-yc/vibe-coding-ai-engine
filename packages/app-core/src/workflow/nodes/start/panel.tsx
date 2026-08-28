@@ -3,12 +3,14 @@ import { useFieldArray, useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button, Input, Label, Select } from '@ai-engine/ui';
 import { StartNodeConfigSchema } from '@ai-engine/contracts';
+import { useTranslation } from 'react-i18next';
 import { formatConfigValue, PanelSection } from '../common';
 import type { NodePanelProps } from '../types';
 import { flushConfigDraft, stageConfigDraft } from '../use-config-draft';
 import { startDefaultConfig } from './default';
 
 export const StartNodePanel = ({ node, onChange }: NodePanelProps) => {
+  const { t } = useTranslation('workflow');
   const parsed = StartNodeConfigSchema.safeParse(node.data.config);
   const form = useForm({
     resolver: zodResolver(StartNodeConfigSchema),
@@ -34,16 +36,16 @@ export const StartNodePanel = ({ node, onChange }: NodePanelProps) => {
     };
   }, [form, node.id, onChange]);
   return (
-    <PanelSection title="运行入参" description="运行时根据这些字段生成输入表单">
+    <PanelSection title={t('panels.start.title')} description={t('panels.start.description')}>
       {fields.fields.map((field, index) => (
         <div className="border-border flex flex-col gap-2 rounded-md border p-3" key={field.id}>
           <div className="grid grid-cols-2 gap-2">
             <Input
-              aria-label={`字段 ${index + 1} 名称`}
+              aria-label={t('panels.start.fieldName', { index: index + 1 })}
               {...form.register(`fields.${index}.name`)}
             />
             <Select
-              aria-label={`字段 ${index + 1} 类型`}
+              aria-label={t('panels.start.fieldType', { index: index + 1 })}
               {...form.register(`fields.${index}.type`)}
             >
               {['string', 'number', 'boolean', 'object', 'array'].map((type) => (
@@ -54,9 +56,9 @@ export const StartNodePanel = ({ node, onChange }: NodePanelProps) => {
             </Select>
           </div>
           <Input
-            aria-label={`字段 ${index + 1} 默认值`}
+            aria-label={t('panels.start.defaultValue', { index: index + 1 })}
             defaultValue={formatConfigValue(field.defaultValue)}
-            placeholder="可选默认值"
+            placeholder={t('panels.start.defaultPlaceholder')}
             onChange={(event) => {
               const value = event.target.value;
               if (!value) {
@@ -74,10 +76,10 @@ export const StartNodePanel = ({ node, onChange }: NodePanelProps) => {
           />
           <Label className="flex items-center gap-2 text-xs">
             <input type="checkbox" {...form.register(`fields.${index}.required`)} />
-            必填
+            {t('panels.start.required')}
           </Label>
           <Button size="sm" variant="ghost" onClick={() => fields.remove(index)}>
-            删除字段
+            {t('panels.start.delete')}
           </Button>
         </div>
       ))}
@@ -92,7 +94,7 @@ export const StartNodePanel = ({ node, onChange }: NodePanelProps) => {
           })
         }
       >
-        添加输入字段
+        {t('panels.start.add')}
       </Button>
     </PanelSection>
   );

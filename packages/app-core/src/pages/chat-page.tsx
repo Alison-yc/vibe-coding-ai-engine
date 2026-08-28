@@ -28,11 +28,12 @@ import {
 import { MessageParts, StreamMarkdown } from '../chat/message-parts';
 import { useChatStream } from '../chat/use-chat-stream';
 import { useStickToBottom } from '../chat/use-stick-to-bottom';
+import { useChatTranslation } from '../i18n/use-chat-translation';
 import { listDatasets } from '../knowledge/knowledge-api';
 import { useTheme } from '../theme-provider';
-import { ZH_CN_THEME_TOGGLE_LABELS } from '../components/theme-toggle-labels';
 
 export const ChatPage = () => {
+  const { t } = useChatTranslation();
   const platform = usePlatform();
   const { sessionId } = useParams();
   const navigate = useNavigate();
@@ -140,7 +141,7 @@ export const ChatPage = () => {
 
   const modelMutation = useMutation({
     mutationFn: (modelId: string) => {
-      if (!sessionId) throw new Error('请先选择会话');
+      if (!sessionId) throw new Error(t('errors.selectSession'));
       return updateChatSession(platform, sessionId, { modelId });
     },
     onSuccess: async (updated) => {
@@ -152,7 +153,7 @@ export const ChatPage = () => {
 
   const permissionMutation = useMutation({
     mutationFn: (decision: PermissionDecision) => {
-      if (!sessionId || !approval) throw new Error('审批上下文已失效');
+      if (!sessionId || !approval) throw new Error(t('errors.approvalExpired'));
       return respondChatPermission(platform, sessionId, approval.id, decision);
     },
     onSuccess: async () => {
@@ -203,6 +204,11 @@ export const ChatPage = () => {
 
   const persistentSidebar = platform.capabilities.persistentChatSidebar === true;
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const localizedStreamError = (() => {
+    if (error === '生成失败') return t('errors.generationFailed');
+    const httpError = error?.match(/^无法开始生成：HTTP (\d+)$/);
+    return httpError ? t('errors.generationHttp', { status: httpError[1] }) : error;
+  })();
 
   const sidebarProps = {
     preference,
@@ -247,7 +253,7 @@ export const ChatPage = () => {
         <>
           <button
             type="button"
-            aria-label="关闭会话列表"
+            aria-label={t('mobile.closeSidebar')}
             className="bg-background/60 fixed inset-0 z-40 lg:hidden"
             onClick={() => setMobileSidebarOpen(false)}
           />
@@ -259,45 +265,57 @@ export const ChatPage = () => {
 
       <section className="flex min-w-0 flex-1 flex-col">
         {!persistentSidebar ? (
-          <div className="border-border bg-muted/30 flex items-center gap-2 border-b px-4 py-2 lg:hidden">
+          <div className="border-border bg-muted/30 flex min-w-0 items-center gap-2 border-b px-4 py-2 lg:hidden">
             <Button
               type="button"
               variant="outline"
               size="sm"
+              className="max-w-28 min-w-0"
               onClick={() => setMobileSidebarOpen(true)}
             >
-              会话列表
+              <span className="truncate">{t('mobile.openSidebar')}</span>
             </Button>
             <Button
               type="button"
               size="sm"
+              className="max-w-28 min-w-0"
               disabled={createMutation.isPending}
               onClick={() => createMutation.mutate()}
             >
-              新建
+              <span className="truncate">{t('sidebar.new')}</span>
             </Button>
-            <div className="ml-auto flex flex-wrap gap-1">
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/knowledge">知识库</Link>
+            <div className="ml-auto flex min-w-0 flex-1 flex-wrap justify-end gap-1">
+              <Button variant="ghost" size="sm" className="min-w-0" asChild>
+                <Link to="/knowledge">
+                  <span className="truncate">{t('common:nav.knowledge')}</span>
+                </Link>
               </Button>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/workflow">工作流</Link>
+              <Button variant="ghost" size="sm" className="min-w-0" asChild>
+                <Link to="/workflow">
+                  <span className="truncate">{t('common:nav.workflow')}</span>
+                </Link>
               </Button>
-              <Button variant="ghost" size="sm" asChild>
-                <Link to="/settings">设置</Link>
+              <Button variant="ghost" size="sm" className="min-w-0" asChild>
+                <Link to="/settings">
+                  <span className="truncate">{t('common:nav.settings')}</span>
+                </Link>
               </Button>
             </div>
           </div>
         ) : null}
         <header className="border-border bg-background/95 flex min-h-16 flex-wrap items-end gap-4 border-b px-4 py-3 md:px-6">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-sm font-medium">{session?.title ?? '选择或新建会话'}</p>
+            <p className="truncate text-sm font-medium">
+              {session?.title ?? t('header.noSession')}
+            </p>
             {session ? (
               <p className="text-muted-foreground truncate text-xs">{session.modelId}</p>
             ) : null}
           </div>
-          <div className="flex min-w-[12rem] flex-col gap-1.5">
-            <Label htmlFor="chat-model">对话模型</Label>
+          <div className="flex max-w-64 min-w-0 flex-1 flex-col gap-1.5 sm:min-w-[12rem]">
+            <Label htmlFor="chat-model" className="truncate">
+              {t('model.label')}
+            </Label>
             <Select
               id="chat-model"
               value={session?.modelId ?? ''}
@@ -306,15 +324,21 @@ export const ChatPage = () => {
             >
               {(modelsQuery.data ?? []).map((model: ChatModelCatalogItem) => (
                 <option key={model.id} value={model.id} disabled={!model.installed}>
-                  {model.id}
-                  {model.kind === 'untested' ? '（仅聊天）' : ''}
-                  {!model.installed ? '（未安装）' : ''}
+                  {model.kind === 'untested' && !model.installed
+                    ? t('model.chatOnlyNotInstalledOption', { modelId: model.id })
+                    : model.kind === 'untested'
+                      ? t('model.chatOnlyOption', { modelId: model.id })
+                      : !model.installed
+                        ? t('model.notInstalledOption', { modelId: model.id })
+                        : model.id}
                 </option>
               ))}
             </Select>
           </div>
-          <div className="flex min-w-[12rem] flex-col gap-1.5 sm:min-w-[16rem]">
-            <Label htmlFor="chat-dataset">知识库挂载</Label>
+          <div className="flex max-w-80 min-w-0 flex-1 flex-col gap-1.5 sm:min-w-[16rem]">
+            <Label htmlFor="chat-dataset" className="truncate">
+              {t('knowledge.label')}
+            </Label>
             <Select
               id="chat-dataset"
               value={datasetId}
@@ -323,7 +347,7 @@ export const ChatPage = () => {
                 void mountKnowledge(event.target.value);
               }}
             >
-              <option value="">不挂载</option>
+              <option value="">{t('knowledge.none')}</option>
               {(datasetsQuery.data ?? []).map((dataset: Dataset) => (
                 <option key={dataset.id} value={dataset.id}>
                   {dataset.name}
@@ -331,29 +355,31 @@ export const ChatPage = () => {
               ))}
             </Select>
           </div>
-          <label className="flex min-h-10 items-center gap-2 text-sm">
+          <label className="flex min-h-10 min-w-0 items-center gap-2 text-sm">
             <input
               type="checkbox"
               checked={fileAccess}
               disabled={!sessionId || busy || !supportsTools}
               onChange={(event) => setFileAccess(event.target.checked)}
             />
-            文件访问
+            <span className="truncate">{t('fileAccess.label')}</span>
           </label>
           {session && selectedModel?.kind === 'untested' ? (
-            <p className="text-muted-foreground w-full text-xs">
-              该模型尚未经过工具能力测评，仅支持普通对话与知识库问答。
+            <p className="text-muted-foreground line-clamp-2 w-full text-xs">
+              {t('model.untestedNotice')}
             </p>
           ) : null}
           {fileAccess ? (
             <>
-              <div className="flex min-w-48 flex-1 flex-col gap-1.5">
-                <Label htmlFor="chat-workspace">工作区目录</Label>
+              <div className="flex min-w-0 flex-1 flex-col gap-1.5 sm:min-w-48">
+                <Label htmlFor="chat-workspace" className="truncate">
+                  {t('fileAccess.workspaceLabel')}
+                </Label>
                 <Input
                   id="chat-workspace"
                   value={workspaceRoot}
                   disabled={busy}
-                  placeholder="输入服务端可访问的绝对路径"
+                  placeholder={t('fileAccess.workspacePlaceholder')}
                   onChange={(event) => setWorkspaceRoot(event.target.value)}
                 />
               </div>
@@ -364,19 +390,21 @@ export const ChatPage = () => {
                   disabled={busy}
                   onClick={() => void chooseWorkspace()}
                 >
-                  选择目录
+                  <span className="truncate">{t('fileAccess.chooseDirectory')}</span>
                 </Button>
               ) : null}
-              <div className="flex flex-col gap-1.5">
-                <Label htmlFor="chat-file-mode">文件模式</Label>
+              <div className="flex max-w-48 min-w-0 flex-1 flex-col gap-1.5">
+                <Label htmlFor="chat-file-mode" className="truncate">
+                  {t('fileAccess.modeLabel')}
+                </Label>
                 <Select
                   id="chat-file-mode"
                   value={mode}
                   disabled={busy}
                   onChange={(event) => setMode(event.target.value as AgentMode)}
                 >
-                  <option value="edit">编辑</option>
-                  <option value="read-only">只读</option>
+                  <option value="edit">{t('fileAccess.mode.edit')}</option>
+                  <option value="read-only">{t('fileAccess.mode.readOnly')}</option>
                 </Select>
               </div>
             </>
@@ -384,13 +412,13 @@ export const ChatPage = () => {
         </header>
 
         {modelMutation.isError ? (
-          <p className="text-destructive bg-destructive/10 px-4 py-2 text-sm md:px-6">
-            切换模型失败：{modelMutation.error.message}
+          <p className="text-destructive bg-destructive/10 line-clamp-2 px-4 py-2 text-sm md:px-6">
+            {t('errors.modelSwitch', { message: modelMutation.error.message })}
           </p>
         ) : null}
         {fileAccess && datasetId ? (
-          <p className="bg-muted text-muted-foreground px-4 py-2 text-sm md:px-6">
-            文件访问已开启：本轮不会检索已挂载的知识库。
+          <p className="bg-muted text-muted-foreground line-clamp-2 px-4 py-2 text-sm md:px-6">
+            {t('knowledge.skippedForFileAccess')}
           </p>
         ) : null}
 
@@ -400,14 +428,14 @@ export const ChatPage = () => {
           onScroll={onScroll}
         >
           {!sessionId ? (
-            <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-              {persistentSidebar
-                ? '从左侧新建或选择一个会话。'
-                : '点击上方「新建」或打开会话列表。'}
+            <div className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm">
+              <span className="line-clamp-2">
+                {persistentSidebar ? t('empty.persistent') : t('empty.mobile')}
+              </span>
             </div>
           ) : messages.length === 0 ? (
-            <div className="text-muted-foreground flex h-full items-center justify-center text-sm">
-              还没有消息，在下方输入开始对话。
+            <div className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm">
+              <span className="line-clamp-2">{t('empty.messages')}</span>
             </div>
           ) : (
             <ol className="flex w-full min-w-0 flex-col gap-8">
@@ -419,13 +447,13 @@ export const ChatPage = () => {
           <div ref={bottomRef} aria-hidden className="h-px w-full shrink-0" />
         </div>
 
-        {error ? (
-          <p className="text-destructive bg-destructive/10 mx-4 mb-2 rounded-md px-3 py-2 text-sm">
-            {error}
+        {localizedStreamError ? (
+          <p className="text-destructive bg-destructive/10 mx-4 mb-2 line-clamp-2 rounded-md px-3 py-2 text-sm break-words">
+            {localizedStreamError}
           </p>
         ) : null}
         {warning ? (
-          <p className="text-muted-foreground bg-muted mx-4 mb-2 rounded-md px-3 py-2 text-sm">
+          <p className="text-muted-foreground bg-muted mx-4 mb-2 line-clamp-2 rounded-md px-3 py-2 text-sm break-words">
             {warning}
           </p>
         ) : null}
@@ -441,14 +469,14 @@ export const ChatPage = () => {
             value={input}
             disabled={!sessionId || busy}
             className="bg-card min-h-20 resize-none rounded-xl px-4 py-3 shadow-sm"
-            placeholder={sessionId ? '输入消息，Enter 发送，Shift+Enter 换行' : '请先新建会话'}
+            placeholder={sessionId ? t('composer.placeholder') : t('composer.noSessionPlaceholder')}
             onChange={(event) => setInput(event.target.value)}
             onKeyDown={onKeyDown}
           />
           <div className="flex justify-end gap-2">
             {streaming ? (
               <Button type="button" variant="outline" onClick={stop}>
-                停止生成
+                {t('composer.stop')}
               </Button>
             ) : (
               <Button
@@ -460,7 +488,7 @@ export const ChatPage = () => {
                   (fileAccess && workspaceRoot.trim().length === 0)
                 }
               >
-                发送
+                {t('composer.send')}
               </Button>
             )}
           </div>
@@ -469,15 +497,17 @@ export const ChatPage = () => {
       {approval ? (
         <div className="bg-background/80 fixed inset-0 z-50 flex items-center justify-center p-4">
           <section className="border-border bg-card max-h-[85vh] w-full max-w-2xl overflow-auto rounded-xl border p-5 shadow-xl">
-            <h2 className="text-lg font-semibold">需要工具调用审批</h2>
-            <p className="text-muted-foreground mt-1 text-sm">
-              工具 {approval.tool} · {approval.resource}
+            <h2 className="line-clamp-2 text-lg font-semibold">{t('approval.title')}</h2>
+            <p className="text-muted-foreground mt-1 truncate text-sm">
+              {t('approval.summary', { tool: approval.tool, resource: approval.resource })}
             </p>
             <pre className="bg-muted mt-4 max-h-96 overflow-auto rounded-lg p-3 text-xs whitespace-pre-wrap">
-              {approval.diff || '该调用不会写入内容，但需要你的确认。'}
+              {approval.diff || t('approval.noWrite')}
             </pre>
             {permissionMutation.error ? (
-              <p className="text-destructive mt-3 text-sm">{permissionMutation.error.message}</p>
+              <p className="text-destructive mt-3 line-clamp-2 text-sm break-words">
+                {permissionMutation.error.message}
+              </p>
             ) : null}
             <div className="mt-4 flex flex-wrap justify-end gap-2">
               <Button
@@ -485,20 +515,20 @@ export const ChatPage = () => {
                 disabled={permissionMutation.isPending}
                 onClick={() => permissionMutation.mutate('deny')}
               >
-                拒绝
+                {t('approval.deny')}
               </Button>
               <Button
                 variant="outline"
                 disabled={permissionMutation.isPending}
                 onClick={() => permissionMutation.mutate('allow-once')}
               >
-                允许一次
+                {t('approval.allowOnce')}
               </Button>
               <Button
                 disabled={permissionMutation.isPending}
                 onClick={() => permissionMutation.mutate('allow-session')}
               >
-                本会话始终允许
+                {t('approval.allowSession')}
               </Button>
             </div>
           </section>
@@ -548,60 +578,81 @@ export const ChatSidebarPanel = ({
   onConfirmDelete,
   onCancelDelete,
   onNavigate,
-}: ChatSidebarPanelProps) => (
-  <>
-    <header className="border-border flex items-center justify-between gap-2 border-b px-4 py-3">
-      <h1 className="text-lg font-semibold">对话</h1>
-      <Button type="button" size="sm" disabled={createPending} onClick={onCreate}>
-        新建
-      </Button>
-    </header>
-    <div className="flex min-h-0 flex-1 flex-col gap-2 p-3">
-      <SessionList
-        sessions={sessions}
-        currentId={currentId}
-        renameId={renameId}
-        renameValue={renameValue}
-        pendingDeleteId={pendingDeleteId}
-        onRenameValue={onRenameValue}
-        onStartRename={onStartRename}
-        onConfirmRename={onConfirmRename}
-        onCancelRename={onCancelRename}
-        onAskDelete={onAskDelete}
-        onConfirmDelete={onConfirmDelete}
-        onCancelDelete={onCancelDelete}
-        onNavigate={onNavigate}
-      />
-      {sessionsError ? <p className="text-destructive text-sm">无法加载会话列表</p> : null}
-    </div>
-    <div className="border-border flex flex-col gap-3 border-t p-4">
-      <div className="flex flex-wrap gap-1">
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/knowledge" onClick={onNavigate}>
-            知识库
-          </Link>
+}: ChatSidebarPanelProps) => {
+  const { t } = useChatTranslation();
+  const themeLabels = {
+    appearance: t('theme.appearance'),
+    palette: t('theme.palette'),
+    modes: {
+      light: t('theme.mode.light'),
+      dark: t('theme.mode.dark'),
+      system: t('theme.mode.system'),
+    },
+    palettes: {
+      neutral: t('theme.paletteName.neutral'),
+      blue: t('theme.paletteName.blue'),
+      green: t('theme.paletteName.green'),
+      purple: t('theme.paletteName.purple'),
+    },
+  };
+  return (
+    <>
+      <header className="border-border flex min-w-0 items-center justify-between gap-2 border-b px-4 py-3">
+        <h1 className="truncate text-lg font-semibold">{t('sidebar.title')}</h1>
+        <Button type="button" size="sm" disabled={createPending} onClick={onCreate}>
+          <span className="truncate">{t('sidebar.new')}</span>
         </Button>
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/workflow" onClick={onNavigate}>
-            工作流
-          </Link>
-        </Button>
-        <Button variant="ghost" size="sm" asChild>
-          <Link to="/settings" onClick={onNavigate}>
-            设置
-          </Link>
-        </Button>
+      </header>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-3">
+        <SessionList
+          sessions={sessions}
+          currentId={currentId}
+          renameId={renameId}
+          renameValue={renameValue}
+          pendingDeleteId={pendingDeleteId}
+          onRenameValue={onRenameValue}
+          onStartRename={onStartRename}
+          onConfirmRename={onConfirmRename}
+          onCancelRename={onCancelRename}
+          onAskDelete={onAskDelete}
+          onConfirmDelete={onConfirmDelete}
+          onCancelDelete={onCancelDelete}
+          onNavigate={onNavigate}
+        />
+        {sessionsError ? (
+          <p className="text-destructive line-clamp-2 text-sm">{t('sidebar.loadError')}</p>
+        ) : null}
       </div>
-      <ThemeToggle
-        preference={preference}
-        onPreferenceChange={setPreference}
-        labels={ZH_CN_THEME_TOGGLE_LABELS}
-      />
-    </div>
-  </>
-);
+      <div className="border-border flex min-w-0 flex-col gap-3 border-t p-4">
+        <div className="flex min-w-0 flex-wrap gap-1">
+          <Button variant="ghost" size="sm" className="min-w-0 flex-1" asChild>
+            <Link to="/knowledge" onClick={onNavigate}>
+              <span className="truncate">{t('common:nav.knowledge')}</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" className="min-w-0 flex-1" asChild>
+            <Link to="/workflow" onClick={onNavigate}>
+              <span className="truncate">{t('common:nav.workflow')}</span>
+            </Link>
+          </Button>
+          <Button variant="ghost" size="sm" className="min-w-0 flex-1" asChild>
+            <Link to="/settings" onClick={onNavigate}>
+              <span className="truncate">{t('common:nav.settings')}</span>
+            </Link>
+          </Button>
+        </div>
+        <ThemeToggle
+          preference={preference}
+          onPreferenceChange={setPreference}
+          labels={themeLabels}
+        />
+      </div>
+    </>
+  );
+};
 
 export const ChatBubble = ({ message }: { message: ChatMessage }) => {
+  const { t } = useChatTranslation();
   const isUser = message.role === 'user';
   const liveText = useChatStreamStore((state) => {
     const current = state.messages.find((item) => item.id === message.id) ?? message;
@@ -617,7 +668,9 @@ export const ChatBubble = ({ message }: { message: ChatMessage }) => {
     <li
       className={cn('flex min-w-0 flex-col gap-1.5', isUser ? 'items-end' : 'w-full items-start')}
     >
-      <p className="text-muted-foreground px-1 text-xs">{isUser ? '我' : '助手'}</p>
+      <p className="text-muted-foreground px-1 text-xs">
+        {isUser ? t('message.role.user') : t('message.role.assistant')}
+      </p>
       <div
         className={cn(
           'min-w-0',
@@ -636,7 +689,7 @@ export const ChatBubble = ({ message }: { message: ChatMessage }) => {
         )}
       </div>
       {message.status === 'interrupted' ? (
-        <p className="text-muted-foreground px-1 text-xs">已停止</p>
+        <p className="text-muted-foreground px-1 text-xs">{t('message.interrupted')}</p>
       ) : null}
     </li>
   );
@@ -673,10 +726,11 @@ export const SessionList = ({
   basePath?: string;
   onNavigate?: () => void;
 }) => {
+  const { t } = useChatTranslation();
   if (sessions.length === 0) {
     return (
       <p className="text-muted-foreground border-border rounded-lg border border-dashed p-4 text-center text-sm">
-        还没有会话
+        {t('sidebar.empty')}
       </p>
     );
   }
@@ -695,10 +749,10 @@ export const SessionList = ({
               <Input value={renameValue} onChange={(event) => onRenameValue(event.target.value)} />
               <div className="flex gap-1">
                 <Button type="button" size="sm" onClick={onConfirmRename}>
-                  保存
+                  <span className="truncate">{t('session.save')}</span>
                 </Button>
                 <Button type="button" size="sm" variant="ghost" onClick={onCancelRename}>
-                  取消
+                  <span className="truncate">{t('session.cancel')}</span>
                 </Button>
               </div>
             </div>
@@ -714,7 +768,7 @@ export const SessionList = ({
               <Separator className="my-2" />
               <div className="flex flex-wrap gap-1">
                 <Button type="button" size="sm" variant="ghost" onClick={() => onStartRename(item)}>
-                  重命名
+                  <span className="truncate">{t('session.rename')}</span>
                 </Button>
                 {pendingDeleteId === item.id ? (
                   <>
@@ -724,10 +778,10 @@ export const SessionList = ({
                       variant="destructive"
                       onClick={() => onConfirmDelete(item.id)}
                     >
-                      确认
+                      <span className="truncate">{t('session.confirmDelete')}</span>
                     </Button>
                     <Button type="button" size="sm" variant="ghost" onClick={onCancelDelete}>
-                      取消
+                      <span className="truncate">{t('session.cancel')}</span>
                     </Button>
                   </>
                 ) : (
@@ -737,7 +791,7 @@ export const SessionList = ({
                     variant="ghost"
                     onClick={() => onAskDelete(item.id)}
                   >
-                    删除
+                    <span className="truncate">{t('session.delete')}</span>
                   </Button>
                 )}
               </div>

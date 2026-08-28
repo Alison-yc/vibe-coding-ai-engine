@@ -1,7 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { NodeMetadataMap } from './metadata';
+import enUS from '../../i18n/locales/en-US/workflow.json';
+import jaJP from '../../i18n/locales/ja-JP/workflow.json';
+import zhCN from '../../i18n/locales/zh-CN/workflow.json';
+
+const leafKeys = (value: unknown, prefix = ''): string[] => {
+  if (typeof value !== 'object' || value === null) return [prefix];
+  return Object.entries(value).flatMap(([key, child]) =>
+    leafKeys(child, prefix ? `${prefix}.${key}` : key),
+  );
+};
 
 describe('工作流节点元数据', () => {
+  it('工作流三语词典具有完全一致的 key 树', () => {
+    const expected = leafKeys(zhCN).sort();
+    expect(leafKeys(jaJP).sort()).toEqual(expected);
+    expect(leafKeys(enUS).sort()).toEqual(expected);
+  });
+
   it('每类默认配置都能声明输出并通过本类校验', () => {
     for (const [type, metadata] of Object.entries(NodeMetadataMap)) {
       if (type === 'knowledge-retrieval') continue;

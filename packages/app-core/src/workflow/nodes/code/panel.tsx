@@ -1,5 +1,6 @@
 import { Button, Input } from '@ai-engine/ui';
 import { CodeNodeConfigSchema } from '@ai-engine/contracts';
+import { useTranslation } from 'react-i18next';
 import { CodeEditor } from '../../code-editor';
 import { VariableSelector, variableOptionsForNode } from '../../variable-selector';
 import { configWithDraft, PanelSection } from '../common';
@@ -8,22 +9,23 @@ import { useConfigDraft } from '../use-config-draft';
 import { codeDefaultConfig } from './default';
 
 export const CodeNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps) => {
+  const { t } = useTranslation('workflow');
   const [draft, setDraft] = useConfigDraft(node.id, node.data.config, onChange);
   const parsed = CodeNodeConfigSchema.safeParse(draft);
   const config = parsed.success
     ? parsed.data
     : configWithDraft(CodeNodeConfigSchema.parse(codeDefaultConfig), draft);
   const inputs = Object.entries(config.inputs);
-  const fallbackSelector = variableOptionsForNode(node.id, nodes, edges)[0]?.selector ?? [
+  const fallbackSelector = variableOptionsForNode(node.id, nodes, edges, t)[0]?.selector ?? [
     'sys',
     'query',
   ];
   return (
-    <PanelSection title="JavaScript 代码" description="代码在 QuickJS WASM 沙箱中执行">
+    <PanelSection title={t('panels.code.title')} description={t('panels.code.description')}>
       {inputs.map(([name, selector], index) => (
         <div className="border-border flex flex-col gap-2 rounded-md border p-3" key={name}>
           <Input
-            aria-label={`代码输入 ${index + 1} 名称`}
+            aria-label={t('panels.code.inputName', { index: index + 1 })}
             value={name}
             onChange={(event) => {
               const next = { ...config.inputs };
@@ -33,7 +35,7 @@ export const CodeNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps) 
             }}
           />
           <VariableSelector
-            label="来源变量"
+            label={t('variables.source')}
             nodeId={node.id}
             nodes={nodes}
             edges={edges}
@@ -51,7 +53,7 @@ export const CodeNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps) 
               setDraft({ ...config, inputs: next });
             }}
           >
-            删除输入
+            {t('panels.code.deleteInput')}
           </Button>
         </div>
       ))}
@@ -68,10 +70,10 @@ export const CodeNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps) 
           })
         }
       >
-        添加代码输入
+        {t('panels.code.addInput')}
       </Button>
       <CodeEditor
-        ariaLabel="JavaScript 代码"
+        ariaLabel={t('panels.code.editor')}
         value={config.code}
         onChange={(code) => setDraft({ ...config, code })}
       />

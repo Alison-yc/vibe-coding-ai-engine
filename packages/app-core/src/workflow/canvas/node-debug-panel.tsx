@@ -3,6 +3,7 @@ import { useMutation } from '@tanstack/react-query';
 import { usePlatform } from '@ai-engine/platform';
 import { Button, Textarea } from '@ai-engine/ui';
 import { RunNodeRequestSchema, type RunNodeRequest } from '@ai-engine/contracts';
+import { useTranslation } from 'react-i18next';
 import { useWorkflowStore } from '../store/workflow-store';
 import { runWorkflowNode } from '../workflow-api';
 
@@ -15,6 +16,7 @@ export const NodeDebugPanel = ({
   nodeId: string;
   beforeRun: () => Promise<void>;
 }) => {
+  const { t } = useTranslation('workflow');
   const platform = usePlatform();
   const [values, setValues] = useState('{\n  "sys": {\n    "query": ""\n  }\n}');
   const [parseError, setParseError] = useState('');
@@ -29,11 +31,11 @@ export const NodeDebugPanel = ({
   return (
     <section className="flex flex-col gap-3">
       <div>
-        <h3 className="text-sm font-medium">单节点调试</h3>
-        <p className="text-muted-foreground text-xs">填写上游变量快照后独立执行当前节点</p>
+        <h3 className="text-sm font-medium">{t('debug.title')}</h3>
+        <p className="text-muted-foreground text-xs">{t('debug.description')}</p>
       </div>
       <Textarea
-        aria-label="调试上游变量 JSON"
+        aria-label={t('debug.upstreamJson')}
         className="min-h-28 font-mono text-xs"
         value={values}
         onChange={(event) => setValues(event.target.value)}
@@ -48,15 +50,16 @@ export const NodeDebugPanel = ({
             setParseError('');
             mutation.mutate(request);
           } catch (error) {
-            setParseError(error instanceof Error ? error.message : 'JSON 不合法');
+            setParseError(error instanceof Error ? error.message : t('debug.invalidJson'));
           }
         }}
       >
-        {mutation.isPending ? '调试中…' : '运行当前节点'}
+        {mutation.isPending ? t('debug.running') : t('debug.run')}
       </Button>
       {parseError || mutation.error ? (
         <p className="text-destructive text-xs">
-          {parseError || (mutation.error instanceof Error ? mutation.error.message : '调试失败')}
+          {parseError ||
+            (mutation.error instanceof Error ? mutation.error.message : t('debug.failed'))}
         </p>
       ) : null}
       {mutation.data ? (

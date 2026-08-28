@@ -1,0 +1,106 @@
+{
+  "sidebar": {
+    "title": "Chat",
+    "new": "New chat",
+    "loadError": "Could not load the chat list",
+    "empty": "No chats yet"
+  },
+  "mobile": {
+    "closeSidebar": "Close chat list",
+    "openSidebar": "Chat list"
+  },
+  "header": {
+    "noSession": "Select or create a chat"
+  },
+  "model": {
+    "label": "Chat model",
+    "chatOnlyOption": "{{modelId}} (chat only)",
+    "notInstalledOption": "{{modelId}} (not installed)",
+    "chatOnlyNotInstalledOption": "{{modelId}} (chat only, not installed)",
+    "untestedNotice": "This model has not been evaluated for tool use. Only regular chat and knowledge-base questions are available."
+  },
+  "knowledge": {
+    "label": "Knowledge base",
+    "none": "None",
+    "skippedForFileAccess": "File access is enabled. The attached knowledge base will not be searched for this request."
+  },
+  "fileAccess": {
+    "label": "File access",
+    "workspaceLabel": "Workspace directory",
+    "workspacePlaceholder": "Enter an absolute path accessible to the server",
+    "chooseDirectory": "Choose directory",
+    "modeLabel": "File mode",
+    "mode": {
+      "edit": "Edit",
+      "readOnly": "Read only"
+    }
+  },
+  "empty": {
+    "persistent": "Create or select a chat from the sidebar.",
+    "mobile": "Select “New chat” above or open the chat list.",
+    "messages": "No messages yet. Type below to start chatting."
+  },
+  "composer": {
+    "placeholder": "Type a message. Enter to send, Shift+Enter for a new line",
+    "noSessionPlaceholder": "Create a chat first",
+    "stop": "Stop generating",
+    "send": "Send"
+  },
+  "approval": {
+    "title": "Tool call approval required",
+    "summary": "Tool {{tool}} · {{resource}}",
+    "noWrite": "This call will not write any content, but it still requires your approval.",
+    "deny": "Deny",
+    "allowOnce": "Allow once",
+    "allowSession": "Always allow for this chat"
+  },
+  "message": {
+    "role": {
+      "user": "You",
+      "assistant": "Assistant"
+    },
+    "interrupted": "Stopped"
+  },
+  "session": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "rename": "Rename",
+    "confirmDelete": "Confirm",
+    "delete": "Delete"
+  },
+  "reasoning": {
+    "summary": "Reasoning"
+  },
+  "tool": {
+    "summary": "Tool {{name}} · {{state}}",
+    "viewInput": "View input",
+    "state": {
+      "pending": "Awaiting approval",
+      "running": "Running",
+      "completed": "Completed",
+      "error": "Failed"
+    }
+  },
+  "theme": {
+    "appearance": "Appearance",
+    "palette": "Theme color",
+    "mode": {
+      "light": "Light",
+      "dark": "Dark",
+      "system": "Use system setting"
+    },
+    "paletteName": {
+      "neutral": "Default",
+      "blue": "Blue",
+      "green": "Green",
+      "purple": "Purple"
+    }
+  },
+  "errors": {
+    "selectSession": "Select a chat first",
+    "approvalExpired": "The approval context has expired",
+    "modelSwitch": "Could not switch models: {{message}}",
+    "generationFailed": "Generation failed",
+    "generationHttp": "Could not start generation: HTTP {{status}}"
+  }
+}

@@ -3,6 +3,7 @@ import { type ReactNode, useMemo } from 'react';
 import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
+import { useChatTranslation } from '../i18n/use-chat-translation';
 
 export const closeOpenFence = (text: string): string => {
   const fenceCount = (text.match(/```/g) ?? []).length;
@@ -47,12 +48,19 @@ export const StreamMarkdown = ({ text }: { text: string }) => {
   );
 };
 
-export const ReasoningBlock = ({ text }: { text: string }) => (
-  <details className="border-border rounded-md border p-2 text-sm">
-    <summary className="text-muted-foreground cursor-pointer">思考过程</summary>
-    <p className="mt-2 whitespace-pre-wrap">{text}</p>
-  </details>
-);
+export const ReasoningBlock = ({ text }: { text: string }) => {
+  const { t } = useChatTranslation();
+  return (
+    <details className="border-border min-w-0 rounded-md border p-2 text-sm">
+      <summary className="text-muted-foreground cursor-pointer truncate">
+        {t('reasoning.summary')}
+      </summary>
+      <p className="mt-2 whitespace-pre-wrap">{text}</p>
+    </details>
+  );
+};
+
+type ToolState = Extract<MessagePart, { type: 'tool' }>['state'];
 
 export const ToolCard = ({
   name,
@@ -62,27 +70,32 @@ export const ToolCard = ({
   input,
 }: {
   name: string;
-  state: string;
+  state: ToolState;
   output?: string;
   error?: string;
   input?: unknown;
-}): ReactNode => (
-  <article className="border-border bg-card rounded-md border p-3 text-sm">
-    <p>
-      工具 {name} · {state}
-    </p>
-    {input !== undefined ? (
-      <details className="mt-2">
-        <summary className="text-muted-foreground cursor-pointer">查看参数</summary>
-        <pre className="bg-muted mt-1 max-h-48 overflow-auto rounded p-2 text-xs">
-          {JSON.stringify(input, null, 2)}
-        </pre>
-      </details>
-    ) : null}
-    {output ? <p className="text-muted-foreground mt-1 whitespace-pre-wrap">{output}</p> : null}
-    {error ? <p className="text-destructive mt-1">{error}</p> : null}
-  </article>
-);
+}): ReactNode => {
+  const { t } = useChatTranslation();
+  return (
+    <article className="border-border bg-card min-w-0 rounded-md border p-3 text-sm">
+      <p className="truncate" title={name}>
+        {t('tool.summary', { name, state: t(`tool.state.${state}`) })}
+      </p>
+      {input !== undefined ? (
+        <details className="mt-2 min-w-0">
+          <summary className="text-muted-foreground cursor-pointer truncate">
+            {t('tool.viewInput')}
+          </summary>
+          <pre className="bg-muted mt-1 max-h-48 max-w-full overflow-auto rounded p-2 text-xs">
+            {JSON.stringify(input, null, 2)}
+          </pre>
+        </details>
+      ) : null}
+      {output ? <p className="text-muted-foreground mt-1 whitespace-pre-wrap">{output}</p> : null}
+      {error ? <p className="text-destructive mt-1">{error}</p> : null}
+    </article>
+  );
+};
 
 export const CitationList = ({ chunks }: { chunks: CitationChunk[] }) => (
   <ul className="flex min-w-0 flex-col gap-2">

@@ -1,5 +1,6 @@
 import { Button, Input, Select } from '@ai-engine/ui';
 import { IfElseNodeConfigSchema, type ValueSelector } from '@ai-engine/contracts';
+import { useTranslation } from 'react-i18next';
 import { VariableSelector, variableOptionsForNode } from '../../variable-selector';
 import { configWithDraft, formatConfigValue, PanelSection, StringField } from '../common';
 import type { NodePanelProps } from '../types';
@@ -18,12 +19,13 @@ const operators = [
 ] as const;
 
 export const IfElseNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps) => {
+  const { t } = useTranslation('workflow');
   const [draft, setDraft] = useConfigDraft(node.id, node.data.config, onChange);
   const parsed = IfElseNodeConfigSchema.safeParse(draft);
   const config = parsed.success
     ? parsed.data
     : configWithDraft(IfElseNodeConfigSchema.parse(ifElseDefaultConfig), draft);
-  const fallbackSelector: ValueSelector = variableOptionsForNode(node.id, nodes, edges)[0]
+  const fallbackSelector: ValueSelector = variableOptionsForNode(node.id, nodes, edges, t)[0]
     ?.selector ?? ['sys', 'query'];
   const updateCase = (index: number, patch: Record<string, unknown>) =>
     setDraft({
@@ -46,23 +48,23 @@ export const IfElseNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps
     });
   };
   return (
-    <PanelSection title="条件分支" description="每个分支会成为节点右侧的连接桩">
+    <PanelSection title={t('panels.ifElse.title')} description={t('panels.ifElse.description')}>
       {config.cases.map((item, index) => {
         return (
           <div className="border-border flex flex-col gap-2 rounded-md border p-3" key={`${index}`}>
             <StringField
-              label="分支名"
+              label={t('panels.ifElse.branchName')}
               value={item.branch}
               onChange={(branch) => updateCase(index, { branch })}
             />
             {item.conditions.length > 1 ? (
               <Select
-                aria-label={`分支 ${index + 1} 条件关系`}
+                aria-label={t('panels.ifElse.relation', { branch: index + 1 })}
                 value={item.logicalOperator}
                 onChange={(event) => updateCase(index, { logicalOperator: event.target.value })}
               >
-                <option value="and">全部满足（AND）</option>
-                <option value="or">任一满足（OR）</option>
+                <option value="and">{t('panels.ifElse.all')}</option>
+                <option value="or">{t('panels.ifElse.any')}</option>
               </Select>
             ) : null}
             {item.conditions.map((condition, conditionIndex) => (
@@ -71,7 +73,7 @@ export const IfElseNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps
                 key={`${index}:${conditionIndex}`}
               >
                 <VariableSelector
-                  label={`条件 ${conditionIndex + 1} 左值`}
+                  label={t('panels.ifElse.left', { condition: conditionIndex + 1 })}
                   nodeId={node.id}
                   nodes={nodes}
                   edges={edges}
@@ -79,7 +81,10 @@ export const IfElseNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps
                   onChange={(left) => updateCondition(index, conditionIndex, { left })}
                 />
                 <Select
-                  aria-label={`分支 ${index + 1} 条件 ${conditionIndex + 1} 运算符`}
+                  aria-label={t('panels.ifElse.operator', {
+                    branch: index + 1,
+                    condition: conditionIndex + 1,
+                  })}
                   value={condition.operator}
                   onChange={(event) =>
                     updateCondition(index, conditionIndex, { operator: event.target.value })
@@ -94,7 +99,10 @@ export const IfElseNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps
                 {!['is-empty', 'is-not-empty'].includes(condition.operator) ? (
                   <>
                     <Select
-                      aria-label={`分支 ${index + 1} 条件 ${conditionIndex + 1} 右值来源`}
+                      aria-label={t('panels.ifElse.rightSource', {
+                        branch: index + 1,
+                        condition: conditionIndex + 1,
+                      })}
                       value={condition.right?.source ?? 'constant'}
                       onChange={(event) =>
                         updateCondition(index, conditionIndex, {
@@ -105,12 +113,12 @@ export const IfElseNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps
                         })
                       }
                     >
-                      <option value="constant">常量</option>
-                      <option value="selector">变量引用</option>
+                      <option value="constant">{t('panels.variableAssigner.constant')}</option>
+                      <option value="selector">{t('panels.variableAssigner.reference')}</option>
                     </Select>
                     {condition.right?.source === 'selector' ? (
                       <VariableSelector
-                        label="右值变量"
+                        label={t('variables.right')}
                         nodeId={node.id}
                         nodes={nodes}
                         edges={edges}
@@ -123,7 +131,10 @@ export const IfElseNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps
                       />
                     ) : (
                       <Input
-                        aria-label={`分支 ${index + 1} 条件 ${conditionIndex + 1} 右值`}
+                        aria-label={t('panels.ifElse.rightValue', {
+                          branch: index + 1,
+                          condition: conditionIndex + 1,
+                        })}
                         value={
                           condition.right?.source === 'constant'
                             ? formatConfigValue(condition.right.value)
@@ -150,7 +161,7 @@ export const IfElseNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps
                     })
                   }
                 >
-                  删除条件
+                  {t('panels.ifElse.deleteCondition')}
                 </Button>
               </div>
             ))}
@@ -169,7 +180,7 @@ export const IfElseNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps
                 })
               }
             >
-              添加条件
+              {t('panels.ifElse.addCondition')}
             </Button>
             <Button
               size="sm"
@@ -182,7 +193,7 @@ export const IfElseNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps
                 })
               }
             >
-              删除分支
+              {t('panels.ifElse.deleteBranch')}
             </Button>
           </div>
         );
@@ -209,10 +220,10 @@ export const IfElseNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps
           })
         }
       >
-        添加分支
+        {t('panels.ifElse.addBranch')}
       </Button>
       <StringField
-        label="默认分支"
+        label={t('panels.ifElse.defaultBranch')}
         value={config.defaultBranch}
         onChange={(defaultBranch) => setDraft({ ...config, defaultBranch })}
       />

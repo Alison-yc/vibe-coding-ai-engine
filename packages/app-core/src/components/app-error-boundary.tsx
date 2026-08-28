@@ -1,6 +1,8 @@
 import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { Button } from '@ai-engine/ui';
 import type { Platform } from '@ai-engine/platform';
+import { useFeatureTranslation } from '../i18n/feature-resources';
+import { localizeApiError, type TranslateError } from '../i18n/localize-api-error';
 
 const CLIENT_ERROR_LOG_KEY = 'client-error-log';
 const MAX_CLIENT_ERRORS = 20;
@@ -15,6 +17,7 @@ export type ClientErrorReport = {
 
 type AppErrorBoundaryProps = {
   platform: Platform;
+  translate: TranslateError;
   children: ReactNode;
 };
 
@@ -80,30 +83,45 @@ export class AppErrorBoundary extends Component<AppErrorBoundaryProps, AppErrorB
     }
 
     return (
-      <main className="bg-background text-foreground flex min-h-screen flex-col items-center justify-center gap-4 p-6">
-        <h1 className="text-lg">页面发生错误</h1>
-        <p className="text-muted-foreground max-w-xl text-center text-sm">
-          应用遇到未捕获异常，已写入本地错误日志。你可以复制详情用于排查。
+      <main className="bg-background text-foreground flex min-h-screen min-w-0 flex-col items-center justify-center gap-4 p-6">
+        <h1 className="line-clamp-2 max-w-xl text-center text-lg">
+          {this.props.translate('boundary.title')}
+        </h1>
+        <p className="text-muted-foreground line-clamp-4 max-w-xl text-center text-sm">
+          {this.props.translate('boundary.description')}
         </p>
-        <pre className="bg-muted max-w-3xl overflow-auto rounded-md p-4 text-xs">
-          {this.state.error.message}
+        <pre className="bg-muted w-full max-w-3xl min-w-0 overflow-auto rounded-md p-4 text-xs">
+          {localizeApiError(this.state.error, this.props.translate)}
         </pre>
-        <div className="flex gap-2">
-          <Button type="button" onClick={() => void this.copyDetails()}>
-            复制错误详情
+        <div className="flex max-w-full min-w-0 gap-2">
+          <Button className="min-w-0" type="button" onClick={() => void this.copyDetails()}>
+            <span className="truncate">{this.props.translate('boundary.copyDetails')}</span>
           </Button>
           <Button
             type="button"
             variant="outline"
+            className="min-w-0"
             onClick={() => void this.props.platform.window.reload()}
           >
-            重新加载
+            <span className="truncate">{this.props.translate('boundary.reload')}</span>
           </Button>
         </div>
       </main>
     );
   }
 }
+
+export const LocalizedAppErrorBoundary = ({
+  platform,
+  children,
+}: Omit<AppErrorBoundaryProps, 'translate'>) => {
+  const { t } = useFeatureTranslation('errors');
+  return (
+    <AppErrorBoundary platform={platform} translate={t}>
+      {children}
+    </AppErrorBoundary>
+  );
+};
 
 export const ThrowForTest = ({ message }: { message: string }) => {
   throw new Error(message);

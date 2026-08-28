@@ -35,6 +35,15 @@ const stubPlatform = {
   },
 };
 
+const translateError = (key: string): string =>
+  ({
+    'boundary.title': 'Something went wrong on this page',
+    'boundary.description': 'The app encountered an unhandled error.',
+    'boundary.copyDetails': 'Copy error details',
+    'boundary.reload': 'Reload',
+    'api.NOT_FOUND': 'The requested resource was not found.',
+  })[key] ?? key;
+
 describe('formatMs', () => {
   it('格式化毫秒并在缺失时显示占位符', () => {
     expect(formatMs(1234.6)).toBe('1235 ms');
@@ -176,7 +185,11 @@ describe('ObservabilityPage', () => {
 
 describe('AppErrorBoundary render', () => {
   it('未出错时渲染子节点', () => {
-    const boundary = new AppErrorBoundary({ platform: stubPlatform, children: 'ok' });
+    const boundary = new AppErrorBoundary({
+      platform: stubPlatform,
+      translate: translateError,
+      children: 'ok',
+    });
     expect(boundary.render()).toBe('ok');
   });
 
@@ -189,7 +202,11 @@ describe('AppErrorBoundary render', () => {
   });
 
   it('出错后展示复制按钮', () => {
-    const boundary = new AppErrorBoundary({ platform: stubPlatform, children: 'ok' });
+    const boundary = new AppErrorBoundary({
+      platform: stubPlatform,
+      translate: translateError,
+      children: 'ok',
+    });
     boundary.state = {
       error: new Error('boom'),
       report: {
@@ -199,8 +216,23 @@ describe('AppErrorBoundary render', () => {
       },
     };
     const html = renderToStaticMarkup(boundary.render());
-    expect(html).toContain('复制错误详情');
+    expect(html).toContain('Copy error details');
     expect(html).toContain('boom');
+  });
+
+  it('已知 API 错误码显示英文本地化文案', () => {
+    const boundary = new AppErrorBoundary({
+      platform: stubPlatform,
+      translate: translateError,
+      children: 'ok',
+    });
+    boundary.state = {
+      error: Object.assign(new Error('server not found'), { code: 'NOT_FOUND' }),
+      report: null,
+    };
+    const html = renderToStaticMarkup(boundary.render());
+    expect(html).toContain('The requested resource was not found.');
+    expect(html).not.toContain('server not found');
   });
 
   it('appendClientErrorLog 写入 platform kv', async () => {
@@ -223,7 +255,11 @@ describe('AppErrorBoundary render', () => {
   });
 
   it('copyDetails 在无 report 时不抛错', async () => {
-    const boundary = new AppErrorBoundary({ platform: stubPlatform, children: 'ok' });
+    const boundary = new AppErrorBoundary({
+      platform: stubPlatform,
+      translate: translateError,
+      children: 'ok',
+    });
     boundary.state = { error: new Error('boom'), report: null };
     await expect(boundary['copyDetails']()).resolves.toBeUndefined();
   });
@@ -231,7 +267,11 @@ describe('AppErrorBoundary render', () => {
   it('copyDetails 优先写入 clipboard', async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     vi.stubGlobal('navigator', { clipboard: { writeText } });
-    const boundary = new AppErrorBoundary({ platform: stubPlatform, children: 'ok' });
+    const boundary = new AppErrorBoundary({
+      platform: stubPlatform,
+      translate: translateError,
+      children: 'ok',
+    });
     boundary.state = {
       error: new Error('boom'),
       report: {
@@ -252,6 +292,7 @@ describe('AppErrorBoundary render', () => {
         ...stubPlatform,
         capabilities: { ...stubPlatform.capabilities, devTools: false },
       },
+      translate: translateError,
       children: 'ok',
     });
     vi.spyOn(boundary, 'setState').mockImplementation((state) => {
@@ -266,7 +307,11 @@ describe('AppErrorBoundary render', () => {
 
   it('devTools 开启时打印 AppErrorBoundary 日志', () => {
     const consoleError = vi.spyOn(console, 'error').mockImplementation(() => undefined);
-    const boundary = new AppErrorBoundary({ platform: stubPlatform, children: 'ok' });
+    const boundary = new AppErrorBoundary({
+      platform: stubPlatform,
+      translate: translateError,
+      children: 'ok',
+    });
     vi.spyOn(boundary, 'setState').mockImplementation((state) => {
       Object.assign(boundary.state, state);
     });
@@ -281,7 +326,11 @@ describe('AppErrorBoundary render', () => {
   it('copyDetails 无 clipboard 时写入 console.info', async () => {
     const consoleInfo = vi.spyOn(console, 'info').mockImplementation(() => undefined);
     vi.stubGlobal('navigator', {});
-    const boundary = new AppErrorBoundary({ platform: stubPlatform, children: 'ok' });
+    const boundary = new AppErrorBoundary({
+      platform: stubPlatform,
+      translate: translateError,
+      children: 'ok',
+    });
     boundary.state = {
       error: new Error('boom'),
       report: {
