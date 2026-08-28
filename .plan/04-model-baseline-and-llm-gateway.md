@@ -1,11 +1,18 @@
 # 04 · 本地模型能力基线测评与 LLM 网关
 
-| 项       | 值                            |
-| -------- | ----------------------------- |
-| 阶段     | M1 · 模型能力与数据层         |
-| 依赖     | 02、03                        |
-| 预计工期 | 3 天（测评 2 天 + 网关 1 天） |
-| 状态     | 已完成                        |
+| 项       | 值                             |
+| -------- | ------------------------------ |
+| 阶段     | M1 · 模型能力与数据层          |
+| 依赖     | 02、03                         |
+| 预计工期 | 初版 3 天；Gemma 增量测评 1 天 |
+| 状态     | 已完成                         |
+
+## 子阶段状态
+
+| 子阶段 | 内容                        | 所属批次 | 状态   |
+| ------ | --------------------------- | -------- | ------ |
+| 04-A   | 初版六项基线 + LlmGateway   | CR-05    | 已完成 |
+| 04-B   | `gemma4:e2b` tool-call 增量 | CR-Z1    | 已完成 |
 
 ## 为什么这是整个项目的关键路径
 
@@ -216,3 +223,31 @@ curl -X POST http://localhost:3000/llm/translate \
 | gemma4:e2b 加载太慢影响体验                 | 不做默认模型，仅在"复杂任务"场景由用户显式选择，并在 UI 上提示首次加载耗时                                                                                 |
 | 测评脚本自身有 bug 导致结论错误             | 每项测评先用一个"必然成功"和一个"必然失败"的用例自校验；报告里附原始响应样本供人工抽查                                                                     |
 | 基线数据随 Ollama/模型更新过期              | 报告文件名带日期，`capabilities()` 里注明数据来源版本。模型升级后重跑并新增报告，不覆盖旧的                                                                |
+
+## 04-B · Gemma 工具调用增量测评（CR-Z1）
+
+2026-08-26 报告只对 `qwen3.5:2b` 跑了工具阶梯，并把 Gemma 标成 `supportsTools = false`，原因是**未测**，不是协议不适配。会话模型切换（CR-Z2）开工前必须补测。
+
+### 范围
+
+- 模型：`gemma4:e2b`（`OLLAMA_MODEL_LARGE`）。
+- 用例：复用 `scripts/model-baseline/cases/tool-call.ts`，`--model gemma4:e2b`。
+- 最低集：场景 A、C、G；时间盒 1 天。不把 embedding 模型当对话模型测。
+- 不覆盖旧报告：新文件名带日期，例如 `scripts/model-baseline/reports/YYYY-MM-DD-gemma-tool-call.md`。
+
+### 结论怎么写进代码
+
+| 实测                | `capabilities()`                                                                           |
+| ------------------- | ------------------------------------------------------------------------------------------ |
+| 达到 ADR-D01 路线 A | `supportsTools: true`，`maxToolCount` 取选择正确率 ≥ 70% 的最大工具数                      |
+| 未达门槛            | 保持 `supportsTools: false`，`maxToolCount: 0`，`needsToolCallFallback` 按合法 JSON 率填写 |
+
+### 验证命令
+
+```bash
+pnpm baseline --case tool-call --model gemma4:e2b --samples 3 --force --tool-scenarios A,C,G --report-slug gemma-tool-call
+```
+
+冷启动慢，不要和 Qwen 双模型并发挤在同一时间盒里当通过条件。
+
+实现与自检完成，状态 `待 CR`（2026-08-28）。已按时间盒跑 A/C/G（各 60 次）。报告：`scripts/model-baseline/reports/2026-08-28-gemma-tool-call.md`。A 与 C 合法 JSON / 选择 / 参数均为 1.0，G 假阳性 0，达到 ADR-D01 路线 A；`capabilities()` 已改为 `supportsTools: true`、`maxToolCount: 6`、`needsToolCallFallback: false`。未测 B/D/E/F，不得外推 12 工具或嵌套/两步编排。未进入 CR-Z2。CR 已通过（2026-08-28）：Bugbot 无阻塞项；Gemma 与 Qwen 共用现有 `numCtx`/`numPredict`/`maxToolCount`，不单独加高。
