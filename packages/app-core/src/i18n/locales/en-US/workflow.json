@@ -157,6 +157,11 @@
     "end": {
       "title": "Workflow output",
       "outputName": "Output {{index}} name",
+      "sourcePriority": "Candidate source {{index}}",
+      "propertyPath": "Candidate source {{index}} nested path",
+      "propertyPathPlaceholder": "Optional nested path, for example text",
+      "addFallback": "Add fallback source",
+      "deleteFallback": "Delete fallback source",
       "delete": "Delete output",
       "add": "Add output"
     },

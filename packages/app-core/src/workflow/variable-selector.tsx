@@ -59,7 +59,7 @@ export const VariableSelector = ({
 }) => {
   const { t } = useTranslation('workflow');
   const options = variableOptionsForNode(nodeId, nodes, edges, t);
-  const current = keyOf(value);
+  const current = keyOf(value.slice(0, 2));
   const valid = options.some((option) => keyOf(option.selector) === current);
   return (
     <div className="flex flex-col gap-1.5">

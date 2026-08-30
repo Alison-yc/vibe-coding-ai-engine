@@ -52,6 +52,26 @@ describe('HttpRequestNodeRunner', () => {
       ),
     ).rejects.toThrow('私有或保留');
   });
+
+  it('响应正文是 JSON 时同时提供可按路径读取的 json 输出', async () => {
+    const requestImpl = vi.fn<PinnedRequest>().mockResolvedValue({
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: '{"body":{"text":"彩虹屁"}}',
+    });
+    const result = await new HttpRequestNodeRunner({
+      resolve: publicResolver,
+      requestImpl,
+    }).run(
+      { method: 'GET', url: 'https://example.com/message', headers: {} },
+      new VariablePool({}),
+      context,
+    );
+    expect(result.outputs).toMatchObject({
+      body: '{"body":{"text":"彩虹屁"}}',
+      json: { body: { text: '彩虹屁' } },
+    });
+  });
 });
 
 describe('CodeNodeRunner', () => {

@@ -117,7 +117,8 @@ if (!target) throw new Error('测试 LLM 节点缺失');
 const start = nodes.find((node) => node.data.type === 'start');
 const end = nodes.find((node) => node.data.type === 'end');
 const condition = nodes.find((node) => node.data.type === 'if-else');
-if (!start || !end || !condition) throw new Error('测试关键节点缺失');
+const httpRequest = nodes.find((node) => node.data.type === 'http-request');
+if (!start || !end || !condition || !httpRequest) throw new Error('测试关键节点缺失');
 const edges = [{ id: 'edge', source: 'start', target: target.id }];
 
 const i18n = createInstance();
@@ -207,7 +208,7 @@ describe('工作流组件', () => {
 
   it('变量选择器标记失效引用并允许改选上游变量', () => {
     const onChange = vi.fn();
-    render(
+    const view = render(
       <VariableSelector
         label="变量"
         nodeId={target.id}
@@ -221,6 +222,52 @@ describe('工作流组件', () => {
     fireEvent.click(screen.getByRole('button', { name: /失效引用/ }));
     fireEvent.click(screen.getByRole('option', { name: /^开始 \/ query/ }));
     expect(onChange).toHaveBeenCalledWith(['start', 'query']);
+    view.unmount();
+
+    render(
+      <VariableSelector
+        label="嵌套变量"
+        nodeId={end.id}
+        nodes={nodes}
+        edges={[{ id: 'http-end', source: httpRequest.id, target: end.id }]}
+        value={[httpRequest.id, 'json', 'body', 'text']}
+        onChange={onChange}
+      />,
+    );
+    expect(screen.queryByText(/来源节点不存在/)).toBeNull();
+  });
+
+  it('结束节点可配置备用来源和嵌套字段路径', () => {
+    const Panel = PanelComponentMap.end;
+    const onChange = vi.fn();
+    render(
+      <Panel
+        node={end}
+        nodes={nodes}
+        edges={[
+          { id: 'start-end', source: start.id, target: end.id },
+          { id: 'http-end', source: httpRequest.id, target: end.id },
+          { id: 'llm-end', source: target.id, target: end.id },
+        ]}
+        onChange={onChange}
+      />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: '添加备用来源' }));
+    const sourceButtons = screen.getAllByRole('button', { name: /系统变量 \/ query/ });
+    fireEvent.click(sourceButtons[sourceButtons.length - 1]!);
+    fireEvent.click(screen.getByRole('option', { name: /http-request \/ json/ }));
+    const nestedPath = screen.getByLabelText('候选来源 2 子字段路径');
+    fireEvent.change(nestedPath, { target: { value: 'body.text' } });
+    flushConfigDrafts();
+    expect(onChange).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        outputs: [
+          expect.objectContaining({
+            fallbackSelectors: [[httpRequest.id, 'json', 'body', 'text']],
+          }),
+        ],
+      }),
+    );
   });
 
   it('节点面板点击添加节点并限制开始、结束单例', () => {

@@ -74,6 +74,32 @@ describe('EndNodeRunner', () => {
       ),
     ).rejects.toThrow('变量不存在');
   });
+
+  it('分支来源缺失时按顺序读取备用来源及其子字段', async () => {
+    const pool = new VariablePool({});
+    pool.set('http', { json: { body: { text: '接口结果' } } });
+    const runner = new EndNodeRunner();
+    const config = {
+      outputs: [
+        {
+          name: 'result',
+          selector: ['knowledge', 'chunks'],
+          fallbackSelectors: [
+            ['http', 'json', 'body', 'text'],
+            ['llm', 'text'],
+          ],
+        },
+      ],
+    };
+    await expect(runner.run(config, pool)).resolves.toEqual({
+      outputs: { result: '接口结果' },
+    });
+    expect(runner.getValueSelectors(config)).toEqual([
+      ['knowledge', 'chunks'],
+      ['http', 'json', 'body', 'text'],
+      ['llm', 'text'],
+    ]);
+  });
 });
 
 describe('VariableAssignerNodeRunner', () => {

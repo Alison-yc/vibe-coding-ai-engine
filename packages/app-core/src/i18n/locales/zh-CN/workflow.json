@@ -157,6 +157,11 @@
     "end": {
       "title": "工作流输出",
       "outputName": "输出 {{index}} 名称",
+      "sourcePriority": "候选来源 {{index}}",
+      "propertyPath": "候选来源 {{index}} 子字段路径",
+      "propertyPathPlaceholder": "子字段路径（可选），例如 text",
+      "addFallback": "添加备用来源",
+      "deleteFallback": "删除备用来源",
       "delete": "删除输出",
       "add": "添加输出"
     },

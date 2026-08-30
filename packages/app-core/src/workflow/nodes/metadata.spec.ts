@@ -45,7 +45,12 @@ describe('工作流节点元数据', () => {
     expect(NodeMetadataMap['knowledge-retrieval'].getOutputVars({})).toEqual([
       { name: 'chunks', type: 'array' },
     ]);
-    expect(NodeMetadataMap['http-request'].getOutputVars({})).toHaveLength(3);
+    expect(NodeMetadataMap['http-request'].getOutputVars({})).toEqual([
+      { name: 'status', type: 'number' },
+      { name: 'headers', type: 'object' },
+      { name: 'body', type: 'string' },
+      { name: 'json', type: 'unknown' },
+    ]);
     expect(NodeMetadataMap.code.getOutputVars({})).toEqual([{ name: 'result', type: 'unknown' }]);
   });
 

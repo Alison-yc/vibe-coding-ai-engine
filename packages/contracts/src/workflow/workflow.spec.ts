@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   CodeNodeConfigSchema,
   CreateWorkflowRequestSchema,
+  EndNodeConfigSchema,
   IfElseNodeConfigSchema,
   NodeTypeSchema,
   RunNodeRequestSchema,
@@ -81,6 +82,29 @@ describe('workflow contracts', () => {
       }).success,
     ).toBe(false);
     expect(CodeNodeConfigSchema.safeParse({ code: '', inputs: {} }).success).toBe(false);
+  });
+
+  it('结束节点接受用于分支汇合的备用来源与嵌套路径', () => {
+    expect(
+      EndNodeConfigSchema.parse({
+        outputs: [
+          {
+            name: 'result',
+            selector: ['knowledge', 'chunks', '0', 'content'],
+            fallbackSelectors: [
+              ['http', 'json', 'body', 'text'],
+              ['llm', 'text'],
+            ],
+          },
+        ],
+      }).outputs[0],
+    ).toMatchObject({
+      name: 'result',
+      fallbackSelectors: [
+        ['http', 'json', 'body', 'text'],
+        ['llm', 'text'],
+      ],
+    });
   });
 
   it('校验运行事件与图校验响应', () => {

@@ -157,6 +157,11 @@
     "end": {
       "title": "ワークフロー出力",
       "outputName": "出力 {{index}} の名前",
+      "sourcePriority": "候補ソース {{index}}",
+      "propertyPath": "候補ソース {{index}} の子フィールドパス",
+      "propertyPathPlaceholder": "任意の子フィールドパス（例: text）",
+      "addFallback": "代替ソースを追加",
+      "deleteFallback": "代替ソースを削除",
       "delete": "出力を削除",
       "add": "出力を追加"
     },

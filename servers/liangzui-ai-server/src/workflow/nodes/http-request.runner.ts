@@ -10,6 +10,14 @@ import { templateSelectors } from './template-selectors';
 
 type HttpRunnerDependencies = Pick<SafeHttpOptions, 'resolve' | 'requestImpl'>;
 
+const parseJsonBody = (body: string): unknown => {
+  try {
+    return JSON.parse(body) as unknown;
+  } catch {
+    return undefined;
+  }
+};
+
 export class HttpRequestNodeRunner implements NodeRunner<HttpRequestNodeConfig> {
   readonly type = 'http-request' as const;
   readonly configSchema = HttpRequestNodeConfigSchema;
@@ -42,6 +50,7 @@ export class HttpRequestNodeRunner implements NodeRunner<HttpRequestNodeConfig> 
       resolve: this.dependencies.resolve,
       requestImpl: this.dependencies.requestImpl,
     });
-    return { outputs: result };
+    const json = parseJsonBody(result.body);
+    return { outputs: json === undefined ? result : { ...result, json } };
   }
 }

@@ -20,6 +20,7 @@ export const EndNodeConfigSchema = z.object({
       z.object({
         name: z.string().min(1),
         selector: ValueSelectorSchema,
+        fallbackSelectors: z.array(ValueSelectorSchema).max(10).optional(),
       }),
     )
     .min(1),

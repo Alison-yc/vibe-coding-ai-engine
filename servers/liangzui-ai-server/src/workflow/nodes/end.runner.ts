@@ -12,14 +12,20 @@ export class EndNodeRunner implements NodeRunner<EndNodeConfig> {
   readonly configSchema = EndNodeConfigSchema;
 
   getValueSelectors(config: EndNodeConfig): ValueSelector[] {
-    return config.outputs.map((output) => output.selector);
+    return config.outputs.flatMap((output) => [
+      output.selector,
+      ...(output.fallbackSelectors ?? []),
+    ]);
   }
 
   async run(config: EndNodeConfig, pool: VariablePoolReader): Promise<NodeRunResult> {
     await Promise.resolve();
     const outputs: Record<string, unknown> = {};
     for (const output of config.outputs) {
-      const value = pool.get(output.selector);
+      const selectors = [output.selector, ...(output.fallbackSelectors ?? [])];
+      const value = selectors
+        .map((selector) => pool.get(selector))
+        .find((item) => item !== undefined);
       if (value === undefined) throw new Error(`结束节点输出 ${output.name} 的变量不存在`);
       outputs[output.name] = value;
     }

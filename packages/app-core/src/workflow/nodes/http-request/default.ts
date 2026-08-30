@@ -10,6 +10,7 @@ export const httpRequestOutputVars = () => [
   { name: 'status', type: 'number' as const },
   { name: 'headers', type: 'object' as const },
   { name: 'body', type: 'string' as const },
+  { name: 'json', type: 'unknown' as const },
 ];
 
 export const validateHttpRequestConfig = (config: Record<string, unknown>): string[] => {
