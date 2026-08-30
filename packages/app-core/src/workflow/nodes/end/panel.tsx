@@ -64,15 +64,18 @@ export const EndNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps) =
                 aria-label={t('panels.end.propertyPath', { index: sourceIndex + 1 })}
                 placeholder={t('panels.end.propertyPathPlaceholder')}
                 value={selector.slice(2).join('.')}
-                onChange={(event) =>
-                  updateSelector(outputIndex, sourceIndex, [
-                    ...selector.slice(0, 2),
-                    ...event.target.value
-                      .split('.')
-                      .map((segment) => segment.trim())
-                      .filter(Boolean),
-                  ])
-                }
+                onChange={(event) => {
+                  const raw = event.target.value;
+                  const segments = raw.split('.').map((segment) => segment.trim());
+                  const path = raw.endsWith('.')
+                    ? [...segments.slice(0, -1).filter(Boolean), '']
+                    : segments.filter(Boolean);
+                  updateSelector(outputIndex, sourceIndex, [...selector.slice(0, 2), ...path]);
+                }}
+                onBlur={() => {
+                  const cleaned = selector.slice(2).filter(Boolean);
+                  updateSelector(outputIndex, sourceIndex, [...selector.slice(0, 2), ...cleaned]);
+                }}
               />
               {sourceIndex > 0 ? (
                 <Button

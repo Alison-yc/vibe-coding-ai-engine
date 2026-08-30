@@ -253,11 +253,14 @@ describe('工作流组件', () => {
       />,
     );
     fireEvent.click(screen.getByRole('button', { name: '添加备用来源' }));
-    const sourceButtons = screen.getAllByRole('button', { name: /系统变量 \/ query/ });
+    const sourceButtons = screen.getAllByRole('button', { name: /\/ query · string/ });
     fireEvent.click(sourceButtons[sourceButtons.length - 1]!);
     fireEvent.click(screen.getByRole('option', { name: /http-request \/ json/ }));
     const nestedPath = screen.getByLabelText('候选来源 2 子字段路径');
+    fireEvent.change(nestedPath, { target: { value: 'body.' } });
+    expect(nestedPath).toHaveProperty('value', 'body.');
     fireEvent.change(nestedPath, { target: { value: 'body.text' } });
+    fireEvent.blur(nestedPath);
     flushConfigDrafts();
     expect(onChange).toHaveBeenLastCalledWith(
       expect.objectContaining({
