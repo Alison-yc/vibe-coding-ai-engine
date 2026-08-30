@@ -1,4 +1,5 @@
 import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createInstance } from 'i18next';
 import { createElement, type ReactElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
@@ -67,31 +68,46 @@ describe('knowledge i18n resources', () => {
 });
 
 describe('KnowledgeListPage', () => {
-  it('渲染创建与加载入口', async () => {
+  it('渲染创建入口并自动进入加载状态', async () => {
     const html = await renderWithLocale(
       createElement(
-        PlatformProvider,
-        { value: stubPlatform },
-        createElement(MemoryRouter, null, createElement(KnowledgeListPage)),
+        QueryClientProvider,
+        { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
+        createElement(
+          PlatformProvider,
+          { value: stubPlatform },
+          createElement(MemoryRouter, null, createElement(KnowledgeListPage)),
+        ),
       ),
     );
     expect(html).toContain('知识库');
-    expect(html).toContain('加载知识库');
+    expect(html).toContain('正在加载知识库');
     expect(html).toContain('创建');
   });
 
   it('en-US 渲染知识库标题与空态', async () => {
     const html = await renderWithLocale(
       createElement(
-        PlatformProvider,
-        { value: stubPlatform },
-        createElement(MemoryRouter, null, createElement(KnowledgeListPage)),
+        QueryClientProvider,
+        { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
+        createElement(
+          PlatformProvider,
+          { value: stubPlatform },
+          createElement(MemoryRouter, null, createElement(KnowledgeListPage)),
+        ),
       ),
       'en-US',
     );
     expect(html).toContain('Knowledge');
-    expect(html).toContain('Load knowledge bases');
-    expect(html).toContain('No knowledge bases yet');
+    expect(html).toContain('Loading knowledge bases');
+  });
+
+  it('空态不重复渲染创建按钮', async () => {
+    const html = await renderWithLocale(
+      createElement(MemoryRouter, null, createElement(KnowledgeDatasetGrid, { datasets: [] })),
+    );
+    expect(html).toContain('还没有知识库');
+    expect(html).not.toContain('<button');
   });
 
   it('en-US 对文档与切片计数应用复数规则', async () => {

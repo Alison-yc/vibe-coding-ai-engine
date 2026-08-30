@@ -2,6 +2,7 @@
   "list": {
     "title": "ナレッジ",
     "description": "ドキュメントのインデックスを管理し、詳細画面で検索と試験回答を確認します。",
+    "loading": "ナレッジを読み込んでいます…",
     "actions": {
       "refresh": "更新",
       "load": "ナレッジを読み込む"
@@ -21,12 +22,16 @@
       "documentCount_other": "{{count}} 件のドキュメント",
       "chunkCount_one": "{{count}} 件のチャンク",
       "chunkCount_other": "{{count}} 件のチャンク",
-      "openDetails": "詳細を開く →"
+      "openDetails": "詳細を開く →",
+      "delete": "削除",
+      "confirmDelete": "削除を確認",
+      "cancelDelete": "キャンセル"
     }
   },
   "errors": {
     "load": "ナレッジの読み込みに失敗しました",
     "create": "ナレッジの作成に失敗しました",
+    "delete": "ナレッジの削除に失敗しました",
     "index": "インデックス作成に失敗しました",
     "upload": "アップロードに失敗しました"
   },

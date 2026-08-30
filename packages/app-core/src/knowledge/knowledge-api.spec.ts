@@ -4,6 +4,7 @@ import {
   answerDataset,
   createDataset,
   createPasteDocument,
+  deleteDataset,
   deleteDocument,
   getDataset,
   getDocument,
@@ -82,6 +83,20 @@ describe('knowledge-api', () => {
     );
     await expect(createDataset(stubPlatform, { name: '测试知识库' })).resolves.toEqual(dataset);
     await expect(getDataset(stubPlatform, dataset.id)).resolves.toEqual(dataset);
+    vi.unstubAllGlobals();
+  });
+
+  it('删除知识库使用 DELETE 请求', async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({}),
+    });
+    vi.stubGlobal('fetch', fetchMock);
+    await expect(deleteDataset(stubPlatform, dataset.id)).resolves.toBeUndefined();
+    expect(fetchMock).toHaveBeenCalledWith(
+      `http://localhost:3000/knowledge/datasets/${dataset.id}`,
+      expect.objectContaining({ method: 'DELETE' }),
+    );
     vi.unstubAllGlobals();
   });
 

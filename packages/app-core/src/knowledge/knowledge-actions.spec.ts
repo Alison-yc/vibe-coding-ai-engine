@@ -2,13 +2,6 @@ import { createMemoryKeyValueStore, type Platform } from '@ai-engine/platform';
 import { describe, expect, it, vi } from 'vitest';
 import * as api from './knowledge-api';
 import {
-  createKnowledgeDataset,
-  createKnowledgeListError,
-  createKnowledgeListHandlers,
-  loadKnowledgeListError,
-  refreshKnowledgeList,
-} from './knowledge-list-actions';
-import {
   createKnowledgeDetailHandlers,
   indexPastedDocument,
   indexUploadedDocument,
@@ -49,23 +42,6 @@ const document = {
   failedStage: null,
   createdAt: '2026-08-27T00:00:00.000Z',
 };
-
-describe('knowledge-list-actions', () => {
-  it('刷新与创建会调用 API', async () => {
-    vi.mocked(api.listDatasets).mockResolvedValue([dataset]);
-    vi.mocked(api.createDataset).mockResolvedValue(dataset);
-    await expect(refreshKnowledgeList(platform)).resolves.toEqual([dataset]);
-    await createKnowledgeDataset(platform, '库');
-    expect(api.createDataset).toHaveBeenCalledWith(platform, { name: '库' });
-  });
-
-  it('错误文案区分 Error 与其它值', () => {
-    expect(loadKnowledgeListError(new Error('x'))).toBe('x');
-    expect(loadKnowledgeListError('x')).toBe('加载失败');
-    expect(createKnowledgeListError(new Error('y'))).toBe('y');
-    expect(createKnowledgeListError(1)).toBe('创建失败');
-  });
-});
 
 describe('knowledge-detail-actions', () => {
   it('加载详情、粘贴、上传、删除、预览、检索与试答', async () => {
@@ -119,33 +95,6 @@ describe('knowledge-detail-actions', () => {
     });
     expect(knowledgeActionError(new Error('e'), 'fallback')).toBe('e');
     expect(knowledgeActionError(0, 'fallback')).toBe('fallback');
-  });
-
-  it('列表 handlers 会写回状态', async () => {
-    vi.mocked(api.listDatasets).mockResolvedValue([dataset]);
-    vi.mocked(api.createDataset).mockResolvedValue(dataset);
-    const setters = {
-      name: '库',
-      setName: vi.fn(),
-      setDatasets: vi.fn(),
-      setError: vi.fn(),
-      setLoading: vi.fn(),
-    };
-    const handlers = createKnowledgeListHandlers(platform, setters);
-    handlers.onNameChange({ target: { value: '新' } });
-    expect(setters.setName).toHaveBeenCalledWith('新');
-    await handlers.refresh();
-    expect(setters.setDatasets).toHaveBeenCalledWith([dataset]);
-    handlers.onRefreshClick();
-    handlers.onCreateClick();
-    await handlers.create();
-    expect(api.createDataset).toHaveBeenCalled();
-    vi.mocked(api.listDatasets).mockRejectedValueOnce('x');
-    await handlers.refresh();
-    expect(setters.setError).toHaveBeenCalledWith('加载失败');
-    vi.mocked(api.createDataset).mockRejectedValueOnce(new Error('创建失败了'));
-    await handlers.create();
-    expect(setters.setError).toHaveBeenCalledWith('创建失败了');
   });
 
   it('详情 handlers 覆盖输入、粘贴失败与上传空文件', async () => {

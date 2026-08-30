@@ -2,6 +2,7 @@
   "list": {
     "title": "知识库",
     "description": "管理文档索引，并在详情页测试检索与试答。",
+    "loading": "正在加载知识库…",
     "actions": {
       "refresh": "刷新",
       "load": "加载知识库"
@@ -21,12 +22,16 @@
       "documentCount_other": "{{count}} 个文档",
       "chunkCount_one": "{{count}} 个切片",
       "chunkCount_other": "{{count}} 个切片",
-      "openDetails": "点击进入详情 →"
+      "openDetails": "点击进入详情 →",
+      "delete": "删除",
+      "confirmDelete": "确认删除",
+      "cancelDelete": "取消"
     }
   },
   "errors": {
     "load": "加载知识库失败",
     "create": "创建知识库失败",
+    "delete": "删除知识库失败",
     "index": "索引失败",
     "upload": "上传失败"
   },

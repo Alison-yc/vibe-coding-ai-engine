@@ -2,6 +2,7 @@
   "list": {
     "title": "Knowledge",
     "description": "Manage document indexes, test retrieval, and generate trial answers from a knowledge base.",
+    "loading": "Loading knowledge bases…",
     "actions": {
       "refresh": "Refresh",
       "load": "Load knowledge bases"
@@ -21,12 +22,16 @@
       "documentCount_other": "{{count}} documents",
       "chunkCount_one": "{{count}} chunk",
       "chunkCount_other": "{{count}} chunks",
-      "openDetails": "Open details →"
+      "openDetails": "Open details →",
+      "delete": "Delete",
+      "confirmDelete": "Confirm deletion",
+      "cancelDelete": "Cancel"
     }
   },
   "errors": {
     "load": "Failed to load knowledge bases",
     "create": "Failed to create the knowledge base",
+    "delete": "Failed to delete the knowledge base",
     "index": "Indexing failed",
     "upload": "Upload failed"
   },

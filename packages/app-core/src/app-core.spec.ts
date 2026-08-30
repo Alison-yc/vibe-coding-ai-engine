@@ -214,11 +214,15 @@ describe('AppRoutes', () => {
       createElement(
         PlatformProvider,
         { value: stubPlatform },
-        createElement(MemoryRouter, { initialEntries: ['/knowledge'] }, createElement(AppRoutes)),
+        createElement(
+          QueryClientProvider,
+          { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
+          createElement(MemoryRouter, { initialEntries: ['/knowledge'] }, createElement(AppRoutes)),
+        ),
       ),
     );
     expect(html).toContain('知识库');
-    expect(html).toContain('加载知识库');
+    expect(html).toContain('正在加载知识库');
   });
 });
 

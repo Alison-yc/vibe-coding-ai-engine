@@ -59,6 +59,10 @@ export const getDataset = async (platform: Platform, datasetId: string): Promise
   return DatasetSchema.parse(data);
 };
 
+export const deleteDataset = async (platform: Platform, datasetId: string): Promise<void> => {
+  await requestJson(platform, `/knowledge/datasets/${datasetId}`, { method: 'DELETE' });
+};
+
 export const listDocuments = async (
   platform: Platform,
   datasetId: string,
