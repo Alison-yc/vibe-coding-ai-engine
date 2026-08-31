@@ -217,7 +217,7 @@
     },
     "code": {
       "title": "JavaScript 代码",
-      "description": "代码在 QuickJS WASM 沙箱中执行",
+      "description": "在函数里通过 inputs.名称 读取输入，必须 return 对象。请用英文标点，例如 Number(inputs.value)。",
       "inputName": "代码输入 {{index}} 名称",
       "deleteInput": "删除输入",
       "addInput": "添加代码输入",

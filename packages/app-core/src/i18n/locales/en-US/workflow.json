@@ -217,7 +217,7 @@
     },
     "code": {
       "title": "JavaScript code",
-      "description": "Code runs in a QuickJS WASM sandbox",
+      "description": "Read inputs via inputs.name and return an object. Use ASCII punctuation, e.g. Number(inputs.value).",
       "inputName": "Code input {{index}} name",
       "deleteInput": "Delete input",
       "addInput": "Add code input",

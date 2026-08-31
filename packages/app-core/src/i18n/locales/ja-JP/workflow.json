@@ -217,7 +217,7 @@
     },
     "code": {
       "title": "JavaScript コード",
-      "description": "コードは QuickJS WASM サンドボックス内で実行されます",
+      "description": "inputs.名前 で入力を読み、オブジェクトを return してください。Number(inputs.value) のように半角記号を使います。",
       "inputName": "コード入力 {{index}} の名前",
       "deleteInput": "入力を削除",
       "addInput": "コード入力を追加",

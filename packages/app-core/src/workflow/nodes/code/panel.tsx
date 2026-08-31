@@ -1,5 +1,5 @@
 import { Button, Input } from '@ai-engine/ui';
-import { CodeNodeConfigSchema } from '@ai-engine/contracts';
+import { CodeNodeConfigSchema, type ValueSelector } from '@ai-engine/contracts';
 import { useTranslation } from 'react-i18next';
 import { CodeEditor } from '../../code-editor';
 import { VariableSelector, variableOptionsForNode } from '../../variable-selector';
@@ -20,18 +20,21 @@ export const CodeNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps) 
     'sys',
     'query',
   ];
+  const setInputs = (entries: [string, ValueSelector][]) =>
+    setDraft({ ...config, inputs: Object.fromEntries(entries) });
   return (
     <PanelSection title={t('panels.code.title')} description={t('panels.code.description')}>
       {inputs.map(([name, selector], index) => (
-        <div className="border-border flex flex-col gap-2 rounded-md border p-3" key={name}>
+        <div className="border-border flex flex-col gap-2 rounded-md border p-3" key={index}>
           <Input
             aria-label={t('panels.code.inputName', { index: index + 1 })}
             value={name}
             onChange={(event) => {
-              const next = { ...config.inputs };
-              delete next[name];
-              next[event.target.value] = selector;
-              setDraft({ ...config, inputs: next });
+              const entries = [...inputs] as [string, ValueSelector][];
+              const current = entries[index];
+              if (!current) return;
+              entries[index] = [event.target.value, current[1]];
+              setInputs(entries);
             }}
           />
           <VariableSelector
@@ -40,18 +43,18 @@ export const CodeNodePanel = ({ node, nodes, edges, onChange }: NodePanelProps) 
             nodes={nodes}
             edges={edges}
             value={selector}
-            onChange={(value) =>
-              setDraft({ ...config, inputs: { ...config.inputs, [name]: value } })
-            }
+            onChange={(value) => {
+              const entries = [...inputs] as [string, ValueSelector][];
+              const current = entries[index];
+              if (!current) return;
+              entries[index] = [current[0], value];
+              setInputs(entries);
+            }}
           />
           <Button
             size="sm"
             variant="ghost"
-            onClick={() => {
-              const next = { ...config.inputs };
-              delete next[name];
-              setDraft({ ...config, inputs: next });
-            }}
+            onClick={() => setInputs(inputs.filter((_, current) => current !== index))}
           >
             {t('panels.code.deleteInput')}
           </Button>

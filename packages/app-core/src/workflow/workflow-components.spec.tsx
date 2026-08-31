@@ -237,6 +237,25 @@ describe('工作流组件', () => {
     expect(screen.queryByText(/来源节点不存在/)).toBeNull();
   });
 
+  it('代码节点重命名输入时不卸载输入框', () => {
+    const Panel = PanelComponentMap.code;
+    const codeNode = nodes.find((node) => node.data.type === 'code');
+    if (!codeNode) throw new Error('测试 code 节点缺失');
+    render(
+      <Panel
+        node={codeNode}
+        nodes={nodes}
+        edges={[{ id: 'start-code', source: start.id, target: codeNode.id }]}
+        onChange={() => undefined}
+      />,
+    );
+    const nameInput = screen.getByLabelText('代码输入 1 名称');
+    fireEvent.change(nameInput, { target: { value: 'v' } });
+    expect(screen.getByLabelText('代码输入 1 名称')).toBe(nameInput);
+    fireEvent.change(nameInput, { target: { value: 'value' } });
+    expect(screen.getByDisplayValue('value')).toBe(nameInput);
+  });
+
   it('结束节点可配置备用来源和嵌套字段路径', () => {
     const Panel = PanelComponentMap.end;
     const onChange = vi.fn();

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { QuickJsSandbox } from './quickjs-sandbox';
+import { normalizeFullwidthJsPunctuation, QuickJsSandbox } from './quickjs-sandbox';
 
 describe('QuickJsSandbox', () => {
   it('在隔离环境中运行代码并返回对象', async () => {
@@ -11,13 +11,32 @@ describe('QuickJsSandbox', () => {
     expect(result).toEqual({ total: 5 });
   });
 
+  it('把全角括号规范化后支持 Number(inputs.value)', async () => {
+    expect(normalizeFullwidthJsPunctuation('Number（inputs.value）+ 11')).toBe(
+      'Number(inputs.value)+ 11',
+    );
+    await expect(
+      new QuickJsSandbox().execute(
+        'return { result: Number（inputs.value） + 11 };',
+        { value: '5' },
+        new AbortController().signal,
+      ),
+    ).resolves.toEqual({ result: 16 });
+  });
+
   it.each([
     "return require('node:fs').readFileSync('/etc/passwd', 'utf8');",
     'return { env: process.env };',
   ])('禁止访问 Node 能力', async (code) => {
     await expect(
       new QuickJsSandbox().execute(code, {}, new AbortController().signal),
-    ).rejects.toThrow('执行失败');
+    ).rejects.toThrow(/执行失败/);
+  });
+
+  it('语法错误时透出具体原因', async () => {
+    await expect(
+      new QuickJsSandbox().execute('return {;', {}, new AbortController().signal),
+    ).rejects.toThrow(/执行失败：/);
   });
 
   it('中断无限循环并限制输出大小', async () => {
