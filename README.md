@@ -147,7 +147,8 @@ pnpm baseline          # 模型能力基线测评
 pnpm rag-eval          # RAG 效果评测
 pnpm sec:all           # 全部安全扫描
 pnpm db:studio         # 可视化查看数据库
-pnpm tauri:build       # 打包 dmg
+pnpm build             # 编译各 workspace，不生成桌面安装包
+pnpm tauri:build       # 打包 macOS app 与 dmg
 ```
 
 端口占用一览：Ollama `11434`、Postgres `5432`、NestJS `3000`、Web `5173`、Tauri `1420`。
@@ -167,12 +168,23 @@ pnpm db:migrate
 pnpm tauri:build
 ```
 
+构建产物位于：
+
+- dmg：`clients/liangzui-ai-app/src-tauri/target/release/bundle/dmg/*.dmg`
+- app：`clients/liangzui-ai-app/src-tauri/target/release/bundle/macos/liangzui-ai-app.app`
+- Web 静态资源：`frontend/liangzui-ai-web/dist/`
+
 打开生成的 dmg，将 `liangzui-ai-app.app` 拖入 `/Applications`。首次启动会把
 `sidecar.env` 写到 `~/Library/Application Support/com.liangzui.liangzui-ai-app/`，
 日志在 `~/Library/Logs/com.liangzui.liangzui-ai-app/sidecar.log`。
 
 Sidecar 使用动态端口；启动失败或数据库未就绪时会显示连接引导，可在引导页或设置页
 把地址改成实际的 `http://127.0.0.1:<端口>`。仅允许 localhost / 127.0.0.1。
+
+文件访问始终受服务端白名单与工作区路径沙箱共同限制。Web 和 `pnpm dev:app` 连接手动
+启动的服务端，可访问范围由 `.env` 的 `AGENT_WORKSPACE_ROOTS` 决定；安装版 sidecar
+默认允许从原生目录选择器选取当前用户主目录下的工作区，额外目录可在上述
+`sidecar.env` 的 `AGENT_WORKSPACE_ROOTS` 中配置。修改 `sidecar.env` 后需重启应用。
 
 本项目**未做 Apple 开发者签名和公证**（需要付费账号）。从 dmg 安装后首次打开可能被
 Gatekeeper 拦截，这是正常的，不是应用损坏。可先在 Finder 中右键选择“打开”；仍被拦截时执行：
