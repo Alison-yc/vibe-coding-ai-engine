@@ -5,7 +5,7 @@ import process from 'node:process';
 import { ConfigService } from '@nestjs/config';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { validateEnvironment } from '../config/ollama.config';
-import { McpClientManager } from './mcp-client.manager';
+import { expandWorkspaceRootArgs, McpClientManager } from './mcp-client.manager';
 import { saveMcpConfig } from './mcp-config';
 import type { McpConnection, McpConnector } from './mcp-connector';
 
@@ -55,14 +55,21 @@ class FakeConnector implements McpConnector {
   }
 }
 
-const createManager = async (connector = new FakeConnector(), bundledNpxCliPath?: string) => {
+const createManager = async (
+  connector = new FakeConnector(),
+  options: {
+    bundledNpxCliPath?: string;
+    workspaceRoots?: string;
+    filesystemArgs?: string[];
+  } = {},
+) => {
   const file = path.join(dir, 'mcp.json');
   await saveMcpConfig(file, {
     mcpServers: {
       filesystem: {
         type: 'stdio',
         command: 'npx',
-        args: ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
+        args: options.filesystemArgs ?? ['-y', '@modelcontextprotocol/server-filesystem', '/tmp'],
         enabled: true,
         timeout: 10_000,
         flattenNames: true,
@@ -93,7 +100,8 @@ const createManager = async (connector = new FakeConnector(), bundledNpxCliPath?
       validateEnvironment({
         NODE_ENV: 'test',
         MCP_CONFIG_PATH: file,
-        MCP_NPX_CLI_PATH: bundledNpxCliPath,
+        MCP_NPX_CLI_PATH: options.bundledNpxCliPath,
+        AGENT_WORKSPACE_ROOTS: options.workspaceRoots,
       }),
     ),
     connector,
@@ -112,9 +120,24 @@ afterEach(async () => {
 });
 
 describe('McpClientManager', () => {
+  it('把 filesystem 预置路径展开为已授权的工作区根目录', () => {
+    expect(
+      expandWorkspaceRootArgs(
+        ['-y', '@modelcontextprotocol/server-filesystem', '<YOUR_PATH>'],
+        ['/tmp', '/Users/example'],
+      ),
+    ).toEqual(['-y', '@modelcontextprotocol/server-filesystem', '/tmp', '/Users/example']);
+    expect(expandWorkspaceRootArgs(['-y', 'weather'], [])).toEqual(['-y', 'weather']);
+    expect(() => expandWorkspaceRootArgs(['<YOUR_PATH>'], [])).toThrow('AGENT_WORKSPACE_ROOTS');
+  });
+
   it('sidecar 使用内置 Node 启动随包分发的 npx CLI', async () => {
     const connector = new FakeConnector();
-    await createManager(connector, '/bundle/node_modules/npm/bin/npx-cli.js');
+    await createManager(connector, {
+      bundledNpxCliPath: '/bundle/node_modules/npm/bin/npx-cli.js',
+      workspaceRoots: `/tmp${path.delimiter}/Users/example`,
+      filesystemArgs: ['-y', '@modelcontextprotocol/server-filesystem', '<YOUR_PATH>'],
+    });
     expect(connector.stdioCalls[0]).toEqual({
       command: process.execPath,
       args: [
@@ -122,6 +145,7 @@ describe('McpClientManager', () => {
         '-y',
         '@modelcontextprotocol/server-filesystem',
         '/tmp',
+        '/Users/example',
       ],
     });
   });

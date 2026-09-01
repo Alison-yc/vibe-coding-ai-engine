@@ -6,6 +6,7 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import path from 'node:path';
 import process from 'node:process';
 import {
   type AgentMode,
@@ -66,6 +67,14 @@ export const resolveStdioInvocation = (
   command === 'npx' && bundledNpxCliPath
     ? { command: process.execPath, args: [bundledNpxCliPath, ...args] }
     : { command, args };
+
+export const expandWorkspaceRootArgs = (args: string[], workspaceRoots: string[]): string[] => {
+  if (!args.includes('<YOUR_PATH>')) return args;
+  if (workspaceRoots.length === 0) {
+    throw new Error('filesystem MCP 需要先配置 AGENT_WORKSPACE_ROOTS');
+  }
+  return args.flatMap((argument) => (argument === '<YOUR_PATH>' ? workspaceRoots : [argument]));
+};
 
 @Injectable()
 export class McpClientManager implements OnModuleInit, OnModuleDestroy, McpToolCatalog {
@@ -213,7 +222,7 @@ export class McpClientManager implements OnModuleInit, OnModuleDestroy, McpToolC
       if (runtime.config.type === 'stdio') {
         const invocation = resolveStdioInvocation(
           runtime.config.command,
-          runtime.config.args,
+          expandWorkspaceRootArgs(runtime.config.args, this.workspaceRoots()),
           this.config.get('MCP_NPX_CLI_PATH', { infer: true }),
         );
         connection = await this.connector.connectStdio(invocation.command, invocation.args);
@@ -268,6 +277,14 @@ export class McpClientManager implements OnModuleInit, OnModuleDestroy, McpToolC
     runtime.error = undefined;
     if (connection) await connection.close().catch(() => undefined);
     this.rebuildAdapters();
+  }
+
+  private workspaceRoots(): string[] {
+    return this.config
+      .get('AGENT_WORKSPACE_ROOTS', { infer: true })
+      .split(path.delimiter)
+      .map((root) => root.trim())
+      .filter(Boolean);
   }
 
   private rebuildAdapters(): void {
