@@ -24,7 +24,6 @@ const EnvironmentSchema = z.object({
     .optional()
     .transform((value) => value === 'true' || value === '1'),
   AGENT_WORKSPACE_ROOTS: z.string().default(''),
-  AGENT_DEFAULT_WORKSPACE_ROOT: z.string().default(''),
   AGENT_MAX_STEPS: z.coerce.number().int().min(2).max(12).default(6),
   MCP_CONFIG_PATH: z.string().min(1).default('mcp.json'),
   SIDECAR_MODE: z

@@ -6,6 +6,7 @@ import {
   assertAllowedWorkspaceRoot,
   PathEscapeError,
   resolveWorkspacePath,
+  WorkspaceRootsNotConfiguredError,
 } from './workspace-path';
 
 const cleanup: string[] = [];
@@ -76,6 +77,12 @@ describe('workspace path sandbox', () => {
     );
     await expect(assertAllowedWorkspaceRoot(denied, [allowed])).rejects.toBeInstanceOf(
       PathEscapeError,
+    );
+  });
+
+  it('白名单为空时返回可操作的配置错误', async () => {
+    await expect(assertAllowedWorkspaceRoot('/tmp/example', [])).rejects.toBeInstanceOf(
+      WorkspaceRootsNotConfiguredError,
     );
   });
 });

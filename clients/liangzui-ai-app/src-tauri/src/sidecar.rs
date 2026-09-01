@@ -171,9 +171,6 @@ pub fn start(app: &AppHandle, state: &SidecarState) -> Result<(), SidecarError> 
         .env("SIDECAR_MODE", "true")
         .env("SIDECAR_PARENT_PID", std::process::id().to_string())
         .env("DATABASE_MIGRATIONS_PATH", server_dir.join("drizzle"))
-        // 原生目录选择器代表本机用户明确选定目录；默认仅放行其 HOME 子目录。
-        // sidecar.env 中的 AGENT_WORKSPACE_ROOTS 仍可追加其它受信根目录。
-        .env("AGENT_DEFAULT_WORKSPACE_ROOT", &home)
         .env("MCP_CONFIG_PATH", &mcp_path);
     let (mut receiver, child) = command
         .spawn()

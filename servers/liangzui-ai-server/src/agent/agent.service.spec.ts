@@ -305,33 +305,6 @@ describe('AgentService', () => {
     }
   });
 
-  it('允许 sidecar 提供的默认工作区根目录', async () => {
-    const sidecarService = new AgentService(
-      agentRepository,
-      chat,
-      gateway,
-      new AgentToolRegistry(),
-      new ApprovalCoordinator(),
-      new ConfigService(
-        validateEnvironment({
-          NODE_ENV: 'test',
-          AGENT_DEFAULT_WORKSPACE_ROOT: root,
-          AGENT_MAX_STEPS: 3,
-        }),
-      ),
-      new EmptyMcpToolCatalog(),
-    );
-    gateway.enqueueAgentResponse({ content: '已完成。', toolCalls: [] });
-    await expect(
-      sidecarService.stream(
-        sessionId,
-        { content: '分析工作区', workspaceRoot: root, mode: 'read-only' },
-        new AbortController().signal,
-        () => undefined,
-      ),
-    ).resolves.toBeUndefined();
-  });
-
   it('启动时把 dangling tool call 恢复为错误状态', async () => {
     const message = await chat.appendMessage({
       sessionId,

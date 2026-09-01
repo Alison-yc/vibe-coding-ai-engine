@@ -182,9 +182,11 @@ Sidecar 使用动态端口；启动失败或数据库未就绪时会显示连接
 把地址改成实际的 `http://127.0.0.1:<端口>`。仅允许 localhost / 127.0.0.1。
 
 文件访问始终受服务端白名单与工作区路径沙箱共同限制。Web 和 `pnpm dev:app` 连接手动
-启动的服务端，可访问范围由 `.env` 的 `AGENT_WORKSPACE_ROOTS` 决定；安装版 sidecar
-默认允许从原生目录选择器选取当前用户主目录下的工作区，额外目录可在上述
-`sidecar.env` 的 `AGENT_WORKSPACE_ROOTS` 中配置。修改 `sidecar.env` 后需重启应用。
+启动的服务端，可访问范围由 `.env` 的 `AGENT_WORKSPACE_ROOTS` 决定。安装版的原生
+目录选择器只负责填写路径，不会自动扩大服务端权限；首次使用前需在上述 `sidecar.env`
+中显式配置允许的根目录，例如
+`AGENT_WORKSPACE_ROOTS=<YOUR_PATH>:/tmp/ai-engine-sandbox`。macOS 多个根目录用冒号
+分隔，修改后需重启应用；留空时文件访问会返回明确的配置提示。
 
 本项目**未做 Apple 开发者签名和公证**（需要付费账号）。从 dmg 安装后首次打开可能被
 Gatekeeper 拦截，这是正常的，不是应用损坏。可先在 Finder 中右键选择“打开”；仍被拦截时执行：

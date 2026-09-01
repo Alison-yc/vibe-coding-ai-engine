@@ -8,6 +8,13 @@ export class PathEscapeError extends Error {
   }
 }
 
+export class WorkspaceRootsNotConfiguredError extends Error {
+  constructor() {
+    super('未配置文件访问工作区白名单，请设置 AGENT_WORKSPACE_ROOTS 并重启服务');
+    this.name = 'WorkspaceRootsNotConfiguredError';
+  }
+}
+
 const isWithin = (root: string, candidate: string): boolean => {
   const relative = path.relative(root, candidate);
   return relative === '' || (!path.isAbsolute(relative) && relative.split(path.sep).at(0) !== '..');
@@ -17,6 +24,7 @@ export const assertAllowedWorkspaceRoot = async (
   workspaceRoot: string,
   allowedRoots: string[],
 ): Promise<string> => {
+  if (allowedRoots.length === 0) throw new WorkspaceRootsNotConfiguredError();
   const realWorkspace = await realpath(workspaceRoot);
   for (const allowedRoot of allowedRoots) {
     const realAllowed = await realpath(allowedRoot).catch(() => null);

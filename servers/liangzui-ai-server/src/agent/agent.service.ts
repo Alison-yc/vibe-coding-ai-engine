@@ -609,10 +609,9 @@ export class AgentService implements OnModuleInit {
   }
 
   private allowedWorkspaceRoots(): string[] {
-    const configured = this.config.get('AGENT_WORKSPACE_ROOTS', { infer: true });
-    const sidecarDefault = this.config.get('AGENT_DEFAULT_WORKSPACE_ROOT', { infer: true });
-    return [configured, sidecarDefault]
-      .flatMap((value) => value.split(path.delimiter))
+    return this.config
+      .get('AGENT_WORKSPACE_ROOTS', { infer: true })
+      .split(path.delimiter)
       .map((root) => root.trim())
       .filter(Boolean);
   }
