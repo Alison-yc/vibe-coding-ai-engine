@@ -12,6 +12,10 @@ const tauriDirectory = path.join(appDirectory, 'src-tauri');
 const serverDirectory = path.join(repositoryRoot, 'servers/liangzui-ai-server');
 const serverBundleDirectory = path.join(tauriDirectory, 'sidecar/server');
 const binariesDirectory = path.join(tauriDirectory, 'binaries');
+const npmPackageDirectory = path.join(
+  execFileSync('npm', ['root', '--global'], { encoding: 'utf8' }).trim(),
+  'npm',
+);
 
 const runPnpm = (args) => {
   const pnpmCli = process.env.npm_execpath;
@@ -46,6 +50,10 @@ runPnpm([
 await cp(path.join(serverDirectory, 'dist'), path.join(serverBundleDirectory, 'dist'), {
   recursive: true,
 });
+await cp(npmPackageDirectory, path.join(serverBundleDirectory, 'node_modules/npm'), {
+  recursive: true,
+  dereference: true,
+});
 
 await Promise.all(
   [
@@ -73,6 +81,7 @@ const requiredFiles = [
   path.join(serverBundleDirectory, 'dist/main.js'),
   path.join(serverBundleDirectory, 'drizzle/meta/_journal.json'),
   path.join(serverBundleDirectory, 'mcp.json.example'),
+  path.join(serverBundleDirectory, 'node_modules/npm/bin/npx-cli.js'),
   path.join(serverBundleDirectory, 'node_modules/@ai-engine/contracts/dist/index.js'),
 ];
 await Promise.all(requiredFiles.map((file) => access(file)));

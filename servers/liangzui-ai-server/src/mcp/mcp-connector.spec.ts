@@ -1,3 +1,5 @@
+import path from 'node:path';
+import process from 'node:process';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SdkMcpConnector, wrapSdkClient } from './mcp-connector';
 
@@ -8,6 +10,7 @@ const sdk = vi.hoisted(() => ({
   })),
   callTool: vi.fn(async () => ({ ok: true })),
   close: vi.fn(async () => undefined),
+  stdioParameters: undefined as unknown,
 }));
 
 vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
@@ -20,7 +23,12 @@ vi.mock('@modelcontextprotocol/sdk/client/index.js', () => ({
 }));
 
 vi.mock('@modelcontextprotocol/sdk/client/stdio.js', () => ({
-  StdioClientTransport: class StdioClientTransport {},
+  getDefaultEnvironment: () => ({ HOME: '/tmp/home', PATH: '/usr/bin' }),
+  StdioClientTransport: class StdioClientTransport {
+    constructor(parameters: unknown) {
+      sdk.stdioParameters = parameters;
+    }
+  },
 }));
 
 vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
@@ -29,6 +37,7 @@ vi.mock('@modelcontextprotocol/sdk/client/streamableHttp.js', () => ({
 
 afterEach(() => {
   vi.clearAllMocks();
+  sdk.stdioParameters = undefined;
 });
 
 describe('SdkMcpConnector', () => {
@@ -40,6 +49,15 @@ describe('SdkMcpConnector', () => {
 
   it('stdio 与 http 连接后能列出工具并调用', async () => {
     const stdio = await new SdkMcpConnector().connectStdio('npx', ['-y', 'demo']);
+    expect(sdk.stdioParameters).toEqual({
+      command: 'npx',
+      args: ['-y', 'demo'],
+      env: {
+        HOME: '/tmp/home',
+        PATH: `${path.dirname(process.execPath)}${path.delimiter}/usr/bin`,
+      },
+      stderr: 'inherit',
+    });
     await expect(stdio.listTools()).resolves.toEqual([
       { name: 'ping', description: 'ping', inputSchema: { type: 'object' } },
     ]);

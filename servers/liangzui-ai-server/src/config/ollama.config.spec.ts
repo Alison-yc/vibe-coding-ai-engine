@@ -35,12 +35,14 @@ describe('Ollama 配置', () => {
         SIDECAR_MODE: 'true',
         SIDECAR_PARENT_PID: '1234',
         DATABASE_MIGRATIONS_PATH: '/tmp/migrations',
+        MCP_NPX_CLI_PATH: '/app/node_modules/npm/bin/npx-cli.js',
       }),
     ).toMatchObject({
       SERVER_PORT: 43121,
       SIDECAR_MODE: true,
       SIDECAR_PARENT_PID: 1234,
       DATABASE_MIGRATIONS_PATH: '/tmp/migrations',
+      MCP_NPX_CLI_PATH: '/app/node_modules/npm/bin/npx-cli.js',
     });
     expect(validateEnvironment({ SERVER_PORT: '0', SIDECAR_MODE: 'true' }).SERVER_PORT).toBe(0);
     expect(() => validateEnvironment({ SERVER_PORT: '70000' })).toThrow();

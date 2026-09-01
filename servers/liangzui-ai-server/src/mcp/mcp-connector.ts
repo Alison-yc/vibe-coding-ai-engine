@@ -1,3 +1,6 @@
+import path from 'node:path';
+import process from 'node:process';
+
 export type McpRemoteToolDefinition = {
   name: string;
   description: string;
@@ -72,8 +75,11 @@ export const wrapSdkClient = (
 export class SdkMcpConnector implements McpConnector {
   async connectStdio(command: string, args: string[]): Promise<McpConnection> {
     const { Client } = await import('@modelcontextprotocol/sdk/client/index.js');
-    const { StdioClientTransport } = await import('@modelcontextprotocol/sdk/client/stdio.js');
-    const transport = new StdioClientTransport({ command, args, stderr: 'inherit' });
+    const { getDefaultEnvironment, StdioClientTransport } =
+      await import('@modelcontextprotocol/sdk/client/stdio.js');
+    const env = getDefaultEnvironment();
+    env.PATH = [path.dirname(process.execPath), env.PATH].filter(Boolean).join(path.delimiter);
+    const transport = new StdioClientTransport({ command, args, env, stderr: 'inherit' });
     const client = new Client({ name: 'ai-engine', version: '0.0.1' });
     await client.connect(transport);
     return wrapSdkClient(

@@ -26,6 +26,7 @@ const EnvironmentSchema = z.object({
   AGENT_WORKSPACE_ROOTS: z.string().default(''),
   AGENT_MAX_STEPS: z.coerce.number().int().min(2).max(12).default(6),
   MCP_CONFIG_PATH: z.string().min(1).default('mcp.json'),
+  MCP_NPX_CLI_PATH: z.string().min(1).optional(),
   SIDECAR_MODE: z
     .string()
     .optional()

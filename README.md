@@ -178,6 +178,13 @@ pnpm tauri:build
 `sidecar.env` 写到 `~/Library/Application Support/com.liangzui.liangzui-ai-app/`，
 日志在 `~/Library/Logs/com.liangzui.liangzui-ai-app/sidecar.log`。
 
+调试安装版配置时可直接打开该目录，修改 `sidecar.env` 或 `mcp.json` 后需完全退出并
+重新打开应用：
+
+```bash
+open "$HOME/Library/Application Support/com.liangzui.liangzui-ai-app/"
+```
+
 Sidecar 使用动态端口；启动失败或数据库未就绪时会显示连接引导，可在引导页或设置页
 把地址改成实际的 `http://127.0.0.1:<端口>`。仅允许 localhost / 127.0.0.1。
 

@@ -1,6 +1,7 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import process from 'node:process';
 import { ConfigService } from '@nestjs/config';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { validateEnvironment } from '../config/ollama.config';
@@ -41,7 +42,9 @@ const connection = (label: string): McpConnection & { triggerExit: () => void } 
 class FakeConnector implements McpConnector {
   failStdio = false;
   last?: ReturnType<typeof connection>;
-  async connectStdio(command: string): Promise<McpConnection> {
+  stdioCalls: Array<{ command: string; args: string[] }> = [];
+  async connectStdio(command: string, args: string[]): Promise<McpConnection> {
+    this.stdioCalls.push({ command, args });
     if (this.failStdio || command === 'missing') throw new Error('command not found');
     this.last = connection(command);
     return this.last;
@@ -52,7 +55,7 @@ class FakeConnector implements McpConnector {
   }
 }
 
-const createManager = async (connector = new FakeConnector()) => {
+const createManager = async (connector = new FakeConnector(), bundledNpxCliPath?: string) => {
   const file = path.join(dir, 'mcp.json');
   await saveMcpConfig(file, {
     mcpServers: {
@@ -86,7 +89,13 @@ const createManager = async (connector = new FakeConnector()) => {
     },
   });
   const manager = new McpClientManager(
-    new ConfigService(validateEnvironment({ NODE_ENV: 'test', MCP_CONFIG_PATH: file })),
+    new ConfigService(
+      validateEnvironment({
+        NODE_ENV: 'test',
+        MCP_CONFIG_PATH: file,
+        MCP_NPX_CLI_PATH: bundledNpxCliPath,
+      }),
+    ),
     connector,
   );
   await manager.bootstrap();
@@ -103,6 +112,20 @@ afterEach(async () => {
 });
 
 describe('McpClientManager', () => {
+  it('sidecar 使用内置 Node 启动随包分发的 npx CLI', async () => {
+    const connector = new FakeConnector();
+    await createManager(connector, '/bundle/node_modules/npm/bin/npx-cli.js');
+    expect(connector.stdioCalls[0]).toEqual({
+      command: process.execPath,
+      args: [
+        '/bundle/node_modules/npm/bin/npx-cli.js',
+        '-y',
+        '@modelcontextprotocol/server-filesystem',
+        '/tmp',
+      ],
+    });
+  });
+
   it('单个失败的 server 不影响其他连接，且未勾选工具不会暴露', async () => {
     const manager = await createManager();
     const servers = manager.listServers();

@@ -171,6 +171,10 @@ pub fn start(app: &AppHandle, state: &SidecarState) -> Result<(), SidecarError> 
         .env("SIDECAR_MODE", "true")
         .env("SIDECAR_PARENT_PID", std::process::id().to_string())
         .env("DATABASE_MIGRATIONS_PATH", server_dir.join("drizzle"))
+        .env(
+            "MCP_NPX_CLI_PATH",
+            server_dir.join("node_modules/npm/bin/npx-cli.js"),
+        )
         .env("MCP_CONFIG_PATH", &mcp_path);
     let (mut receiver, child) = command
         .spawn()

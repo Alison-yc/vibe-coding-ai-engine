@@ -6,6 +6,7 @@ import {
   type OnModuleInit,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import process from 'node:process';
 import {
   type AgentMode,
   type AgentModelTool,
@@ -56,6 +57,15 @@ const wrapAdapter = (adapter: McpToolAdapter): RegisteredTool => ({
   execute: async (input, context, prepared) =>
     adapter.toModelOutput(await adapter.execute(adapter.input.parse(input), context, prepared)),
 });
+
+export const resolveStdioInvocation = (
+  command: string,
+  args: string[],
+  bundledNpxCliPath?: string,
+): { command: string; args: string[] } =>
+  command === 'npx' && bundledNpxCliPath
+    ? { command: process.execPath, args: [bundledNpxCliPath, ...args] }
+    : { command, args };
 
 @Injectable()
 export class McpClientManager implements OnModuleInit, OnModuleDestroy, McpToolCatalog {
@@ -199,10 +209,17 @@ export class McpClientManager implements OnModuleInit, OnModuleDestroy, McpToolC
     if (this.shuttingDown) return;
     const runtime = this.requireRuntime(name);
     try {
-      const connection =
-        runtime.config.type === 'stdio'
-          ? await this.connector.connectStdio(runtime.config.command, runtime.config.args)
-          : await this.connector.connectHttp(runtime.config.url);
+      let connection: McpConnection;
+      if (runtime.config.type === 'stdio') {
+        const invocation = resolveStdioInvocation(
+          runtime.config.command,
+          runtime.config.args,
+          this.config.get('MCP_NPX_CLI_PATH', { infer: true }),
+        );
+        connection = await this.connector.connectStdio(invocation.command, invocation.args);
+      } else {
+        connection = await this.connector.connectHttp(runtime.config.url);
+      }
       if (this.shuttingDown) {
         await connection.close();
         return;
