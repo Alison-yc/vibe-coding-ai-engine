@@ -4,5 +4,10 @@
     "noEmit": true,
     "rootDir": "."
   },
-  "include": ["model-baseline/**/*.ts", "rag-eval/**/*.ts", "gen-tests/**/*.ts"]
+  "include": [
+    "model-baseline/**/*.ts",
+    "rag-eval/**/*.ts",
+    "gen-tests/**/*.ts",
+    "tauri-build/**/*.ts"
+  ]
 }

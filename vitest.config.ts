@@ -16,6 +16,7 @@ export default defineConfig({
       'servers/*/vitest.config.ts',
       'scripts/rag-eval/vitest.config.ts',
       'scripts/gen-tests/vitest.config.ts',
+      'scripts/tauri-build/vitest.config.ts',
     ],
 
     coverage: {

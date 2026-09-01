@@ -46,7 +46,7 @@
     "sec:secrets": "gitleaks detect --source . --no-banner --redact --verbose",
     "sec:all": "pnpm sec:sast && pnpm sec:sca && pnpm sec:secrets",
     "tauri": "pnpm --filter liangzui-ai-app tauri",
-    "tauri:build": "pnpm --filter liangzui-ai-app tauri build",
+    "tauri:build": "tsx scripts/tauri-build/index.ts",
     "rust:check": "pnpm --filter liangzui-ai-app prepare:sidecar && cargo fmt --all --manifest-path clients/liangzui-ai-app/src-tauri/Cargo.toml -- --check && cargo clippy --manifest-path clients/liangzui-ai-app/src-tauri/Cargo.toml --all-targets -- -D warnings && cargo test --manifest-path clients/liangzui-ai-app/src-tauri/Cargo.toml",
     "ci:local": "pnpm format:check && pnpm lint && pnpm test:cov && pnpm sec:sast && pnpm sec:sca && pnpm build && pnpm rust:check",
     "ci:local:full": "pnpm dev:db && pnpm ci:local && pnpm test:integration",

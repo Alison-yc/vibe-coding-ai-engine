@@ -148,7 +148,7 @@ pnpm rag-eval          # RAG 效果评测
 pnpm sec:all           # 全部安全扫描
 pnpm db:studio         # 可视化查看数据库
 pnpm build             # 编译各 workspace，不生成桌面安装包
-pnpm tauri:build       # 打包 macOS app 与 dmg
+pnpm tauri:build       # 打包 macOS app 与 dmg，自动附加构建版本
 ```
 
 端口占用一览：Ollama `11434`、Postgres `5432`、NestJS `3000`、Web `5173`、Tauri `1420`。
@@ -167,6 +167,10 @@ pnpm db:migrate
 # 确认 Ollama 已在 11434 运行，并已拉取 qwen3.5:2b / nomic-embed-text
 pnpm tauri:build
 ```
+
+本地构建版本格式为 `0.1.<UTC年月日时分秒>`，因此连续构建的 dmg 文件名可直接区分。
+需要指定正式版本时使用 `AI_ENGINE_APP_VERSION=0.2.0 pnpm tauri:build`；GitHub 推送
+`vX.Y.Z` 标签触发 Release 时会自动采用 `X.Y.Z`。
 
 构建产物位于：
 
