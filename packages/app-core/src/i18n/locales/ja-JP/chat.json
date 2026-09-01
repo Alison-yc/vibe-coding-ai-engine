@@ -71,6 +71,9 @@
   "reasoning": {
     "summary": "思考過程"
   },
+  "citation": {
+    "summary": "参照元（{{count}}）"
+  },
   "tool": {
     "summary": "ツール {{name}} · {{state}}",
     "viewInput": "引数を表示",

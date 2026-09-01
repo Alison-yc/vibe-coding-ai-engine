@@ -71,6 +71,9 @@
   "reasoning": {
     "summary": "思考过程"
   },
+  "citation": {
+    "summary": "参考来源（{{count}}）"
+  },
   "tool": {
     "summary": "工具 {{name}} · {{state}}",
     "viewInput": "查看参数",

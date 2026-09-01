@@ -93,6 +93,7 @@ describe('MessageParts', () => {
                   chunkId: '00000000-0000-4000-8000-000000000002',
                   documentName: 'a.md',
                   text: '原文片段',
+                  score: 0.413,
                 },
               ],
             },
@@ -104,7 +105,9 @@ describe('MessageParts', () => {
     expect(html).toContain('Reasoning');
     expect(html).toContain('read_file');
     expect(html).toContain('Completed');
+    expect(html).toContain('Sources (1)');
     expect(html).toContain('a.md');
     expect(html).toContain('原文片段');
+    expect(html).not.toContain('0.413');
   });
 });

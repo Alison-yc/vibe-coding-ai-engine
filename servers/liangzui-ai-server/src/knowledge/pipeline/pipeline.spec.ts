@@ -117,6 +117,8 @@ describe('assembleRagPrompt', () => {
     expect(prompt).not.toContain(jailbreak);
     expect(prompt.match(/>>>/gu)).toHaveLength(1);
     expect(prompt).toContain('＞＞＞');
+    expect(prompt).toContain('不要让用户选择参考资料');
+    expect(prompt).toContain('直接回答用户问题');
     expect(prompt.indexOf('[用户问题]')).toBeGreaterThan(prompt.indexOf('>>>'));
   });
 });

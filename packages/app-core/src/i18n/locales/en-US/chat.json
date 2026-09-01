@@ -71,6 +71,9 @@
   "reasoning": {
     "summary": "Reasoning"
   },
+  "citation": {
+    "summary": "Sources ({{count}})"
+  },
   "tool": {
     "summary": "Tool {{name}} · {{state}}",
     "viewInput": "View input",

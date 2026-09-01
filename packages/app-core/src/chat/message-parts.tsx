@@ -97,25 +97,26 @@ export const ToolCard = ({
   );
 };
 
-export const CitationList = ({ chunks }: { chunks: CitationChunk[] }) => (
-  <ul className="flex min-w-0 flex-col gap-2">
-    {chunks.map((chunk, index) => (
-      <li key={chunk.chunkId}>
-        <details className="bg-citation-bg/70 border-citation-border rounded-lg border px-3 py-2.5 text-sm">
-          <summary className="marker:text-muted-foreground cursor-pointer font-medium">
-            [{index + 1}] {chunk.documentName}
-            {chunk.score != null ? (
-              <span className="text-muted-foreground ml-2 font-mono text-xs font-normal">
-                {chunk.score.toFixed(3)}
-              </span>
-            ) : null}
-          </summary>
-          <p className="text-muted-foreground mt-2 text-xs whitespace-pre-wrap">{chunk.text}</p>
-        </details>
-      </li>
-    ))}
-  </ul>
-);
+export const CitationList = ({ chunks }: { chunks: CitationChunk[] }) => {
+  const { t } = useChatTranslation();
+  return (
+    <details className="bg-citation-bg/50 border-citation-border min-w-0 rounded-lg border px-3 py-2.5 text-sm">
+      <summary className="marker:text-muted-foreground cursor-pointer font-medium">
+        {t('citation.summary', { count: chunks.length })}
+      </summary>
+      <ol className="border-citation-border mt-2 flex min-w-0 flex-col border-t">
+        {chunks.map((chunk, index) => (
+          <li className="border-citation-border border-b py-2 last:border-b-0" key={chunk.chunkId}>
+            <p className="text-xs font-medium">
+              [{index + 1}] {chunk.documentName}
+            </p>
+            <p className="text-muted-foreground mt-1 text-xs whitespace-pre-wrap">{chunk.text}</p>
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+};
 
 export const MessageParts = ({ parts }: { parts: MessagePart[] }) => (
   <div className="flex min-w-0 flex-col gap-2">
