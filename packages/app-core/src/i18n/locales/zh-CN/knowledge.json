@@ -1,0 +1,105 @@
+{
+  "list": {
+    "title": "知识库",
+    "description": "管理文档索引，并在详情页测试检索与试答。",
+    "loading": "正在加载知识库…",
+    "actions": {
+      "refresh": "刷新",
+      "load": "加载知识库"
+    },
+    "create": {
+      "title": "新建知识库",
+      "nameLabel": "名称",
+      "defaultName": "测试知识库",
+      "submit": "创建"
+    },
+    "empty": {
+      "title": "还没有知识库",
+      "description": "创建一个知识库，然后上传 txt、md 或 pdf 文档开始索引。"
+    },
+    "dataset": {
+      "documentCount_one": "{{count}} 个文档",
+      "documentCount_other": "{{count}} 个文档",
+      "chunkCount_one": "{{count}} 个切片",
+      "chunkCount_other": "{{count}} 个切片",
+      "openDetails": "点击进入详情 →",
+      "delete": "删除",
+      "confirmDelete": "确认删除",
+      "cancelDelete": "取消"
+    }
+  },
+  "errors": {
+    "load": "加载知识库失败",
+    "create": "创建知识库失败",
+    "delete": "删除知识库失败",
+    "index": "索引失败",
+    "upload": "上传失败"
+  },
+  "detail": {
+    "fallbackTitle": "知识库详情",
+    "missingId": "缺少知识库 id",
+    "description": "上传文档、预览切分，并在不经过 LLM 的情况下测试检索。",
+    "backToList": "知识库列表",
+    "refresh": "刷新",
+    "paste": {
+      "title": "粘贴文本",
+      "description": "直接粘贴 Markdown 或纯文本，立即进入索引流水线。",
+      "fileNameLabel": "文件名",
+      "contentLabel": "内容",
+      "contentPlaceholder": "粘贴要索引的文本…",
+      "submit": "索引粘贴内容"
+    },
+    "upload": {
+      "title": "上传文档",
+      "description": "支持 txt、md、pdf。上传后自动进入五阶段索引。",
+      "button": "上传文件",
+      "emptyHint": "未选择文件"
+    },
+    "documents": {
+      "title": "文档列表",
+      "empty": "还没有文档，请上传或粘贴内容。",
+      "remove": "删除",
+      "status": {
+        "pending": "等待索引",
+        "extracting": "提取中",
+        "cleaning": "清洗中",
+        "splitting": "切分中",
+        "embedding": "向量化",
+        "indexing": "写入索引",
+        "completed": "已完成",
+        "failed": "失败"
+      }
+    },
+    "preview": {
+      "title": "切分预览",
+      "description": "调整策略与参数，预览切片结果后再上传正式文档。",
+      "textPlaceholder": "输入一段文本用于预览切分…",
+      "strategyLabel": "策略",
+      "strategy": {
+        "recursive": "智能递归",
+        "fixed": "固定长度",
+        "markdown": "Markdown 标题"
+      },
+      "chunkSizeLabel": "切片大小",
+      "overlapLabel": "重叠长度",
+      "submit": "预览切分",
+      "chunkCount_one": "{{count}} 个切片",
+      "chunkCount_other": "{{count}} 个切片",
+      "empty": "点击“预览切分”查看结果"
+    },
+    "retrieve": {
+      "title": "检索测试",
+      "description": "只走向量检索，不调用 LLM。用于排查召回问题。",
+      "queryLabel": "查询",
+      "queryPlaceholder": "输入要检索的问题…",
+      "submit": "检索",
+      "answer": "试答",
+      "empty": "还没有检索结果。",
+      "table": {
+        "source": "来源",
+        "score": "分数",
+        "content": "内容"
+      }
+    }
+  }
+}

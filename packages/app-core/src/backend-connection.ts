@@ -1,0 +1,69 @@
+import { HealthResponseSchema, type HealthResponse } from '@ai-engine/contracts';
+import { API_BASE_URL_STORAGE_KEY, type Platform } from '@ai-engine/platform';
+
+export type BackendConnectionErrorCode =
+  'invalidUrl' | 'httpRequired' | 'hostNotAllowed' | 'urlPartsNotAllowed' | 'healthCheckFailed';
+
+export class BackendConnectionError extends Error {
+  constructor(
+    readonly code: BackendConnectionErrorCode,
+    message: string,
+    readonly status?: number,
+  ) {
+    super(message);
+    this.name = 'BackendConnectionError';
+  }
+}
+
+export const localizeBackendConnectionError = (
+  error: unknown,
+  translate: (key: string, options?: { status?: number }) => string,
+): string => {
+  if (error instanceof BackendConnectionError) {
+    return translate(`connectionErrors.${error.code}`, { status: error.status });
+  }
+  return error instanceof Error ? error.message : String(error);
+};
+
+export const normalizeApiBaseUrl = (value: string): string => {
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    throw new BackendConnectionError(
+      'invalidUrl',
+      '请输入有效的后端地址，例如 http://localhost:3000',
+    );
+  }
+  if (url.protocol !== 'http:') {
+    throw new BackendConnectionError('httpRequired', '本地后端地址必须使用 http 协议');
+  }
+  if (url.hostname !== 'localhost' && url.hostname !== '127.0.0.1') {
+    throw new BackendConnectionError('hostNotAllowed', '桌面端仅允许连接 localhost 或 127.0.0.1');
+  }
+  if (url.username || url.password || url.search || url.hash || url.pathname !== '/') {
+    throw new BackendConnectionError('urlPartsNotAllowed', '后端地址只能包含协议、主机和端口');
+  }
+  return url.origin;
+};
+
+export const checkBackendConnection = async (baseUrl: string): Promise<HealthResponse> => {
+  const normalized = normalizeApiBaseUrl(baseUrl);
+  const response = await fetch(`${normalized}/health`, {
+    signal: AbortSignal.timeout(5_000),
+  });
+  if (!response.ok) {
+    throw new BackendConnectionError(
+      'healthCheckFailed',
+      `后端健康检查失败：HTTP ${response.status}`,
+      response.status,
+    );
+  }
+  return HealthResponseSchema.parse(await response.json());
+};
+
+export const persistApiBaseUrl = async (platform: Platform, baseUrl: string): Promise<string> => {
+  const normalized = normalizeApiBaseUrl(baseUrl);
+  await platform.kv.set(API_BASE_URL_STORAGE_KEY, normalized);
+  return normalized;
+};

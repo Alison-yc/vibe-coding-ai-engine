@@ -1,0 +1,110 @@
+{
+  "sidebar": {
+    "title": "对话",
+    "new": "新建",
+    "loadError": "无法加载会话列表",
+    "empty": "还没有会话"
+  },
+  "mobile": {
+    "closeSidebar": "关闭会话列表",
+    "openSidebar": "会话列表"
+  },
+  "header": {
+    "noSession": "选择或新建会话"
+  },
+  "model": {
+    "label": "对话模型",
+    "chatOnlyOption": "{{modelId}}（仅聊天）",
+    "notInstalledOption": "{{modelId}}（未安装）",
+    "chatOnlyNotInstalledOption": "{{modelId}}（仅聊天，未安装）",
+    "untestedNotice": "该模型尚未经过工具能力测评，仅支持普通对话与知识库问答。"
+  },
+  "knowledge": {
+    "label": "知识库挂载",
+    "none": "不挂载",
+    "skippedForFileAccess": "文件访问已开启：本轮不会检索已挂载的知识库。"
+  },
+  "fileAccess": {
+    "label": "文件访问",
+    "workspaceLabel": "工作区目录",
+    "workspacePlaceholder": "输入服务端可访问的绝对路径",
+    "chooseDirectory": "选择目录",
+    "modeLabel": "文件模式",
+    "mode": {
+      "edit": "编辑",
+      "readOnly": "只读"
+    }
+  },
+  "empty": {
+    "persistent": "从左侧新建或选择一个会话。",
+    "mobile": "点击上方「新建」或打开会话列表。",
+    "messages": "还没有消息，在下方输入开始对话。"
+  },
+  "composer": {
+    "placeholder": "输入消息，Enter 发送，Shift+Enter 换行",
+    "noSessionPlaceholder": "请先新建会话",
+    "stop": "停止生成",
+    "send": "发送"
+  },
+  "approval": {
+    "title": "需要工具调用审批",
+    "summary": "工具 {{tool}} · {{resource}}",
+    "noWrite": "该调用不会写入内容，但需要你的确认。",
+    "deny": "拒绝",
+    "allowOnce": "允许一次",
+    "allowSession": "本会话始终允许"
+  },
+  "message": {
+    "role": {
+      "user": "我",
+      "assistant": "助手"
+    },
+    "interrupted": "已停止"
+  },
+  "session": {
+    "save": "保存",
+    "cancel": "取消",
+    "rename": "重命名",
+    "confirmDelete": "确认",
+    "delete": "删除"
+  },
+  "reasoning": {
+    "summary": "思考过程"
+  },
+  "citation": {
+    "summary": "参考来源（{{count}}）"
+  },
+  "tool": {
+    "summary": "工具 {{name}} · {{state}}",
+    "viewInput": "查看参数",
+    "state": {
+      "pending": "等待审批",
+      "running": "运行中",
+      "completed": "已完成",
+      "error": "失败"
+    }
+  },
+  "theme": {
+    "appearance": "外观",
+    "palette": "主题色",
+    "mode": {
+      "light": "亮色",
+      "dark": "暗色",
+      "system": "跟随系统"
+    },
+    "paletteName": {
+      "neutral": "默认",
+      "blue": "蓝",
+      "green": "绿",
+      "purple": "紫"
+    }
+  },
+  "errors": {
+    "selectSession": "请先选择会话",
+    "approvalExpired": "审批上下文已失效",
+    "modelSwitch": "切换模型失败：{{message}}",
+    "generationFailed": "生成失败",
+    "streamMissingBody": "流式响应不可用",
+    "generationHttp": "无法开始生成：HTTP {{status}}"
+  }
+}

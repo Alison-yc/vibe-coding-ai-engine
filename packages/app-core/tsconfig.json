@@ -1,0 +1,10 @@
+{
+  "extends": "@ai-engine/tsconfig/react.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "tsconfig.tsbuildinfo"
+  },
+  "include": ["src/**/*.ts", "src/**/*.tsx", "src/**/*.json"],
+  "exclude": ["**/*.spec.ts", "**/*.spec.tsx", "**/*.test.ts"]
+}

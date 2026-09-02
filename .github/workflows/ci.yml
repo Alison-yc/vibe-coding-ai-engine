@@ -1,0 +1,264 @@
+name: CI
+
+on:
+  push:
+    branches: [main, "feature/**", "feat/**", "fix/**"]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+# 同一分支的新 push 取消旧的运行，省额度
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # CI 上没有 Ollama 和模型。所有测试都必须通过 FakeLlmGateway 运行，
+  # 需要真实模型的验证（E2E 全流程、基线测评、RAG 评测）只在本地跑。
+  # 见 .plan/17-ci-cd-pipeline.md。
+  NODE_VERSION: "24"
+
+jobs:
+  # ── 变更检测：改文档不该触发全量 CI ──────────────────────────
+  changes:
+    name: 变更检测
+    runs-on: ubuntu-latest
+    outputs:
+      code: ${{ steps.filter.outputs.code }}
+      rust: ${{ steps.filter.outputs.rust }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+    steps:
+      - uses: actions/checkout@v5
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            code:
+              - 'packages/**'
+              - 'servers/**'
+              - 'clients/**'
+              - 'frontend/**'
+              - 'scripts/**'
+              - 'e2e/**'
+              - 'tests/**'
+              - 'docker/**'
+              - '.github/**'
+              - '.semgrep.yml'
+              - 'package.json'
+              - 'pnpm-lock.yaml'
+              - 'pnpm-workspace.yaml'
+              - 'tsconfig.base.json'
+              - 'eslint.config.js'
+              - 'vitest.config.ts'
+              - 'playwright.config.ts'
+              - 'turbo.json'
+              - 'osv-scanner.toml'
+              - '.semgrepignore'
+            rust:
+              - 'clients/**/src-tauri/**'
+              - 'clients/liangzui-ai-app/scripts/prepare-sidecar.mjs'
+              - 'clients/liangzui-ai-app/package.json'
+              - '.github/workflows/ci.yml'
+            frontend:
+              - 'frontend/**'
+              - 'packages/ui/**'
+              - 'packages/app-core/**'
+              - 'e2e/**'
+              - 'playwright.config.ts'
+
+  # ── ① 快速门禁（最先跑，失败则后续不执行） ────────────────────
+  # 只改文档 / .plan 时只跑 format:check，不进 lint/typecheck/测试/构建。
+  quality:
+    name: 快速门禁
+    needs: [changes]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0 # commitlint 需要历史
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - name: 安装依赖
+        run: pnpm install --frozen-lockfile
+
+      - name: turbo 缓存
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ github.ref_name }}-
+            turbo-${{ runner.os }}-
+
+      - name: 格式检查
+        run: pnpm format:check
+
+      # type-aware ESLint 依赖 workspace 包的 dist/*.d.ts。
+      # typecheck 的 dependsOn 是 ^build，必须先跑，否则干净 checkout 会把未解析模块打成 error type。
+      - name: 类型检查
+        if: needs.changes.outputs.code == 'true'
+        run: pnpm typecheck
+
+      - name: Lint（含架构护栏）
+        if: needs.changes.outputs.code == 'true'
+        run: pnpm lint
+
+      - name: 提交信息检查
+        if: github.event_name == 'pull_request'
+        run: |
+          pnpm commitlint \
+            --from ${{ github.event.pull_request.base.sha }} \
+            --to ${{ github.event.pull_request.head.sha }} \
+            --verbose
+
+  # ── ② 测试与覆盖率门禁（17-A 不接数据库；Postgres 在 17-B / CR-06）
+  test:
+    name: 测试与覆盖率
+    needs: [changes, quality]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: turbo 缓存
+        uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ github.ref_name }}-
+
+      - name: 测试与覆盖率门禁
+        run: pnpm test:cov
+
+      - name: 上传覆盖率报告
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage/
+          retention-days: 7
+
+  # ── ②b Postgres 集成测试（17-B） ────────────────────────────
+  integration:
+    name: 数据库集成测试
+    needs: [changes, quality]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg17
+        env:
+          POSTGRES_USER: ai_engine
+          POSTGRES_PASSWORD: ai_engine_dev_only
+          POSTGRES_DB: ai_engine
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U ai_engine -d ai_engine"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    env:
+      DATABASE_URL: postgresql://ai_engine:ai_engine_dev_only@localhost:5432/ai_engine
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: 构建契约包
+        run: pnpm --filter @ai-engine/contracts build
+      - name: 应用迁移
+        run: pnpm db:migrate
+      - name: 集成测试
+        run: pnpm test:integration
+
+  # ── ③ 构建 ─────────────────────────────────────────────────
+  build:
+    name: 构建
+    needs: [changes, quality]
+    if: needs.changes.outputs.code == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - uses: actions/cache@v4
+        with:
+          path: .turbo
+          key: turbo-${{ runner.os }}-${{ github.ref_name }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            turbo-${{ runner.os }}-${{ github.ref_name }}-
+      - name: 构建全部包
+        run: pnpm build
+
+      - name: 安装 Playwright Chromium
+        if: needs.changes.outputs.frontend == 'true'
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Web smoke
+        if: needs.changes.outputs.frontend == 'true'
+        env:
+          CI: true
+        run: pnpm exec playwright test e2e/web-smoke.spec.ts e2e/agent.spec.ts e2e/mcp.spec.ts
+
+  # ── ④ Rust 检查 ────────────────────────────────────────────
+  rust:
+    name: Rust 检查
+    needs: [changes, quality]
+    if: needs.changes.outputs.rust == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      # Rust 编译很慢，没缓存每次要几分钟
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: clients/liangzui-ai-app/src-tauri
+
+      # Tauri 在 Linux 上的系统依赖
+      - name: 安装系统依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: 准备 Sidecar
+        run: pnpm --filter liangzui-ai-app prepare:sidecar
+
+      - name: 格式检查
+        working-directory: clients/liangzui-ai-app/src-tauri
+        run: cargo fmt --all --check
+
+      - name: Clippy
+        working-directory: clients/liangzui-ai-app/src-tauri
+        run: cargo clippy --all-targets -- -D warnings

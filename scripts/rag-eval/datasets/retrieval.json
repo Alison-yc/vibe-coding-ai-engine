@@ -1,0 +1,132 @@
+[
+  {
+    "id": "ret-01",
+    "question": "AI-Engine 项目的学习目标是什么？",
+    "expectedDocuments": ["01-project-overview.md"]
+  },
+  {
+    "id": "ret-02",
+    "question": "项目提供哪两种客户端外壳？",
+    "expectedDocuments": ["01-project-overview.md"]
+  },
+  {
+    "id": "ret-03",
+    "question": "项目是否依赖云端模型 API？",
+    "expectedDocuments": ["01-project-overview.md"]
+  },
+  {
+    "id": "ret-04",
+    "question": "前后端共享契约的唯一来源是哪个包？",
+    "expectedDocuments": ["02-architecture.md"]
+  },
+  {
+    "id": "ret-05",
+    "question": "Web 和 Tauri 的平台差异由哪一层适配？",
+    "expectedDocuments": ["02-architecture.md"]
+  },
+  {
+    "id": "ret-06",
+    "question": "NestJS 服务承担哪些核心职责？",
+    "expectedDocuments": ["02-architecture.md"]
+  },
+  { "id": "ret-07", "question": "默认对话模型叫什么？", "expectedDocuments": ["03-models.md"] },
+  {
+    "id": "ret-08",
+    "question": "复杂推理使用哪个备选模型？",
+    "expectedDocuments": ["03-models.md"]
+  },
+  { "id": "ret-09", "question": "向量模型输出多少维？", "expectedDocuments": ["03-models.md"] },
+  {
+    "id": "ret-10",
+    "question": "Ollama 与 NestJS 分别使用什么端口？",
+    "expectedDocuments": ["04-ports.md"]
+  },
+  {
+    "id": "ret-11",
+    "question": "Web 和 Tauri 的开发端口分别是多少？",
+    "expectedDocuments": ["04-ports.md"]
+  },
+  {
+    "id": "ret-12",
+    "question": "PostgreSQL pgvector 使用哪个端口？",
+    "expectedDocuments": ["04-ports.md"]
+  },
+  { "id": "ret-13", "question": "文档索引的五个阶段是什么？", "expectedDocuments": ["05-rag.md"] },
+  {
+    "id": "ret-14",
+    "question": "默认文档块大小和重叠长度是多少？",
+    "expectedDocuments": ["05-rag.md"]
+  },
+  {
+    "id": "ret-15",
+    "question": "向量搜索后还要经过哪些处理？",
+    "expectedDocuments": ["05-rag.md"]
+  },
+  {
+    "id": "ret-16",
+    "question": "文件路径如何防止符号链接逃逸？",
+    "expectedDocuments": ["06-security.md"]
+  },
+  {
+    "id": "ret-17",
+    "question": "项目如何防止 SQL 注入？",
+    "expectedDocuments": ["06-security.md"]
+  },
+  {
+    "id": "ret-18",
+    "question": "为什么检索文档不能当成系统指令？",
+    "expectedDocuments": ["06-security.md"]
+  },
+  { "id": "ret-19", "question": "工作流节点怎样注册？", "expectedDocuments": ["07-workflow.md"] },
+  {
+    "id": "ret-20",
+    "question": "条件节点为什么由代码判断分支？",
+    "expectedDocuments": ["07-workflow.md"]
+  },
+  {
+    "id": "ret-21",
+    "question": "code 节点使用什么安全沙箱？",
+    "expectedDocuments": ["07-workflow.md"]
+  },
+  {
+    "id": "ret-22",
+    "question": "Agent 工具参数用什么校验？",
+    "expectedDocuments": ["08-agent.md"]
+  },
+  {
+    "id": "ret-23",
+    "question": "默认模型最多装配多少个工具？",
+    "expectedDocuments": ["08-agent.md"]
+  },
+  {
+    "id": "ret-24",
+    "question": "高风险工具操作需要什么审批？",
+    "expectedDocuments": ["08-agent.md"]
+  },
+  {
+    "id": "ret-25",
+    "question": "服务端结构化日志使用什么库？",
+    "expectedDocuments": ["09-observability.md"]
+  },
+  {
+    "id": "ret-26",
+    "question": "traceId 如何贯穿调用链？",
+    "expectedDocuments": ["09-observability.md"]
+  },
+  {
+    "id": "ret-27",
+    "question": "LLM 调用记录哪些性能指标？",
+    "expectedDocuments": ["09-observability.md"]
+  },
+  {
+    "id": "ret-28",
+    "question": "提交前本地完整检查命令是什么？",
+    "expectedDocuments": ["10-delivery.md"]
+  },
+  {
+    "id": "ret-29",
+    "question": "真实模型为什么不进入 CI 单元测试？",
+    "expectedDocuments": ["10-delivery.md"]
+  },
+  { "id": "ret-30", "question": "提交信息采用什么规范？", "expectedDocuments": ["10-delivery.md"] }
+]

@@ -1,0 +1,53 @@
+---
+description: Rust 与 Tauri v2 规范：命令边界、错误处理、权限能力与本地 SQLite 职责
+globs: "**/src-tauri/**/*.rs"
+alwaysApply: false
+---
+
+# Rust / Tauri 规范
+
+## Rust 层只做这四件事
+
+1. 原生能力：文件选择对话框、系统托盘、全局快捷键、窗口管理。
+2. 本地 SQLite：UI 偏好、主题、最近打开的工作区、服务端地址配置。
+3. Sidecar 进程管理（后期阶段）：启动/停止 NestJS 二进制。
+4. 把上述能力通过 `#[tauri::command]` 暴露给前端。
+
+**不做**：Agent 的文件读写、LLM 调用、向量检索、工作流执行。这些全在 NestJS 侧。Rust 侧的 SQLite 是 UI 状态缓存，**不是业务数据的真相源**。
+
+## 命令签名与错误
+
+```rust
+// ❌ BAD —— panic 会直接崩溃整个 webview，且前端拿不到原因
+#[tauri::command]
+pub fn read_config(path: &str) -> String {
+    std::fs::read_to_string(path).unwrap()
+}
+
+// ✅ GOOD —— 错误可序列化回前端
+#[tauri::command]
+pub async fn read_config(path: String) -> Result<String, AppError> {
+    tokio::fs::read_to_string(&path)
+        .await
+        .map_err(|e| AppError::Io { path, source: e.to_string() })
+}
+```
+
+- 命令一律返回 `Result<T, AppError>`，`AppError` 用 `thiserror` 定义并 `impl serde::Serialize`。
+- 禁止 `unwrap()` / `expect()` / `panic!()` 出现在命令路径上。
+- 有 IO 的命令写成 `async fn`，不要在命令里阻塞主线程。
+- 命令按领域拆到 `src/commands/<domain>.rs`，`lib.rs` 只做注册。
+
+## 权限能力（capabilities）最小化
+
+`src-tauri/capabilities/default.json` 里只声明真正用到的权限。新增插件时同步补权限声明，不要为了省事开通配。当前 `security.csp` 是 `null`，打包正式版前必须收紧为显式 CSP，允许的连接目标仅限已配置的后端地址与 Ollama。
+
+## 前端调用约定
+
+`invoke` 调用不散落在业务代码里，统一封装在 `packages/platform` 的 tauri 实现中，业务层只依赖 platform 接口。这样 Web 端才能用同一套业务代码换成 HTTP 实现。
+
+## 构建
+
+- `cargo fmt` 与 `cargo clippy -- -D warnings` 是提交前的硬门禁。
+- `Cargo.lock` 必须提交。
+- `src-tauri/target/` 与 `src-tauri/gen/` 不入库。

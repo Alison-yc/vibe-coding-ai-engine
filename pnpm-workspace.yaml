@@ -1,10 +1,26 @@
 packages:
-  - 'packages/*'
-  - 'clients/*'
-  - 'servers/*'
-  - 'frontend/*'
+  - "packages/*"
+  - "clients/*"
+  - "servers/*"
+  - "frontend/*"
+
+injectWorkspacePackages: true
+
+# 注意：glob 是 `frontend/*`，所以直接放在 frontend/ 根的 package.json
+# 不会被识别为 workspace 包。Web 应用必须建在 frontend/liangzui-ai-web/ 下。
+# 见 .plan/02-monorepo-and-toolchain.md 步骤 1。
+
 allowBuilds:
+  "@swc/core": true
   esbuild: true
   unrs-resolver: true
+
 minimumReleaseAgeExclude:
-  - '@langchain/core@1.2.7'
+  - "@langchain/core@1.2.7"
+
+# 钉死传递依赖的已修复版本，见 SECURITY.md。不关审计。
+overrides:
+  "ansi-regex@4": "4.1.1"
+  "ansi-regex@5": "5.0.1"
+  tmp: ">=0.2.6"
+  use-sync-external-store: "^1.6.0"

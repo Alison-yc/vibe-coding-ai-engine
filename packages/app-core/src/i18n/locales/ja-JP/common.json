@@ -1,0 +1,23 @@
+{
+  "loading": "読み込み中…",
+  "nav": {
+    "primary": "メインナビゲーション",
+    "chat": "チャット",
+    "knowledge": "ナレッジ",
+    "workflow": "ワークフロー",
+    "settings": "設定"
+  },
+  "shell": {
+    "back": "戻る"
+  },
+  "settings": {
+    "title": "設定",
+    "description": "表示言語、バックエンド接続、MCP ツールを管理します。",
+    "language": {
+      "cardTitle": "表示言語",
+      "label": "言語",
+      "description": "変更はすぐに反映され、この端末に保存されます。",
+      "changeError": "言語設定を保存できませんでした。もう一度お試しください。"
+    }
+  }
+}

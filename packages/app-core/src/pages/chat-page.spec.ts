@@ -1,0 +1,249 @@
+import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createInstance } from 'i18next';
+import { createElement, type ReactElement } from 'react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { I18nextProvider } from 'react-i18next';
+import { MemoryRouter } from 'react-router';
+import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { createI18nOptions } from '../i18n/resources';
+import { ThemeProvider } from '../theme-provider';
+import { useChatStreamStore } from '../chat/chat-stream-store';
+import { ChatBubble, ChatPage, SessionList } from './chat-page';
+
+const stubPlatform: Platform = {
+  capabilities: {
+    nativeDirectoryPicker: false,
+    windowControls: false,
+    routerMode: 'history',
+    devTools: true,
+  },
+  pickDirectory: async () => null,
+  pickFiles: async () => [],
+  kv: createMemoryKeyValueStore(),
+  getApiBaseUrl: () => 'http://localhost:3000',
+  openExternal: async () => undefined,
+  getAppInfo: async () => ({ name: 'test', version: '0.0.0' }),
+  getSystemTheme: () => 'light',
+  subscribeSystemTheme: () => () => undefined,
+  window: {
+    minimize: async () => undefined,
+    maximize: async () => undefined,
+    close: async () => undefined,
+    reload: async () => undefined,
+  },
+};
+
+const i18n = createInstance();
+beforeAll(async () => {
+  await i18n.init(createI18nOptions('zh-CN'));
+});
+const renderLocalized = (element: ReactElement) =>
+  renderToStaticMarkup(createElement(I18nextProvider, { i18n }, element));
+
+describe('ChatPage', () => {
+  it('渲染侧边栏、空态与输入区', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        json: async () => (String(url).includes('/knowledge/datasets') ? [] : { sessions: [] }),
+      })),
+    );
+    const html = renderLocalized(
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
+        createElement(
+          PlatformProvider,
+          { value: stubPlatform },
+          createElement(
+            MemoryRouter,
+            { initialEntries: ['/chat'] },
+            createElement(ThemeProvider, null, createElement(ChatPage)),
+          ),
+        ),
+      ),
+    );
+    expect(html).toContain('对话');
+    expect(html).toContain('新建会话');
+    expect(html).toContain('还没有会话');
+    expect(html).toContain('点击上方「新建」或打开会话列表');
+    expect(html).toContain('会话列表');
+    expect(html).toContain('知识库挂载');
+    expect(html).toContain('文件访问');
+    expect(html).not.toContain('href="/agent"');
+    vi.unstubAllGlobals();
+  });
+
+  it('桌面端常驻侧边栏始终渲染新建入口', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        json: async () => (String(url).includes('/knowledge/datasets') ? [] : { sessions: [] }),
+      })),
+    );
+    const desktopPlatform: Platform = {
+      ...stubPlatform,
+      capabilities: {
+        ...stubPlatform.capabilities,
+        persistentChatSidebar: true,
+      },
+    };
+    const html = renderLocalized(
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
+        createElement(
+          PlatformProvider,
+          { value: desktopPlatform },
+          createElement(
+            MemoryRouter,
+            { initialEntries: ['/chat'] },
+            createElement(ThemeProvider, null, createElement(ChatPage)),
+          ),
+        ),
+      ),
+    );
+    expect(html).toContain('新建');
+    expect(html).toContain('对话');
+    expect(html).not.toContain('会话列表');
+    vi.unstubAllGlobals();
+  });
+
+  it('窄屏 Web 端提供顶栏新建与会话列表入口', () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => ({
+        ok: true,
+        json: async () => (String(url).includes('/knowledge/datasets') ? [] : { sessions: [] }),
+      })),
+    );
+    const html = renderLocalized(
+      createElement(
+        QueryClientProvider,
+        { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
+        createElement(
+          PlatformProvider,
+          { value: stubPlatform },
+          createElement(
+            MemoryRouter,
+            { initialEntries: ['/chat'] },
+            createElement(ThemeProvider, null, createElement(ChatPage)),
+          ),
+        ),
+      ),
+    );
+    expect(html).toContain('会话列表');
+    expect(html).toContain('点击上方「新建」或打开会话列表');
+    vi.unstubAllGlobals();
+  });
+
+  it('SessionList 覆盖重命名与删除确认', () => {
+    const session = {
+      id: '00000000-0000-4000-8000-000000000001',
+      title: '问候',
+      modelId: 'qwen3.5:2b',
+      datasetIds: [],
+      createdAt: '2026-08-27T00:00:00.000Z',
+      updatedAt: '2026-08-27T00:00:00.000Z',
+    };
+    const listed = renderLocalized(
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(SessionList, {
+          sessions: [session],
+          currentId: session.id,
+          renameId: null,
+          renameValue: '',
+          pendingDeleteId: null,
+          onRenameValue: () => undefined,
+          onStartRename: () => undefined,
+          onConfirmRename: () => undefined,
+          onCancelRename: () => undefined,
+          onAskDelete: () => undefined,
+          onConfirmDelete: () => undefined,
+          onCancelDelete: () => undefined,
+        }),
+      ),
+    );
+    expect(listed).toContain('问候');
+    expect(listed).toContain('重命名');
+    const renaming = renderLocalized(
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(SessionList, {
+          sessions: [session],
+          currentId: session.id,
+          renameId: session.id,
+          renameValue: '新标题',
+          pendingDeleteId: null,
+          onRenameValue: () => undefined,
+          onStartRename: () => undefined,
+          onConfirmRename: () => undefined,
+          onCancelRename: () => undefined,
+          onAskDelete: () => undefined,
+          onConfirmDelete: () => undefined,
+          onCancelDelete: () => undefined,
+        }),
+      ),
+    );
+    expect(renaming).toContain('保存');
+    const deleting = renderLocalized(
+      createElement(
+        MemoryRouter,
+        null,
+        createElement(SessionList, {
+          sessions: [session],
+          currentId: session.id,
+          renameId: null,
+          renameValue: '',
+          pendingDeleteId: session.id,
+          onRenameValue: () => undefined,
+          onStartRename: () => undefined,
+          onConfirmRename: () => undefined,
+          onCancelRename: () => undefined,
+          onAskDelete: () => undefined,
+          onConfirmDelete: () => undefined,
+          onCancelDelete: () => undefined,
+        }),
+      ),
+    );
+    expect(deleting).toContain('确认');
+  });
+
+  it('ChatBubble 渲染用户、助手与中断标记', () => {
+    const sessionId = '00000000-0000-4000-8000-000000000001';
+    const user = {
+      id: '00000000-0000-4000-8000-000000000002',
+      sessionId,
+      role: 'user' as const,
+      parts: [{ type: 'text' as const, id: 'u', text: '问题' }],
+      seq: 0,
+      status: 'complete' as const,
+    };
+    const assistant = {
+      id: '00000000-0000-4000-8000-000000000003',
+      sessionId,
+      role: 'assistant' as const,
+      parts: [{ type: 'text' as const, id: 'a', text: '回答' }],
+      seq: 1,
+      status: 'interrupted' as const,
+    };
+    useChatStreamStore.getState().hydrate(sessionId, [user, assistant]);
+    const html = renderLocalized(
+      createElement(
+        'ol',
+        null,
+        createElement(ChatBubble, { message: user }),
+        createElement(ChatBubble, { message: assistant }),
+      ),
+    );
+    expect(html).toContain('问题');
+    expect(html).toContain('回答');
+    expect(html).toContain('已停止');
+  });
+});

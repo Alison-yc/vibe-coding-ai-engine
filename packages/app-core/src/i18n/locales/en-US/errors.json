@@ -1,0 +1,18 @@
+{
+  "api": {
+    "BAD_REQUEST": "The request is invalid. Check the input and try again.",
+    "UNAUTHORIZED": "You are not authorized to perform this action.",
+    "NOT_FOUND": "The requested resource was not found.",
+    "CONFLICT": "The request conflicts with the current state. Refresh and try again.",
+    "PAYLOAD_TOO_LARGE": "The submitted content is too large.",
+    "RATE_LIMITED": "Too many requests. Try again later.",
+    "SERVICE_UNAVAILABLE": "The service is temporarily unavailable. Try again later.",
+    "INTERNAL": "The service encountered an internal error."
+  },
+  "boundary": {
+    "title": "Something went wrong on this page",
+    "description": "The app encountered an unhandled error and saved it to the local error log. You can copy the details for troubleshooting.",
+    "copyDetails": "Copy error details",
+    "reload": "Reload"
+  }
+}

@@ -1,0 +1,132 @@
+name: Security
+
+on:
+  push:
+    branches: [main, "feature/**", "feat/**", "fix/**"]
+    paths-ignore:
+      - "**.md"
+      - ".plan/**"
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - "**.md"
+      - ".plan/**"
+  schedule:
+    # 每周一早八点跑一次，捕获新披露的依赖漏洞
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  # SARIF 上传到 Code Scanning 需要这个权限。
+  # 私有仓库若无 Advanced Security，upload-sarif 失败不阻断（见各 step 的 continue-on-error）。
+  security-events: write
+
+jobs:
+  # ── SAST：Semgrep ───────────────────────────────────────────
+  sast:
+    name: SAST（Semgrep）
+    runs-on: ubuntu-latest
+    container:
+      image: semgrep/semgrep
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: 自定义规则自测
+        run: cp .semgrep.yml tests/semgrep/rules.yml && semgrep --test tests/semgrep
+
+      - name: 扫描
+        run: |
+          semgrep scan \
+            --config .semgrep.yml \
+            --config p/typescript \
+            --config p/nodejs \
+            --config p/react \
+            --config p/secrets \
+            --error \
+            --sarif --output semgrep.sarif \
+            --metrics off
+
+      - name: 上传 SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: semgrep.sarif
+          category: semgrep
+
+  # ── SCA：依赖漏洞（npm + Cargo 都要覆盖） ─────────────────────
+  sca:
+    name: SCA（依赖漏洞）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v5
+        with:
+          node-version: "24"
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: 安装 osv-scanner
+        run: |
+          curl -fsSL -o /usr/local/bin/osv-scanner \
+            "https://github.com/google/osv-scanner/releases/download/v2.2.3/osv-scanner_linux_amd64"
+          chmod +x /usr/local/bin/osv-scanner
+
+      - name: SCA 门禁（与 pnpm sec:sca 同一条命令）
+        run: pnpm sec:sca
+
+      - name: OSV SARIF
+        if: always()
+        continue-on-error: true
+        run: |
+          osv-scanner \
+            --lockfile=pnpm-lock.yaml \
+            --lockfile=clients/liangzui-ai-app/src-tauri/Cargo.lock \
+            --config=osv-scanner.toml \
+            --format=sarif \
+            --output=osv.sarif
+
+      - name: 上传 SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: osv.sarif
+          category: osv-scanner
+
+  # ── 密钥扫描（含完整 git 历史） ──────────────────────────────
+  secrets:
+    name: 密钥扫描（Gitleaks）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITLEAKS_ENABLE_UPLOAD_ARTIFACT: true
+
+      - name: Gitleaks SARIF
+        if: always()
+        continue-on-error: true
+        run: |
+          docker run --rm -v "$PWD:/src" -w /src ghcr.io/gitleaks/gitleaks:latest detect \
+            --source . --no-banner --redact --report-format sarif --report-path gitleaks.sarif
+
+      - name: 上传 SARIF
+        if: always()
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: gitleaks.sarif
+          category: gitleaks

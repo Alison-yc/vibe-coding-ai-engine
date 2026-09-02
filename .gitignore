@@ -1,48 +1,162 @@
-# Dependencies
+# ─────────────────────────────────────────────────────────────
+# 依赖与包管理
+# ─────────────────────────────────────────────────────────────
 node_modules/
-
-# pnpm
+.pnpm-store/
 .pnpm-debug.log*
 
-# Build outputs
+# ─────────────────────────────────────────────────────────────
+# 构建产物
+# ─────────────────────────────────────────────────────────────
 dist/
 dist-ssr/
 build/
 out/
+*.tsbuildinfo
 
+# Vite / Vitest 加载 TS 配置时落的临时文件，进程被强杀会残留
+vite.config.*.timestamp-*
+vitest.config.*.timestamp-*
+
+# ─────────────────────────────────────────────────────────────
 # Rust / Tauri
-**/target/
+# ─────────────────────────────────────────────────────────────
+# 只忽略 Tauri crate 的 target，不用 **/target/：那会连带忽略任何叫 target 的业务目录
+**/src-tauri/target/
 
-# Environment & secrets
+# Tauri v2 从 capabilities 生成的 JSON Schema，构建时重新生成
+**/src-tauri/gen/schemas/
+
+# ─────────────────────────────────────────────────────────────
+# 环境变量与密钥
+# ─────────────────────────────────────────────────────────────
 .env
 .env.*
 !.env.example
 
-# Logs
+# 各类证书与私钥。Tauri 更新器的签名私钥泄露 = 任何人可以给你的用户推恶意更新
+*.pem
+*.key
+*.p12
+*.pfx
+*.keystore
+*.jks
+!**/public.key
+
+# ─────────────────────────────────────────────────────────────
+# 本地数据
+# ─────────────────────────────────────────────────────────────
+# Postgres 数据文件，几百 MB
+docker/data/
+
+# Tauri 侧的本地 SQLite。正常存在系统应用数据目录，这里兜底防止散落到仓库里
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Agent 的默认工作区（AGENT_WORKSPACE_ROOTS 指向仓库内时）
+.agent-workspace/
+
+# MCP 本机配置可能包含个人绝对路径或第三方凭据，只提交 mcp.json.example
+**/mcp.json
+!**/mcp.json.example
+
+# ─────────────────────────────────────────────────────────────
+# 测试与覆盖率
+# ─────────────────────────────────────────────────────────────
+coverage/
+*.lcov
+.nyc_output/
+.vitest-reports/
+
+# Playwright。.auth/ 里是登录态快照，属于凭据
+test-results/
+playwright-report/
+blob-report/
+.playwright/
+**/.auth/
+
+scripts/gen-tests/.tmp/
+
+# LLM 生成但未经人工审核的测试草稿。审核通过后要改名去掉 .generated
+# 才能入库，见 .plan/15
+**/*.generated.spec.ts
+**/*.generated.spec.tsx
+**/*.generated.test.ts
+
+# ─────────────────────────────────────────────────────────────
+# 安全扫描产物
+# ─────────────────────────────────────────────────────────────
+*.sarif
+scripts/model-baseline/reports/.baseline-checkpoint.json
+gitleaks-report.json
+.semgrep/
+.semgrep_logs/
+tests/semgrep/rules.yml
+
+# ─────────────────────────────────────────────────────────────
+# 缓存
+# ─────────────────────────────────────────────────────────────
+.cache/
+.turbo/
+.eslintcache
+.prettiercache
+.vite/
+tmp/
+.tmp/
+
+# husky 自己生成的辅助脚本目录（钩子本体在 .husky/ 下，要提交）
+.husky/_/
+
+# ─────────────────────────────────────────────────────────────
+# 日志与进程
+# ─────────────────────────────────────────────────────────────
 logs/
 *.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-pnpm-debug.log*
+*.pid
+*.seed
 
-# Test / coverage
-coverage/
-.nyc_output/
-
-# Caches
-.cache/
-.turbo/
-*.tsbuildinfo
-
-# OS & editors
+# ─────────────────────────────────────────────────────────────
+# 操作系统与编辑器
+# ─────────────────────────────────────────────────────────────
 .DS_Store
+._*
+.AppleDouble
+.Spotlight-V100
+.Trashes
 Thumbs.db
-.idea/
-.vscode/*
-!.vscode/extensions.json
 *.suo
 *.sw?
 
-# Local overrides
+.idea/
+
+# VS Code：共享的工程配置要提交，个人偏好不提交
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+!.vscode/launch.json
+!.vscode/tasks.json
+
+# 其他 AI 工具的本地状态。注意 .cursor/ 不在此列——里面是要提交的协作规则
+.claude/
+.aider*
+.continue/
+
+# ─────────────────────────────────────────────────────────────
+# 本地覆盖
+# ─────────────────────────────────────────────────────────────
 *.local
+
+# ─────────────────────────────────────────────────────────────
+# ⚠️ 以下是**故意不忽略**的，别顺手加进来
+# ─────────────────────────────────────────────────────────────
+# scripts/rag-eval/reports/   RAG 评测报告要入库，用于追踪指标趋势（.plan/18）
+# scripts/baseline/           模型基线报告是后续设计的依据（.plan/04）
+# drizzle/                    数据库迁移文件必须入库
+# .plan/ .cursor/             计划与协作规则是仓库的一部分

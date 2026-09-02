@@ -1,0 +1,50 @@
+{
+  "backend": {
+    "cardTitle": "Backend connection",
+    "addressLabel": "Backend address",
+    "localOnlyDescription": "Only local addresses using localhost or 127.0.0.1 are supported. The port can be changed.",
+    "testing": "Testing…",
+    "saveAndTest": "Save and test",
+    "success": "Connection successful. The address has been saved."
+  },
+  "mcp": {
+    "status": {
+      "connected": "Connected",
+      "disconnected": "Disconnected",
+      "error": "Connection failed"
+    },
+    "selectedCount": "{{selected}}/{{total}} selected",
+    "stdioWarning": "Enabling this starts the configured third-party process on the server. Only enable MCPs you trust.",
+    "httpWarning": "Enabling this connects the server to an external MCP address. Only enable services you trust.",
+    "enabled": "Enabled",
+    "remoteTools": "Remote MCP tools",
+    "toolsEmpty": "Select tools after connecting. Unselected tools are not sent to the model.",
+    "reconnect": "Reconnect",
+    "loadError": "Failed to load",
+    "emptyTitle": "No MCP server configured",
+    "emptyDescription": "Copy mcp.json.example to mcp.json, add trusted stdio/HTTP servers, then restart the backend."
+  },
+  "automaticTools": {
+    "cardTitle": "Automatically selected tools",
+    "limit": "Limit: {{count}} (based on the qwen3.5:2b baseline in .plan/04).",
+    "builtinDescription": "datetime, calculate, and generate_uuid are built-in tools and do not appear in the MCP checkboxes above.",
+    "dropped": "Excluded: {{names}}"
+  },
+  "connectionGate": {
+    "checkingTitle": "Connecting to the backend service",
+    "disconnectedTitle": "Unable to connect to the backend service",
+    "description": "The desktop app starts the NestJS backend automatically, but PostgreSQL and Ollama must still be running locally. In development mode, run these commands from the project directory:",
+    "addressLabel": "Backend address",
+    "localOnlyDescription": "For desktop security, only localhost or 127.0.0.1 is supported. You can use a custom port.",
+    "fallbackError": "Unable to connect to the backend service",
+    "testing": "Testing…",
+    "saveAndTest": "Save and test connection"
+  },
+  "connectionErrors": {
+    "invalidUrl": "Enter a valid backend address, such as http://localhost:3000",
+    "httpRequired": "The local backend address must use HTTP",
+    "hostNotAllowed": "The desktop app can only connect to localhost or 127.0.0.1",
+    "urlPartsNotAllowed": "The backend address can only contain a protocol, host, and port",
+    "healthCheckFailed": "Backend health check failed: HTTP {{status}}"
+  }
+}
