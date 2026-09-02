@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import process from 'node:process';
 import { fileURLToPath } from 'node:url';
 import packageJson from '../../package.json' with { type: 'json' };
+import { detachStaleTauriDmgs } from './detach-stale-dmgs.js';
 import { resolveTauriBuildVersion } from './version.js';
 
 const repositoryRoot = fileURLToPath(new URL('../..', import.meta.url));
@@ -14,6 +15,10 @@ const pnpmCli = process.env.npm_execpath;
 if (!pnpmCli) throw new Error('无法定位 pnpm CLI，请通过 pnpm 运行此脚本');
 
 process.stdout.write(`构建应用版本：${version}\n`);
+const detached = detachStaleTauriDmgs();
+if (detached.length > 0) {
+  process.stdout.write(`已卸载上次打包残留的磁盘镜像：${detached.join(', ')}\n`);
+}
 execFileSync(
   process.execPath,
   [

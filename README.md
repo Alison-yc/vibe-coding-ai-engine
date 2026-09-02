@@ -170,7 +170,9 @@ pnpm tauri:build
 
 本地构建版本格式为 `0.1.<UTC年月日时分秒>`，因此连续构建的 dmg 文件名可直接区分。
 需要指定正式版本时使用 `AI_ENGINE_APP_VERSION=0.2.0 pnpm tauri:build`；GitHub 推送
-`vX.Y.Z` 标签触发 Release 时会自动采用 `X.Y.Z`。
+`vX.Y.Z` 标签触发 Release 时会自动采用 `X.Y.Z`。打包前会自动卸载上次失败留下的
+`rw.*.liangzui-ai-app_*.dmg` 临时镜像；`.app` 已生成但整条命令失败时，多半是 dmg
+脚本撞上了未弹出的残留挂载，重新执行 `pnpm tauri:build` 即可。
 
 构建产物位于：
 
