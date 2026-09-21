@@ -7,7 +7,16 @@ import {
   type Dataset,
   type PermissionDecision,
 } from '@ai-engine/contracts';
-import { Button, Input, Label, Select, Separator, Textarea, cn } from '@ai-engine/ui';
+import {
+  Button,
+  Input,
+  Label,
+  MessageSquare,
+  Select,
+  Separator,
+  Textarea,
+  cn,
+} from '@ai-engine/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type KeyboardEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -444,14 +453,22 @@ export const ChatPage = () => {
           onScroll={onScroll}
         >
           {!sessionId ? (
-            <div className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm">
-              <span className="line-clamp-2">
-                {persistentSidebar ? t('empty.persistent') : t('empty.mobile')}
+            <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
+              <span className="bg-primary/10 text-primary grid size-14 place-items-center rounded-2xl">
+                <MessageSquare className="size-7" aria-hidden />
               </span>
+              <p className="text-muted-foreground line-clamp-2 max-w-sm text-sm">
+                {persistentSidebar ? t('empty.persistent') : t('empty.mobile')}
+              </p>
             </div>
           ) : messages.length === 0 ? (
-            <div className="text-muted-foreground flex h-full items-center justify-center px-4 text-center text-sm">
-              <span className="line-clamp-2">{t('empty.messages')}</span>
+            <div className="flex h-full flex-col items-center justify-center gap-3 px-4 text-center">
+              <span className="bg-muted text-muted-foreground grid size-14 place-items-center rounded-2xl">
+                <MessageSquare className="size-7" aria-hidden />
+              </span>
+              <p className="text-muted-foreground line-clamp-2 max-w-sm text-sm">
+                {t('empty.messages')}
+              </p>
             </div>
           ) : (
             <ol className="flex w-full min-w-0 flex-col gap-8">
