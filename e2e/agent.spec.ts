@@ -125,7 +125,7 @@ test('统一对话开启文件访问后展示工具状态并完成写入审批',
 
   await page.goto(`/agent/${sessionId}`);
   await expect(page).toHaveURL(`/chat/${sessionId}`);
-  await page.getByRole('checkbox', { name: '文件访问' }).check();
+  await page.getByRole('switch', { name: '文件访问' }).click();
   await expect(page.getByTestId('chat-file-access-toolbar')).toBeVisible();
   const overflow = await page
     .locator('body')
@@ -136,11 +136,15 @@ test('统一对话开启文件访问后展示工具状态并完成写入审批',
   await page.getByRole('button', { name: '发送' }).click();
 
   await expect(page.getByRole('heading', { name: '需要工具调用审批' })).toBeVisible();
+  await expect(page.getByText('工具 write · result.md')).toBeVisible();
   await expect(page.getByText('+# 结果')).toBeVisible();
-  await expect(page.getByText('工具 write · 等待审批')).toBeVisible();
-  await expect(page.getByText('工具 write · 已完成')).toBeHidden();
+  const toolRun = page.locator('article').filter({
+    has: page.locator('span.font-medium', { hasText: 'write' }),
+  });
+  await expect(toolRun.getByText('等待审批')).toBeVisible();
+  await expect(toolRun.getByText('已完成')).toBeHidden();
   await page.getByRole('button', { name: '本会话始终允许' }).click();
   await expect.poll(() => decision).toBe('allow-session');
   await expect(page.getByRole('heading', { name: '需要工具调用审批' })).toBeHidden();
-  await expect(page.getByText('工具 write · 已完成')).toBeVisible();
+  await expect(toolRun.getByText('已完成')).toBeVisible();
 });
