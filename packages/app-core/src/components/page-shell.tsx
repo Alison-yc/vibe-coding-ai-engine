@@ -1,14 +1,35 @@
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
-import { BookOpen, Button, GitBranch, MessageSquare, Separator, Settings, cn } from '@ai-engine/ui';
-
-const NAV_ITEMS = [
+import {
+  BookOpen,
+  Button,
+  CardTitle,
+  GitBranch,
+  MessageSquare,
+  Separator,
+  Settings,
+  cn,
+} from '@ai-engine/ui';
+export const APP_NAV_ITEMS = [
   { to: '/chat', icon: MessageSquare, labelKey: 'nav.chat' as const },
   { to: '/knowledge', icon: BookOpen, labelKey: 'nav.knowledge' as const },
   { to: '/workflow', icon: GitBranch, labelKey: 'nav.workflow' as const },
   { to: '/settings', icon: Settings, labelKey: 'nav.settings' as const },
 ] as const;
+
+export const IconCardTitle = ({
+  icon: Icon,
+  children,
+}: {
+  icon: ComponentType<SVGProps<SVGSVGElement>>;
+  children: ReactNode;
+}) => (
+  <CardTitle className="flex min-w-0 items-center gap-2">
+    <Icon className="text-primary size-5 shrink-0" aria-hidden />
+    <span className="line-clamp-2 min-w-0">{children}</span>
+  </CardTitle>
+);
 
 export const AppNavRail = () => {
   const { t } = useTranslation();
@@ -28,7 +49,7 @@ export const AppNavRail = () => {
           LZ
         </span>
       </div>
-      {NAV_ITEMS.map(({ to, icon: Icon, labelKey }) => {
+      {APP_NAV_ITEMS.map(({ to, icon: Icon, labelKey }) => {
         const active = pathname === to || pathname.startsWith(`${to}/`);
         const label = t(labelKey);
         return (

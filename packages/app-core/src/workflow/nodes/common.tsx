@@ -7,7 +7,8 @@ import { NodeIconMap, categoryAccentClass } from './visual';
 
 export const NodeSummary = ({ data, children }: NodeBodyProps & { children?: ReactNode }) => {
   const { t } = useTranslation('workflow');
-  const { category } = getNodePresentation(t, data.type);
+  const presentation = getNodePresentation(t, data.type);
+  const { category } = presentation;
   const typeLabel = t(`canvas.categories.${category}`);
   const Icon = NodeIconMap[data.type];
   return (
@@ -29,10 +30,15 @@ export const NodeSummary = ({ data, children }: NodeBodyProps & { children?: Rea
           <Icon className="size-4" aria-hidden />
         </span>
         <div className="flex min-w-0 flex-1 flex-col gap-1">
-          <strong className="truncate text-sm">{data.title ?? data.type}</strong>
-          <Badge variant="secondary" className="max-w-full truncate">
-            {typeLabel}
-          </Badge>
+          <strong className="truncate text-sm">{data.title ?? presentation.title}</strong>
+          <div className="flex min-w-0 flex-wrap gap-1">
+            <Badge variant="secondary" className="max-w-full truncate">
+              {typeLabel}
+            </Badge>
+            <Badge variant="outline" className="max-w-full truncate">
+              {presentation.title}
+            </Badge>
+          </div>
         </div>
       </div>
       {children ? (

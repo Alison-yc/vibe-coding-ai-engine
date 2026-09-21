@@ -12,18 +12,22 @@ import {
   CardContent,
   CardDescription,
   CardHeader,
-  CardTitle,
+  FileText,
+  Files,
   FileInput,
   Input,
   Label,
+  Scissors,
+  Search,
   Select,
   Textarea,
+  Upload,
 } from '@ai-engine/ui';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
-import { PageShell } from '../components/page-shell';
+import { IconCardTitle, PageShell } from '../components/page-shell';
 import { createKnowledgeDetailHandlers } from '../knowledge/knowledge-detail-actions';
 import { useKnowledgeTranslation } from '../i18n/knowledge-i18n';
 import { localizeApiError } from '../i18n/localize-api-error';
@@ -110,7 +114,7 @@ export const KnowledgeDetailPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="line-clamp-2 min-w-0">{t('detail.paste.title')}</CardTitle>
+          <IconCardTitle icon={FileText}>{t('detail.paste.title')}</IconCardTitle>
           <CardDescription className="line-clamp-3 min-w-0">
             {t('detail.paste.description')}
           </CardDescription>
@@ -142,7 +146,7 @@ export const KnowledgeDetailPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="line-clamp-2 min-w-0">{t('detail.upload.title')}</CardTitle>
+          <IconCardTitle icon={Upload}>{t('detail.upload.title')}</IconCardTitle>
           <CardDescription className="line-clamp-3 min-w-0">
             {t('detail.upload.description')}
           </CardDescription>
@@ -159,7 +163,7 @@ export const KnowledgeDetailPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="line-clamp-2 min-w-0">{t('detail.documents.title')}</CardTitle>
+          <IconCardTitle icon={Files}>{t('detail.documents.title')}</IconCardTitle>
         </CardHeader>
         <CardContent>
           <KnowledgeDocumentList documents={documents} onRemove={handlers.onRemoveClick} />
@@ -168,7 +172,7 @@ export const KnowledgeDetailPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="line-clamp-2 min-w-0">{t('detail.preview.title')}</CardTitle>
+          <IconCardTitle icon={Scissors}>{t('detail.preview.title')}</IconCardTitle>
           <CardDescription className="line-clamp-3 min-w-0">
             {t('detail.preview.description')}
           </CardDescription>
@@ -223,7 +227,7 @@ export const KnowledgeDetailPage = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="line-clamp-2 min-w-0">{t('detail.retrieve.title')}</CardTitle>
+          <IconCardTitle icon={Search}>{t('detail.retrieve.title')}</IconCardTitle>
           <CardDescription className="line-clamp-3 min-w-0">
             {t('detail.retrieve.description')}
           </CardDescription>

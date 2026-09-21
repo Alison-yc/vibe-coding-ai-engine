@@ -10,6 +10,13 @@
   "shell": {
     "back": "Back"
   },
+  "commandPalette": {
+    "title": "Command palette",
+    "placeholder": "Search pages…",
+    "empty": "No matching pages",
+    "close": "Close command palette",
+    "hint": "Esc to close · ⌘K / Ctrl+K to toggle"
+  },
   "settings": {
     "title": "Settings",
     "description": "Manage the interface language, backend connection, and MCP tools.",

@@ -10,6 +10,13 @@
   "shell": {
     "back": "戻る"
   },
+  "commandPalette": {
+    "title": "コマンドパレット",
+    "placeholder": "ページを検索…",
+    "empty": "一致するページがありません",
+    "close": "コマンドパレットを閉じる",
+    "hint": "Esc で閉じる · ⌘K / Ctrl+K で切り替え"
+  },
   "settings": {
     "title": "設定",
     "description": "表示言語、バックエンド接続、MCP ツールを管理します。",

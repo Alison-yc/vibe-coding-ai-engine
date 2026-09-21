@@ -30,10 +30,10 @@ const selectLocale = async (page: Page, locale: string) => {
 };
 
 const dimensions = async (page: Page) => {
-  const nav = page.getByTestId('app-nav');
+  const nav = page.getByTestId('app-nav-rail');
   const card = page.getByTestId('language-card');
   return {
-    navHeight: await nav.evaluate((element) => element.getBoundingClientRect().height),
+    navWidth: await nav.evaluate((element) => element.getBoundingClientRect().width),
     navOverflow: await nav.evaluate((element) => element.scrollWidth - element.clientWidth),
     cardWidth: await card.evaluate((element) => element.getBoundingClientRect().width),
   };
@@ -58,8 +58,8 @@ for (const width of [375, 1280]) {
     await expect(page.getByRole('heading', { name: '設定' })).toBeVisible();
     const japanese = await dimensions(page);
 
-    expect(Math.abs(english.navHeight - baseline.navHeight)).toBeLessThanOrEqual(1);
-    expect(Math.abs(japanese.navHeight - baseline.navHeight)).toBeLessThanOrEqual(1);
+    expect(Math.abs(english.navWidth - baseline.navWidth)).toBeLessThanOrEqual(1);
+    expect(Math.abs(japanese.navWidth - baseline.navWidth)).toBeLessThanOrEqual(1);
     expect(Math.abs(english.cardWidth - baseline.cardWidth)).toBeLessThanOrEqual(1);
     expect(Math.abs(japanese.cardWidth - baseline.cardWidth)).toBeLessThanOrEqual(1);
     expect(
