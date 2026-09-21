@@ -20,6 +20,11 @@
   "settings": {
     "title": "設定",
     "description": "表示言語、バックエンド接続、MCP ツールを管理します。",
+    "effects": {
+      "cardTitle": "表示効果",
+      "pointerTrailLabel": "ポインタートレイル",
+      "pointerTrailDescription": "カーソルに軽いトレイルを表示します。システムの「視差効果を減らす」が有効な場合は自動的にオフになります。"
+    },
     "language": {
       "cardTitle": "表示言語",
       "label": "言語",

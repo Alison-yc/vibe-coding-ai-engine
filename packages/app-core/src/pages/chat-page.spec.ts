@@ -170,7 +170,7 @@ describe('ChatPage', () => {
       ),
     );
     expect(listed).toContain('问候');
-    expect(listed).toContain('重命名');
+    expect(listed).toContain('会话操作');
     const renaming = renderLocalized(
       createElement(
         MemoryRouter,

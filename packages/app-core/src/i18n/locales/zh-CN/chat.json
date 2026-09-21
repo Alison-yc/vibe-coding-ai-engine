@@ -66,7 +66,8 @@
     "cancel": "取消",
     "rename": "重命名",
     "confirmDelete": "确认",
-    "delete": "删除"
+    "delete": "删除",
+    "actions": "会话操作"
   },
   "reasoning": {
     "summary": "思考过程"
@@ -77,6 +78,7 @@
   "tool": {
     "summary": "工具 {{name}} · {{state}}",
     "viewInput": "查看参数",
+    "viewDetails": "查看详情",
     "state": {
       "pending": "等待审批",
       "running": "运行中",

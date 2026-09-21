@@ -20,6 +20,11 @@
   "settings": {
     "title": "Settings",
     "description": "Manage the interface language, backend connection, and MCP tools.",
+    "effects": {
+      "cardTitle": "Visual effects",
+      "pointerTrailLabel": "Pointer trail",
+      "pointerTrailDescription": "Shows a subtle cursor trail. Disabled when the system prefers reduced motion."
+    },
     "language": {
       "cardTitle": "Interface language",
       "label": "Language",

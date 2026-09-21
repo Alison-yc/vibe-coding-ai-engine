@@ -13,8 +13,15 @@ export {
 export { Badge, badgeVariants, type BadgeProps } from './components/ui/badge';
 export { Select, type SelectProps } from './components/ui/select';
 export { Separator, type SeparatorProps } from './components/ui/separator';
+export { Switch, type SwitchProps } from './components/ui/switch';
 export { FileInput, type FileInputProps } from './components/ui/file-input';
 export { cn } from './lib/utils';
+export {
+  drawPetalParticles,
+  spawnPetalBurst,
+  stepPetalParticles,
+  type PetalParticle,
+} from './lib/petal-trail';
 export { applyAppTheme, applyDocumentTheme } from './theme';
 export {
   Activity,
@@ -28,12 +35,14 @@ export {
   Globe,
   Languages,
   MessageSquare,
+  MoreVertical,
   Play,
   Scissors,
   Search,
   Server,
   Settings,
   Shuffle,
+  Sparkles,
   Upload,
   Variable,
   Wrench,

@@ -63,14 +63,14 @@ export const AppCommandPalette = () => {
       <button
         type="button"
         aria-label={t('commandPalette.close')}
-        className="bg-background/70 absolute inset-0"
+        className="bg-background/70 motion-safe-fade-in absolute inset-0"
         onClick={close}
       />
       <div
         role="dialog"
         aria-modal="true"
         aria-label={t('commandPalette.title')}
-        className="border-border bg-popover text-popover-foreground relative z-10 w-full max-w-md overflow-hidden rounded-lg border shadow-md"
+        className="border-border bg-popover text-popover-foreground motion-safe-scale-in relative z-10 w-full max-w-md overflow-hidden rounded-lg border shadow-md"
       >
         <div className="border-border border-b p-3">
           <Input

@@ -168,7 +168,7 @@ describe('统一对话文件能力', () => {
     );
     expect(await screen.findByText(/Only regular chat and knowledge-base questions/)).toBeDefined();
     expect(
-      (screen.getByRole('checkbox', { name: 'File access' }) as HTMLInputElement).disabled,
+      (screen.getByRole('switch', { name: 'File access' }) as HTMLButtonElement).disabled,
     ).toBe(true);
   });
 
@@ -196,7 +196,7 @@ describe('统一对话文件能力', () => {
       </EnglishI18n>,
     );
 
-    const toggle = await screen.findByRole('checkbox', { name: 'File access' });
+    const toggle = await screen.findByRole('switch', { name: 'File access' });
     await user.click(toggle);
     const fileToolbar = await screen.findByTestId('chat-file-access-toolbar');
     expect(fileToolbar.className).toContain('grid');
@@ -308,7 +308,7 @@ describe('统一对话文件能力', () => {
     const input = await screen.findByPlaceholderText(/Type a message/);
     await waitFor(() => expect((input as HTMLTextAreaElement).disabled).toBe(true));
     expect(
-      (screen.getByRole('checkbox', { name: 'File access' }) as HTMLInputElement).disabled,
+      (screen.getByRole('switch', { name: 'File access' }) as HTMLButtonElement).disabled,
     ).toBe(true);
     expect((screen.getByRole('button', { name: 'Send' }) as HTMLButtonElement).disabled).toBe(true);
   });

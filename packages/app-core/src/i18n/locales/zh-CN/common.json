@@ -20,6 +20,11 @@
   "settings": {
     "title": "设置",
     "description": "管理界面语言、后端连接与 MCP 工具。",
+    "effects": {
+      "cardTitle": "界面效果",
+      "pointerTrailLabel": "鼠标拖尾",
+      "pointerTrailDescription": "在页面上显示轻微光标拖尾。系统开启「减少动态效果」时会自动关闭。"
+    },
     "language": {
       "cardTitle": "界面语言",
       "label": "语言",

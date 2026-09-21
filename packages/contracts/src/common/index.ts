@@ -7,6 +7,11 @@ export {
   type UiLocale,
 } from './locale.js';
 export {
+  UI_POINTER_TRAIL_CHANGED_EVENT,
+  UI_POINTER_TRAIL_STORAGE_KEY,
+  parsePointerTrailPreference,
+} from './ui-preferences.js';
+export {
   IdSchema,
   PaginationQuerySchema,
   TimestampSchema,

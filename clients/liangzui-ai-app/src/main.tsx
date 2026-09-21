@@ -4,6 +4,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import './index.css';
+import { PointerTrailOverlay } from './pointer-trail-overlay';
 import { createTauriPlatform } from './platform';
 
 type SidecarStartupInfo = {
@@ -68,6 +69,7 @@ if (startupError) {
     <StrictMode>
       <PlatformProvider value={createTauriPlatform()}>
         <App />
+        <PointerTrailOverlay />
       </PlatformProvider>
     </StrictMode>,
   );

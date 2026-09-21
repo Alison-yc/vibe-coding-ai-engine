@@ -1,7 +1,10 @@
 import {
   DEFAULT_UI_LOCALE,
   UI_LOCALES,
+  UI_POINTER_TRAIL_CHANGED_EVENT,
+  UI_POINTER_TRAIL_STORAGE_KEY,
   UiLocaleSchema,
+  parsePointerTrailPreference,
   type McpRemoteTool,
   type McpServerStatus,
   type UiLocale,
@@ -19,10 +22,12 @@ import {
   Languages,
   Select,
   Server,
+  Sparkles,
+  Switch,
   Wrench,
 } from '@ai-engine/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { usePlatform } from '@ai-engine/platform';
 import {
@@ -46,6 +51,66 @@ const LANGUAGE_LABELS: Record<UiLocale, string> = {
   'zh-CN': '中文',
   'ja-JP': '日本語',
   'en-US': 'English',
+};
+
+const EffectsCard = () => {
+  const platform = usePlatform();
+  const { t } = useTranslation();
+  const [pointerTrail, setPointerTrail] = useState(true);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void platform.kv.get(UI_POINTER_TRAIL_STORAGE_KEY).then((raw) => {
+      if (!cancelled) {
+        setPointerTrail(parsePointerTrailPreference(raw));
+        setReady(true);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [platform]);
+
+  const saveTrail = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      await platform.kv.set(UI_POINTER_TRAIL_STORAGE_KEY, enabled ? 'true' : 'false');
+      window.dispatchEvent(new Event(UI_POINTER_TRAIL_CHANGED_EVENT));
+      return enabled;
+    },
+    onSuccess: (enabled) => setPointerTrail(enabled),
+  });
+
+  return (
+    <Card data-testid="effects-card" className="w-full min-w-0 overflow-visible">
+      <CardHeader>
+        <CardTitle className="flex min-w-0 items-center gap-2">
+          <Sparkles className="text-primary size-5 shrink-0" aria-hidden />
+          <span className="line-clamp-2 min-w-0">{t('settings.effects.cardTitle')}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex min-w-0 flex-col gap-3">
+        <div className="flex min-w-0 items-center justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <Label htmlFor="settings-pointer-trail">
+              {t('settings.effects.pointerTrailLabel')}
+            </Label>
+            <p className="text-muted-foreground mt-1 line-clamp-3 text-sm">
+              {t('settings.effects.pointerTrailDescription')}
+            </p>
+          </div>
+          <Switch
+            id="settings-pointer-trail"
+            data-testid="settings-pointer-trail"
+            checked={pointerTrail}
+            disabled={!ready || saveTrail.isPending}
+            onCheckedChange={(checked) => saveTrail.mutate(checked)}
+            aria-labelledby="settings-pointer-trail"
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
 };
 
 const LanguageCard = () => {
@@ -295,6 +360,7 @@ export const SettingsPage = () => {
 
   return (
     <PageShell title={commonT('settings.title')} description={commonT('settings.description')}>
+      <EffectsCard />
       <LanguageCard />
       {platform.capabilities.backendConnectionSetup ? <BackendAddressCard /> : null}
       {servers.error || exposed.error ? (

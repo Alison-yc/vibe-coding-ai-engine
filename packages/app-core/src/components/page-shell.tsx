@@ -99,7 +99,7 @@ export const PageShell = ({
   const { t } = useTranslation();
   return (
     <AppLayout>
-      <main className="mx-auto flex min-h-0 w-full max-w-6xl min-w-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
+      <main className="motion-safe-fade-in mx-auto flex min-h-0 w-full max-w-6xl min-w-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
         <header className="flex min-w-0 flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
           <div className="flex min-w-0 flex-col gap-2">
             {backTo ? (

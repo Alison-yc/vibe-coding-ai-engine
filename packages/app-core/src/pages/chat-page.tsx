@@ -12,13 +12,14 @@ import {
   Input,
   Label,
   MessageSquare,
+  MoreVertical,
   Select,
-  Separator,
+  Switch,
   Textarea,
   cn,
 } from '@ai-engine/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { type KeyboardEvent, useEffect, useState } from 'react';
+import { type KeyboardEvent, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
@@ -36,7 +37,7 @@ import {
   shouldHydrateMessages,
   useChatStreamStore,
 } from '../chat/chat-stream-store';
-import { MessageParts, StreamMarkdown } from '../chat/message-parts';
+import { MessageParts } from '../chat/message-parts';
 import { useChatStream } from '../chat/use-chat-stream';
 import { useStickToBottom } from '../chat/use-stick-to-bottom';
 import { useChatTranslation } from '../i18n/use-chat-translation';
@@ -303,26 +304,13 @@ export const ChatPage = () => {
         ) : null}
         <header className="border-border bg-background/95 flex min-w-0 flex-col gap-3 border-b px-4 py-3 md:px-6">
           <div className="grid w-full min-w-0 items-end gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_14rem_18rem]">
-            <div className="flex min-w-0 items-center justify-between gap-3 sm:col-span-2 xl:col-span-1">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">
-                  {session?.title ?? t('header.noSession')}
-                </p>
-                {session ? (
-                  <p className="text-muted-foreground truncate text-xs">{session.modelId}</p>
-                ) : null}
-              </div>
-              <label className="flex min-h-9 shrink-0 items-center gap-2 text-sm">
-                <input
-                  type="checkbox"
-                  checked={fileAccess}
-                  disabled={!sessionId || busy || !supportsTools}
-                  onChange={(event) => setFileAccess(event.target.checked)}
-                />
-                <span className="max-w-32 truncate" title={t('fileAccess.label')}>
-                  {t('fileAccess.label')}
-                </span>
-              </label>
+            <div className="min-w-0 sm:col-span-2 xl:col-span-1">
+              <p className="truncate text-sm font-medium">
+                {session?.title ?? t('header.noSession')}
+              </p>
+              {session ? (
+                <p className="text-muted-foreground truncate text-xs">{session.modelId}</p>
+              ) : null}
             </div>
             <div className="flex min-w-0 flex-col gap-1.5">
               <Label htmlFor="chat-model" className="truncate" title={t('model.label')}>
@@ -372,65 +360,6 @@ export const ChatPage = () => {
             <p className="text-muted-foreground line-clamp-2 w-full text-xs">
               {t('model.untestedNotice')}
             </p>
-          ) : null}
-          {fileAccess ? (
-            <div
-              data-testid="chat-file-access-toolbar"
-              className={cn(
-                'bg-muted/40 grid w-full min-w-0 items-end gap-3 rounded-lg border p-3',
-                platform.capabilities.nativeDirectoryPicker
-                  ? 'sm:grid-cols-[minmax(0,1fr)_auto_minmax(10rem,12rem)]'
-                  : 'sm:grid-cols-[minmax(0,1fr)_minmax(10rem,12rem)]',
-              )}
-            >
-              <div className="flex min-w-0 flex-col gap-1.5">
-                <Label
-                  htmlFor="chat-workspace"
-                  className="truncate"
-                  title={t('fileAccess.workspaceLabel')}
-                >
-                  {t('fileAccess.workspaceLabel')}
-                </Label>
-                <Input
-                  id="chat-workspace"
-                  value={workspaceRoot}
-                  disabled={busy}
-                  placeholder={t('fileAccess.workspacePlaceholder')}
-                  onChange={(event) => setWorkspaceRoot(event.target.value)}
-                />
-              </div>
-              {platform.capabilities.nativeDirectoryPicker ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  className="w-full shrink-0 sm:w-auto"
-                  disabled={busy}
-                  onClick={() => void chooseWorkspace()}
-                >
-                  <span className="truncate" title={t('fileAccess.chooseDirectory')}>
-                    {t('fileAccess.chooseDirectory')}
-                  </span>
-                </Button>
-              ) : null}
-              <div className="flex min-w-0 flex-col gap-1.5">
-                <Label
-                  htmlFor="chat-file-mode"
-                  className="truncate"
-                  title={t('fileAccess.modeLabel')}
-                >
-                  {t('fileAccess.modeLabel')}
-                </Label>
-                <Select
-                  id="chat-file-mode"
-                  value={mode}
-                  disabled={busy}
-                  onChange={(event) => setMode(event.target.value as AgentMode)}
-                >
-                  <option value="edit">{t('fileAccess.mode.edit')}</option>
-                  <option value="read-only">{t('fileAccess.mode.readOnly')}</option>
-                </Select>
-              </div>
-            </div>
           ) : null}
         </header>
 
@@ -492,38 +421,122 @@ export const ChatPage = () => {
         ) : null}
 
         <form
-          className="border-border bg-background flex min-w-0 shrink-0 flex-col gap-3 border-t px-4 py-4 md:px-8"
+          className="border-border bg-background flex min-w-0 shrink-0 flex-col border-t px-4 py-4 md:px-8"
           onSubmit={(event) => {
             event.preventDefault();
             if (!busy) void onSend();
           }}
         >
-          <Textarea
-            value={input}
-            disabled={!sessionId || busy}
-            className="bg-card min-h-20 resize-none rounded-xl px-4 py-3 shadow-sm"
-            placeholder={sessionId ? t('composer.placeholder') : t('composer.noSessionPlaceholder')}
-            onChange={(event) => setInput(event.target.value)}
-            onKeyDown={onKeyDown}
-          />
-          <div className="flex justify-end gap-2">
-            {streaming ? (
-              <Button type="button" variant="outline" onClick={stop}>
-                {t('composer.stop')}
-              </Button>
-            ) : (
-              <Button
-                type="submit"
-                disabled={
-                  !sessionId ||
-                  busy ||
-                  input.trim().length === 0 ||
-                  (fileAccess && workspaceRoot.trim().length === 0)
-                }
+          <div
+            data-testid="chat-composer"
+            className="border-border bg-card flex w-full min-w-0 flex-col overflow-hidden rounded-xl border shadow-sm"
+          >
+            <div className="border-border/70 flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
+              <div className="flex min-w-0 items-center gap-2">
+                <Switch
+                  id="chat-file-access"
+                  checked={fileAccess}
+                  disabled={!sessionId || busy || !supportsTools}
+                  onCheckedChange={setFileAccess}
+                  aria-label={t('fileAccess.label')}
+                />
+                <Label htmlFor="chat-file-access" className="truncate text-sm font-normal">
+                  {t('fileAccess.label')}
+                </Label>
+              </div>
+            </div>
+            {fileAccess ? (
+              <div
+                data-testid="chat-file-access-toolbar"
+                className={cn(
+                  'border-border/60 bg-muted/15 motion-safe-fade-in grid w-full min-w-0 items-end gap-2 border-b px-3 py-2.5',
+                  platform.capabilities.nativeDirectoryPicker
+                    ? 'sm:grid-cols-[minmax(0,1fr)_auto_minmax(10rem,12rem)]'
+                    : 'sm:grid-cols-[minmax(0,1fr)_minmax(10rem,12rem)]',
+                )}
               >
-                {t('composer.send')}
-              </Button>
-            )}
+                <div className="flex min-w-0 flex-col gap-1">
+                  <Label
+                    htmlFor="chat-workspace"
+                    className="text-muted-foreground truncate text-xs font-normal"
+                    title={t('fileAccess.workspaceLabel')}
+                  >
+                    {t('fileAccess.workspaceLabel')}
+                  </Label>
+                  <Input
+                    id="chat-workspace"
+                    className="bg-background h-9"
+                    value={workspaceRoot}
+                    disabled={busy}
+                    placeholder={t('fileAccess.workspacePlaceholder')}
+                    onChange={(event) => setWorkspaceRoot(event.target.value)}
+                  />
+                </div>
+                {platform.capabilities.nativeDirectoryPicker ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-9 w-full shrink-0 sm:w-auto"
+                    disabled={busy}
+                    onClick={() => void chooseWorkspace()}
+                  >
+                    <span className="truncate" title={t('fileAccess.chooseDirectory')}>
+                      {t('fileAccess.chooseDirectory')}
+                    </span>
+                  </Button>
+                ) : null}
+                <div className="flex min-w-0 flex-col gap-1">
+                  <Label
+                    htmlFor="chat-file-mode"
+                    className="text-muted-foreground truncate text-xs font-normal"
+                    title={t('fileAccess.modeLabel')}
+                  >
+                    {t('fileAccess.modeLabel')}
+                  </Label>
+                  <Select
+                    id="chat-file-mode"
+                    className="bg-background h-9"
+                    value={mode}
+                    disabled={busy}
+                    onChange={(event) => setMode(event.target.value as AgentMode)}
+                  >
+                    <option value="edit">{t('fileAccess.mode.edit')}</option>
+                    <option value="read-only">{t('fileAccess.mode.readOnly')}</option>
+                  </Select>
+                </div>
+              </div>
+            ) : null}
+            <Textarea
+              value={input}
+              disabled={!sessionId || busy}
+              className="min-h-20 resize-none rounded-none border-0 bg-transparent px-4 py-3 shadow-none focus-visible:ring-0"
+              placeholder={
+                sessionId ? t('composer.placeholder') : t('composer.noSessionPlaceholder')
+              }
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={onKeyDown}
+            />
+            <div className="border-border/70 flex justify-end gap-2 border-t px-3 py-2">
+              {streaming ? (
+                <Button type="button" variant="outline" size="sm" onClick={stop}>
+                  {t('composer.stop')}
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={
+                    !sessionId ||
+                    busy ||
+                    input.trim().length === 0 ||
+                    (fileAccess && workspaceRoot.trim().length === 0)
+                  }
+                >
+                  {t('composer.send')}
+                </Button>
+              )}
+            </div>
           </div>
         </form>
       </section>
@@ -611,13 +624,17 @@ export const ChatSidebarPanel = ({
   const { t } = useChatTranslation();
   return (
     <>
-      <header className="border-border flex min-w-0 items-center justify-between gap-2 border-b px-4 py-3">
-        <h1 className="truncate text-lg font-semibold">{t('sidebar.title')}</h1>
-        {sessions.length > 0 ? (
-          <Button type="button" size="sm" disabled={createPending} onClick={onCreate}>
-            <span className="truncate">{t('sidebar.new')}</span>
-          </Button>
-        ) : null}
+      <header className="border-border flex min-w-0 flex-col gap-3 border-b px-3 py-3">
+        <h1 className="truncate px-1 text-base font-semibold">{t('sidebar.title')}</h1>
+        <Button
+          type="button"
+          size="sm"
+          className="w-full"
+          disabled={createPending}
+          onClick={onCreate}
+        >
+          <span className="truncate">{t('sidebar.new')}</span>
+        </Button>
       </header>
       <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-2 p-3">
         <SessionList
@@ -656,32 +673,28 @@ export const ChatBubble = ({ message }: { message: ChatMessage }) => {
   const parts = useChatStreamStore(
     (state) => state.messages.find((item) => item.id === message.id)?.parts ?? message.parts,
   );
-  const nonTextParts = parts.filter((part) => part.type !== 'text');
+  const textPart = parts.find((part) => part.type === 'text');
+  const userText = textPart?.type === 'text' ? textPart.text : liveText;
 
   return (
     <li
-      className={cn('flex min-w-0 flex-col gap-1.5', isUser ? 'items-end' : 'w-full items-start')}
+      className={cn(
+        'motion-safe-slide-up flex min-w-0 flex-col gap-1.5',
+        isUser ? 'items-end' : 'w-full items-start',
+      )}
     >
       <p className="text-muted-foreground px-1 text-xs">
         {isUser ? t('message.role.user') : t('message.role.assistant')}
       </p>
-      <div
-        className={cn(
-          'min-w-0',
-          isUser
-            ? 'bg-primary text-primary-foreground max-w-[85%] rounded-2xl rounded-tr-sm px-4 py-2.5 shadow-sm'
-            : 'border-border bg-card w-full max-w-3xl rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm',
-        )}
-      >
-        {isUser ? (
-          <p className="text-sm whitespace-pre-wrap">{liveText}</p>
-        ) : (
-          <div className="flex flex-col gap-3">
-            {parts.some((part) => part.type === 'text') ? <StreamMarkdown text={liveText} /> : null}
-            {nonTextParts.length > 0 ? <MessageParts parts={nonTextParts} /> : null}
-          </div>
-        )}
-      </div>
+      {isUser ? (
+        <div className="bg-primary text-primary-foreground max-w-[85%] min-w-0 rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm shadow-sm">
+          <p className="whitespace-pre-wrap">{userText}</p>
+        </div>
+      ) : (
+        <div className="border-primary/20 w-full max-w-3xl min-w-0 border-l-2 pl-4">
+          <MessageParts parts={parts} />
+        </div>
+      )}
       {message.status === 'interrupted' ? (
         <p className="text-muted-foreground px-1 text-xs">{t('message.interrupted')}</p>
       ) : null}
@@ -725,6 +738,19 @@ export const SessionList = ({
   onNavigate?: () => void;
 }) => {
   const { t } = useChatTranslation();
+  const [openMenuId, setOpenMenuId] = useState<string | null>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!openMenuId) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (menuRef.current?.contains(event.target as Node)) return;
+      setOpenMenuId(null);
+    };
+    window.addEventListener('pointerdown', onPointerDown);
+    return () => window.removeEventListener('pointerdown', onPointerDown);
+  }, [openMenuId]);
+
   if (sessions.length === 0) {
     return (
       <div className="border-border flex flex-col items-center gap-3 rounded-lg border border-dashed p-4 text-center">
@@ -737,18 +763,19 @@ export const SessionList = ({
       </div>
     );
   }
+
   return (
-    <ul className="flex flex-1 flex-col gap-2 overflow-y-auto">
+    <ul className="flex flex-1 flex-col gap-0.5 overflow-y-auto px-1">
       {sessions.map((item) => (
         <li
           key={item.id}
           className={cn(
-            'border-border rounded-lg border p-2 shadow-sm transition-colors',
-            item.id === currentId ? 'bg-accent border-accent-foreground/10' : 'bg-card',
+            'group relative rounded-md transition-colors duration-150',
+            item.id === currentId ? 'bg-sidebar-accent' : 'hover:bg-sidebar-accent/60',
           )}
         >
           {renameId === item.id ? (
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 p-2">
               <Input value={renameValue} onChange={(event) => onRenameValue(event.target.value)} />
               <div className="flex gap-1">
                 <Button type="button" size="sm" onClick={onConfirmRename}>
@@ -759,47 +786,83 @@ export const SessionList = ({
                 </Button>
               </div>
             </div>
+          ) : pendingDeleteId === item.id ? (
+            <div className="flex flex-col gap-2 p-2">
+              <p className="text-muted-foreground line-clamp-2 text-xs">{item.title}</p>
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="destructive"
+                  onClick={() => onConfirmDelete(item.id)}
+                >
+                  <span className="truncate">{t('session.confirmDelete')}</span>
+                </Button>
+                <Button type="button" size="sm" variant="ghost" onClick={onCancelDelete}>
+                  <span className="truncate">{t('session.cancel')}</span>
+                </Button>
+              </div>
+            </div>
           ) : (
-            <>
+            <div className="flex min-w-0 items-center gap-1 py-1.5 pr-1 pl-2">
+              <span
+                aria-hidden
+                className={cn(
+                  'bg-primary absolute top-2 bottom-2 left-0 w-0.5 rounded-full transition-opacity',
+                  item.id === currentId ? 'opacity-100' : 'opacity-0',
+                )}
+              />
               <Link
                 to={`${basePath}/${item.id}`}
-                className={cn('block truncate text-sm', item.id === currentId && 'font-semibold')}
+                className={cn(
+                  'min-w-0 flex-1 truncate py-0.5 text-sm',
+                  item.id === currentId && 'font-semibold',
+                )}
                 aria-current={item.id === currentId ? 'page' : undefined}
                 onClick={onNavigate}
               >
                 {item.title}
               </Link>
-              <Separator className="my-2" />
-              <div className="flex flex-wrap gap-1">
-                <Button type="button" size="sm" variant="ghost" onClick={() => onStartRename(item)}>
-                  <span className="truncate">{t('session.rename')}</span>
+              <div className="relative shrink-0" ref={openMenuId === item.id ? menuRef : undefined}>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="ghost"
+                  className="size-8 shrink-0 p-0 opacity-100 sm:opacity-0 sm:group-focus-within:opacity-100 sm:group-hover:opacity-100"
+                  aria-label={t('session.actions')}
+                  aria-expanded={openMenuId === item.id}
+                  onClick={() => setOpenMenuId((current) => (current === item.id ? null : item.id))}
+                >
+                  <MoreVertical className="size-4" aria-hidden />
                 </Button>
-                {pendingDeleteId === item.id ? (
-                  <>
+                {openMenuId === item.id ? (
+                  <div className="border-border bg-popover absolute top-full right-0 z-20 mt-1 min-w-32 rounded-md border py-1 shadow-md">
                     <Button
                       type="button"
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => onConfirmDelete(item.id)}
+                      variant="ghost"
+                      className="h-8 w-full justify-start rounded-none px-3 text-sm"
+                      onClick={() => {
+                        setOpenMenuId(null);
+                        onStartRename(item);
+                      }}
                     >
-                      <span className="truncate">{t('session.confirmDelete')}</span>
+                      {t('session.rename')}
                     </Button>
-                    <Button type="button" size="sm" variant="ghost" onClick={onCancelDelete}>
-                      <span className="truncate">{t('session.cancel')}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      className="text-destructive hover:text-destructive h-8 w-full justify-start rounded-none px-3 text-sm"
+                      onClick={() => {
+                        setOpenMenuId(null);
+                        onAskDelete(item.id);
+                      }}
+                    >
+                      {t('session.delete')}
                     </Button>
-                  </>
-                ) : (
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => onAskDelete(item.id)}
-                  >
-                    <span className="truncate">{t('session.delete')}</span>
-                  </Button>
-                )}
+                  </div>
+                ) : null}
               </div>
-            </>
+            </div>
           )}
         </li>
       ))}
