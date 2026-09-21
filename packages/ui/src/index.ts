@@ -16,6 +16,7 @@ export { Separator, type SeparatorProps } from './components/ui/separator';
 export { Switch, type SwitchProps } from './components/ui/switch';
 export { FileInput, type FileInputProps } from './components/ui/file-input';
 export { cn } from './lib/utils';
+export { AppMark, type AppMarkProps } from './components/brand/app-mark';
 export {
   drawPetalParticles,
   spawnPetalBurst,

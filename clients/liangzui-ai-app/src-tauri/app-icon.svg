@@ -1,26 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024" fill="none">
   <defs>
-    <linearGradient id="background" x1="128" y1="96" x2="896" y2="928" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#172554"/>
-      <stop offset="1" stop-color="#0F766E"/>
+    <linearGradient id="bg" x1="128" y1="64" x2="896" y2="960" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#312E81"/>
+      <stop offset="0.5" stop-color="#4F46E5"/>
+      <stop offset="1" stop-color="#7C3AED"/>
     </linearGradient>
-    <linearGradient id="spark" x1="344" y1="272" x2="704" y2="744" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#F8FAFC"/>
-      <stop offset="1" stop-color="#99F6E4"/>
+    <radialGradient id="sheen" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(352 288) scale(384)">
+      <stop stop-color="#FFFFFF" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="core" x1="352" y1="256" x2="672" y2="736" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#BAE6FD"/>
+      <stop offset="0.5" stop-color="#A78BFA"/>
+      <stop offset="1" stop-color="#F9A8D4"/>
     </linearGradient>
   </defs>
-  <rect x="48" y="48" width="928" height="928" rx="224" fill="url(#background)"/>
+  <rect x="48" y="48" width="928" height="928" rx="232" fill="url(#bg)"/>
+  <rect x="48" y="48" width="928" height="928" rx="232" fill="url(#sheen)"/>
+  <rect x="240" y="160" width="544" height="704" rx="272" fill="#F8FAFC"/>
+  <rect x="320" y="240" width="384" height="544" rx="192" fill="url(#core)"/>
   <path
-    d="M260 296C260 234.144 310.144 184 372 184H652C713.856 184 764 234.144 764 296V582C764 643.856 713.856 694 652 694H488L337 830V694H372C310.144 694 260 643.856 260 582V296Z"
-    fill="#0B132B"
-    fill-opacity=".42"
-    stroke="#CCFBF1"
-    stroke-width="32"
-    stroke-linejoin="round"
+    d="M 368 336 A 152 152 0 0 1 656 336"
+    stroke="#FFFFFF"
+    stroke-opacity="0.55"
+    stroke-width="43"
+    stroke-linecap="round"
   />
   <path
-    d="M512 270L552 390L672 430L552 470L512 590L472 470L352 430L472 390L512 270Z"
-    fill="url(#spark)"
+    d="M 304 768 A 104 104 0 0 0 512 768 A 104 104 0 0 0 720 768"
+    stroke="#FFFFFF"
+    stroke-opacity="0.28"
+    stroke-width="35"
+    stroke-linecap="round"
   />
-  <circle cx="674" cy="286" r="38" fill="#5EEAD4"/>
+  <circle cx="512" cy="512" r="75" fill="#FFFFFF" fill-opacity="0.92"/>
 </svg>

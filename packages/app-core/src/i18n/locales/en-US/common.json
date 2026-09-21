@@ -1,6 +1,7 @@
 {
   "loading": "Loading…",
   "nav": {
+    "brand": "Liangzui AI home",
     "primary": "Main navigation",
     "chat": "Chat",
     "knowledge": "Knowledge",

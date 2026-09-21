@@ -3,6 +3,8 @@ import {
   detachStaleTauriDmgs,
   isStaleTauriDmgImage,
   parseStaleDmgDevices,
+  removeStaleRwDmgFilesInMacosBundle,
+  STALE_RW_DMG_BASENAME,
 } from './detach-stale-dmgs';
 
 const HDIUTIL_INFO = `
@@ -36,6 +38,30 @@ describe('isStaleTauriDmgImage', () => {
 describe('parseStaleDmgDevices', () => {
   it('只卸载临时 rw 镜像对应的整盘设备', () => {
     expect(parseStaleDmgDevices(HDIUTIL_INFO)).toEqual(['/dev/disk4', '/dev/disk6']);
+  });
+});
+
+describe('STALE_RW_DMG_BASENAME', () => {
+  it('匹配 bundle/macos 下的临时文件名', () => {
+    expect(
+      STALE_RW_DMG_BASENAME.test('rw.99823.liangzui-ai-app_0.1.20260921112253_aarch64.dmg'),
+    ).toBe(true);
+    expect(STALE_RW_DMG_BASENAME.test('liangzui-ai-app.app')).toBe(false);
+  });
+});
+
+describe('removeStaleRwDmgFilesInMacosBundle', () => {
+  it('只删除 rw 临时 dmg', () => {
+    const unlinked: string[] = [];
+    const removed = removeStaleRwDmgFilesInMacosBundle('/bundle/macos', {
+      exists: () => true,
+      readdir: () => ['liangzui-ai-app.app', 'rw.1.liangzui-ai-app_0.1.0_aarch64.dmg', '.DS_Store'],
+      unlink: (p) => {
+        unlinked.push(p);
+      },
+    });
+    expect(removed).toEqual(['/bundle/macos/rw.1.liangzui-ai-app_0.1.0_aarch64.dmg']);
+    expect(unlinked).toEqual(['/bundle/macos/rw.1.liangzui-ai-app_0.1.0_aarch64.dmg']);
   });
 });
 

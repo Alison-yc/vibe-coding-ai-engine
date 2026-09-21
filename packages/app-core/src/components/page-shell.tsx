@@ -2,6 +2,7 @@ import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import {
+  AppMark,
   BookOpen,
   Button,
   CardTitle,
@@ -11,12 +12,19 @@ import {
   Settings,
   cn,
 } from '@ai-engine/ui';
-export const APP_NAV_ITEMS = [
-  { to: '/chat', icon: MessageSquare, labelKey: 'nav.chat' as const },
-  { to: '/knowledge', icon: BookOpen, labelKey: 'nav.knowledge' as const },
-  { to: '/workflow', icon: GitBranch, labelKey: 'nav.workflow' as const },
-  { to: '/settings', icon: Settings, labelKey: 'nav.settings' as const },
-] as const;
+
+type AppNavItem = {
+  readonly to: string;
+  readonly icon: ComponentType<SVGProps<SVGSVGElement>>;
+  readonly labelKey: 'nav.chat' | 'nav.knowledge' | 'nav.workflow' | 'nav.settings';
+};
+
+export const APP_NAV_ITEMS: readonly AppNavItem[] = [
+  { to: '/chat', icon: MessageSquare, labelKey: 'nav.chat' },
+  { to: '/knowledge', icon: BookOpen, labelKey: 'nav.knowledge' },
+  { to: '/workflow', icon: GitBranch, labelKey: 'nav.workflow' },
+  { to: '/settings', icon: Settings, labelKey: 'nav.settings' },
+];
 
 export const IconCardTitle = ({
   icon: Icon,
@@ -42,12 +50,14 @@ export const AppNavRail = () => {
       className="bg-sidebar text-sidebar-foreground border-sidebar-border flex w-[4.25rem] shrink-0 flex-col items-stretch gap-1 border-r px-2 py-4"
     >
       <div className="mb-3 flex justify-center">
-        <span
-          aria-hidden
-          className="bg-primary text-primary-foreground grid size-9 place-items-center rounded-lg text-xs font-bold tracking-tight"
+        <Link
+          to="/chat"
+          className="rounded-lg transition-opacity duration-150 hover:opacity-90"
+          title={t('nav.brand')}
+          aria-label={t('nav.brand')}
         >
-          LZ
-        </span>
+          <AppMark size={40} />
+        </Link>
       </div>
       {APP_NAV_ITEMS.map(({ to, icon: Icon, labelKey }) => {
         const active = pathname === to || pathname.startsWith(`${to}/`);
@@ -64,7 +74,7 @@ export const AppNavRail = () => {
             asChild
           >
             <Link to={to} title={label} aria-current={active ? 'page' : undefined}>
-              <Icon className="size-5 shrink-0" aria-hidden />
+              <Icon className={cn('size-5 shrink-0', active && 'text-primary')} aria-hidden />
               <span className="max-w-full truncate text-[10px] leading-tight">{label}</span>
             </Link>
           </Button>
