@@ -24,3 +24,6 @@ coverage/
 *.app
 *.exe
 *.msi
+
+# Docker volumes
+docker/data/

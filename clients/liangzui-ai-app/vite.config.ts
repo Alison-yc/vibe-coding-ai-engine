@@ -1,7 +1,7 @@
-import path from "path";
-import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
-import tailwindcss from "@tailwindcss/vite";
+import path from 'node:path';
+import { defineConfig } from 'vite';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
 
 const host = process.env.TAURI_DEV_HOST;
 
@@ -9,7 +9,12 @@ export default defineConfig(async () => ({
   plugins: [react(), tailwindcss()],
   resolve: {
     alias: {
-      "@": path.resolve(__dirname, "./src"),
+      '@': path.resolve(__dirname, './src'),
+      '@ai-engine/app-core': path.resolve(__dirname, '../../packages/app-core/src/index.ts'),
+      '@ai-engine/platform': path.resolve(__dirname, '../../packages/platform/src/index.ts'),
+      '@ai-engine/contracts': path.resolve(__dirname, '../../packages/contracts/src/index.ts'),
+      '@ai-engine/ui/styles': path.resolve(__dirname, '../../packages/ui/src/styles/index.css'),
+      '@ai-engine/ui': path.resolve(__dirname, '../../packages/ui/src/index.ts'),
     },
   },
   clearScreen: false,
@@ -19,13 +24,13 @@ export default defineConfig(async () => ({
     host: host || false,
     hmr: host
       ? {
-          protocol: "ws",
+          protocol: 'ws',
           host,
           port: 1421,
         }
       : undefined,
     watch: {
-      ignored: ["**/src-tauri/**"],
+      ignored: ['**/src-tauri/**'],
     },
   },
 }));

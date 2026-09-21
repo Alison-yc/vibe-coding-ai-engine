@@ -1,0 +1,50 @@
+{
+  "backend": {
+    "cardTitle": "后端连接",
+    "addressLabel": "后端地址",
+    "localOnlyDescription": "仅支持本机 localhost 或 127.0.0.1，可修改端口。",
+    "testing": "正在测试…",
+    "saveAndTest": "保存并测试",
+    "success": "连接成功，地址已保存。"
+  },
+  "mcp": {
+    "status": {
+      "connected": "已连接",
+      "disconnected": "未连接",
+      "error": "连接失败"
+    },
+    "selectedCount": "已选 {{selected}}/{{total}}",
+    "stdioWarning": "启用后会在服务端启动配置中的第三方进程；仅启用你信任的 MCP。",
+    "httpWarning": "启用后服务端会连接外部 MCP 地址；仅启用你信任的服务。",
+    "enabled": "启用",
+    "remoteTools": "远程 MCP 工具",
+    "toolsEmpty": "连接后可勾选工具。未勾选的不会发给模型。",
+    "reconnect": "重新连接",
+    "loadError": "加载失败",
+    "emptyTitle": "还没有配置 MCP server",
+    "emptyDescription": "复制 mcp.json.example 为 mcp.json，填写可信的 stdio/HTTP server 后重启后端。"
+  },
+  "automaticTools": {
+    "cardTitle": "当前自动装配的工具",
+    "limit": "上限 {{count}}（依据 .plan/04 的 qwen3.5:2b 基线）。",
+    "builtinDescription": "datetime、calculate、generate_uuid 属于内置工具，不会出现在上方 MCP 勾选框中。",
+    "dropped": "已裁剪：{{names}}"
+  },
+  "connectionGate": {
+    "checkingTitle": "正在连接后端服务",
+    "disconnectedTitle": "无法连接到后端服务",
+    "description": "桌面版会自动启动 NestJS 后端，但仍需本机运行 PostgreSQL 与 Ollama。开发模式下可在项目目录执行：",
+    "addressLabel": "后端地址",
+    "localOnlyDescription": "出于桌面端安全策略，仅支持 localhost 或 127.0.0.1，可自定义端口。",
+    "fallbackError": "无法连接后端服务",
+    "testing": "正在测试…",
+    "saveAndTest": "保存并测试连接"
+  },
+  "connectionErrors": {
+    "invalidUrl": "请输入有效的后端地址，例如 http://localhost:3000",
+    "httpRequired": "本地后端地址必须使用 http 协议",
+    "hostNotAllowed": "桌面端仅允许连接 localhost 或 127.0.0.1",
+    "urlPartsNotAllowed": "后端地址只能包含协议、主机和端口",
+    "healthCheckFailed": "后端健康检查失败：HTTP {{status}}"
+  }
+}

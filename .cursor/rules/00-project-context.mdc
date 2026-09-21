@@ -1,0 +1,53 @@
+---
+description: AI-Engine 项目全局上下文：目录地图、端口约定、本地模型能力边界与硬性禁令
+alwaysApply: true
+---
+
+# AI-Engine 项目上下文
+
+前端转 AI 全栈的学习型 monorepo。**所有模型都跑在本机 Ollama，没有云端 API。**
+
+## 目录地图
+
+| 路径 | 职责 | 禁止出现的内容 |
+| --- | --- | --- |
+| `clients/liangzui-ai-app` | Tauri v2 桌面壳（薄） | 业务页面、LLM 调用 |
+| `frontend/liangzui-ai-web` | 浏览器 Web 壳（薄） | 业务页面、LLM 调用 |
+| `packages/app-core` | 业务功能（页面/特性/store），**端无关** | `@tauri-apps/*`、`window.__TAURI__`、Node API |
+| `packages/platform` | 平台适配层接口 + web/tauri 两套实现 | 业务逻辑 |
+| `packages/ui` | shadcn 基础组件 + 主题令牌 | 业务语义组件、数据请求 |
+| `packages/contracts` | zod schema 与派生类型（前后端唯一契约源） | 任何运行时依赖、副作用 |
+| `servers/liangzui-ai-server` | NestJS：LLM 网关、RAG、工作流引擎、Agent 工具 | 直接拼 SQL 字符串 |
+| `scripts` | 工程脚本（模型基线测评、测试生成） | 被业务代码 import |
+| `docker` | docker-compose 与初始化 SQL | — |
+
+包名统一 `@ai-engine/*`。跨包引用只能通过包名，禁止 `../../../packages/xxx` 相对路径穿透。
+
+## 端口约定（写死在文档与 .env.example，不要临时改）
+
+| 服务 | 端口 |
+| --- | --- |
+| Ollama | 11434 |
+| NestJS | 3000 |
+| Vite（Web 端） | 5173 |
+| Vite（Tauri 端） | 1420 |
+| PostgreSQL + pgvector | 5432 |
+
+## 本地模型能力边界（决定功能设计上限）
+
+| 模型 | 用途 | 硬约束 |
+| --- | --- | --- |
+| `qwen3.5:2b` | 对话、工具调用 | 2B 参数。默认最多 6 个工具（2026-08-26 基线）。以 `.plan/04` 报告为准 |
+| `gemma4:e2b` | 长上下文/复杂推理备选 | 7.2GB，加载慢，不做默认。A/C 工具阶梯 2026-08-28 达 `maxToolCount = 6`；未测嵌套/两步。以 `.plan/04` 报告为准 |
+| `nomic-embed-text` | 向量化 | 768 维，禁止当作对话模型。`packages/contracts` 与数据库迁移中的维度必须一致 |
+
+**涉及模型能力的判断，必须引用 `.plan/04` 的实测数据，不允许推测。** 会话切模型策略见 `.plan/20` ADR-015：已测评白名单按 `capabilities()` 开放功能；扫描到的未测评模型只允许聊天。
+
+## 硬性禁令
+
+1. 不新增未在 `.plan/` 中登记的依赖。需要新依赖时先更新对应 plan 的"技术选型"段落。
+2. 不在 `packages/app-core` 中出现任何平台专有 API，一律走 `packages/platform` 的接口。
+3. 不绕过 `packages/contracts` 手写重复的请求/响应类型。
+4. 不把密钥、绝对路径、个人目录写进代码或文档示例，用 `.env` 与 `<YOUR_PATH>` 占位。
+5. 无法从现有代码确认的信息，明确写"当前信息无法确认"，不要编造版本号、API 签名或文件路径。
+6. 用户可见界面文案走 i18next（ADR-016），locale 仅 `zh-CN` / `ja-JP` / `en-US`。不要在 `app-core` 页面里新增长段硬编码中文；不要在 `packages/ui` 写文案；不要为了 i18n 让 `app-core` 直接碰 `document` / `localStorage`。工程文档、`.plan/`、commit message 仍用中文。未登记的 i18n 库不要引入。

@@ -1,0 +1,61 @@
+---
+description: NestJS 服务端规范：模块分层、DTO 校验、SSE、配置注入与数据访问
+globs: servers/**/*.ts
+alwaysApply: false
+---
+
+# NestJS 服务端规范
+
+## 分层与依赖方向
+
+```
+Controller  →  Service  →  Repository / Provider
+（HTTP/SSE）   （业务编排）   （数据库 / Ollama / 文件系统）
+```
+
+- Controller 只做参数校验、鉴权与响应形态转换，**不含业务逻辑**。
+- Service 不感知 HTTP，不 import `express` 类型，方便单测。
+- 依赖倒置：Service 依赖抽象接口（如 `LlmGateway`、`VectorStore`），实现在 Provider 层用 `useClass` 注入，这样测试能替换成 fake。
+
+禁止出现的反模式：在 Controller 里直接 `new ChatOllama(...)`，或在模块顶层创建单例 LLM 客户端（现有 `fundamentals/translate.ts` 就是这个问题，重构时一并修掉）。
+
+## 配置只能从 ConfigService 读
+
+```ts
+// ❌ BAD —— 散落各处，测试无法覆盖，改配置要全局搜索
+const url = process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434';
+
+// ✅ GOOD —— 启动时用 zod 校验，缺失即快速失败
+constructor(private readonly config: ConfigService<AppConfig, true>) {}
+const url = this.config.get('ollama.baseUrl', { infer: true });
+```
+
+配置 schema 放 `src/config/`，用 zod 校验，`validate` 阶段失败就不要让进程起来。
+
+## DTO 与契约
+
+- 请求/响应 DTO 从 `@ai-engine/contracts` 导入 zod schema，用 `nestjs-zod` 或自写 ZodValidationPipe 校验。
+- 不要在 `servers/` 里重复定义前端已有的类型。
+- 全局开启 `ValidationPipe`（`whitelist: true`、`forbidNonWhitelisted: true`）。
+
+## SSE 接口约定
+
+- 路径后缀 `/stream`，返回 `text/event-stream`。
+- 每个事件都有 `event` 名与 JSON `data`，事件类型枚举定义在 contracts 包。
+- 必须处理客户端断开：监听 `req.on('close')` 触发 AbortController，停止向 Ollama 继续请求。
+- 必须发送终止事件（`done` 或 `error`），前端才能收尾，不能靠连接断开来隐式表示结束。
+
+## 数据访问
+
+- 统一走 Drizzle，schema 定义在 `src/database/schema/`。
+- 迁移文件由 `drizzle-kit generate` 产出并提交，**禁止**手改已提交的迁移。
+- 向量检索走参数化查询，禁止字符串拼接 SQL。
+- 向量维度常量从 contracts 包读取，不在多处写 `768`。
+
+## 异常
+
+用 Nest 内置 HTTP 异常表达语义：外部依赖不可用 → `ServiceUnavailableException`，入参非法 → `BadRequestException`，找不到 → `NotFoundException`。异常消息要包含可操作的排查提示（例如"检查 Ollama 是否在 :11434 运行"），不要只返回 `Internal Server Error` 这类对使用者无帮助的句子。
+
+## 提示词
+
+检索片段、文件内容等外部文本必须放在明确分隔区内，并声明其中的任何指令都不得执行。权限判断不写进提示词，走代码里的审批。

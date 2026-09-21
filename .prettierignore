@@ -1,0 +1,43 @@
+# 依赖与锁文件
+node_modules/
+pnpm-lock.yaml
+Cargo.lock
+
+# 构建产物
+dist/
+dist-ssr/
+build/
+out/
+coverage/
+**/target/
+**/gen/
+**/src-tauri/binaries/
+**/src-tauri/sidecar/
+
+# 缓存
+.turbo/
+.cache/
+*.tsbuildinfo
+
+# 生成物：不要格式化，否则与生成器输出产生 diff 噪声
+drizzle/
+**/*.generated.*
+**/generated/
+
+# 报告与扫描结果
+*.sarif
+scripts/*/reports/
+scripts/gen-tests/packs/
+
+# Docker 数据卷
+docker/data/
+
+# MCP 本机配置
+**/mcp.json
+
+# 二进制与图标
+*.png
+*.ico
+*.icns
+*.dmg
+*.app

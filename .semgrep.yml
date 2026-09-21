@@ -1,0 +1,195 @@
+# 本项目自定义 SAST 规则。
+#
+# 这些规则针对本项目实际存在的六个攻击面（见 .plan/16）：
+#   Agent 文件工具的路径穿越 / code 节点沙箱逃逸 / http 节点 SSRF
+#   模型输出渲染的 XSS / 检索内容的提示词注入 / grep 工具的命令注入
+#
+# ⚠️ 每条规则都必须配测试并通过 `pnpm sec:sast:test`。
+#    没测过的规则等于没有：可能永远不触发，也可能满屏误报。
+#    测试用例放 tests/semgrep/rules.<rule-id>.ts；自测前会把本文件复制为 tests/semgrep/rules.yml。
+#
+# 需要例外时用 `// nosemgrep: <rule-id>` 并**必须写理由注释**。
+#
+# YAML 提示：正则一律用 `|-` 块标量书写，避免以 [ 或 ' 开头时被 YAML 误解析为流序列。
+
+rules:
+  # ── 命令注入 ────────────────────────────────────────────────
+  - id: no-exec-string-interpolation
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      禁止把变量拼进 shell 命令字符串。用 execFile('cmd', [arg1, arg2]) 传数组参数，
+      且不要设 shell: true。模型输出和用户输入都不可信。
+      见 .cursor/rules/80-security.mdc。
+    pattern-either:
+      - pattern-regex: |-
+          \bexec(Sync)?\s*\(\s*`[^`]*\$\{
+      - pattern-regex: |-
+          \bexec(Sync)?\s*\([^)]*['"]\s*\+\s*\w
+      - pattern-regex: |-
+          shell\s*:\s*true
+
+  # ── 任意代码执行 ────────────────────────────────────────────
+  - id: no-eval-like-execution
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      禁止 eval / new Function / vm 模块。工作流 code 节点必须用 WASM 沙箱
+      (quickjs-emscripten)。Node 官方明确说明 vm 模块不是安全沙箱，可以逃逸。
+      见 .plan/08 与 ADR-008。
+    pattern-either:
+      - pattern: eval(...)
+      - pattern: new Function(...)
+      - pattern-regex: |-
+          \bvm\.(runInNewContext|runInThisContext|runInContext|compileFunction)\b
+      - pattern-regex: |-
+          from\s+['"](node:)?vm['"]
+
+  # ── 路径穿越 ────────────────────────────────────────────────
+  - id: no-unvalidated-path-in-fs
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      文件系统操作的路径看起来未经沙箱校验。所有来自用户或模型的路径必须先经过
+      resolveWorkspacePath()，它会用 realpath 比较以同时防 ../ 穿越和符号链接逃逸。
+      见 .plan/10 与 .cursor/rules/80-security.mdc。
+    paths:
+      include:
+        - "/servers/**"
+        - "/scripts/**"
+        - "/tests/semgrep/**"
+      exclude:
+        - "**/*.spec.ts"
+        - "**/*.test.ts"
+    pattern-either:
+      - pattern: $FS.readFile(path.join($ROOT, $INPUT), ...)
+      - pattern: $FS.writeFile(path.join($ROOT, $INPUT), ...)
+      - pattern: $FS.readFileSync(path.join($ROOT, $INPUT), ...)
+      - pattern: $FS.writeFileSync(path.join($ROOT, $INPUT), ...)
+      - pattern: $FS.readFile(path.resolve($ROOT, $INPUT), ...)
+      - pattern: $FS.writeFile(path.resolve($ROOT, $INPUT), ...)
+
+  - id: require-realpath-in-path-sandbox
+    languages: [typescript]
+    severity: ERROR
+    message: >-
+      路径沙箱只做字符串 startsWith 检查挡不住工作区内的符号链接逃逸，
+      必须先用 fs.realpath 解析真实路径再比较。见 .plan/10 的实现示例。
+    paths:
+      include:
+        - "**/*workspace-path*.ts"
+        - "**/*sandbox*.ts"
+        - "**/*path-guard*.ts"
+    patterns:
+      - pattern: $X.startsWith(...)
+      - pattern-not-inside: |
+          $FS.realpath(...)
+          ...
+          $X.startsWith(...)
+
+  # ── XSS ─────────────────────────────────────────────────────
+  - id: no-dangerously-set-inner-html
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      禁止 dangerouslySetInnerHTML。模型输出是不可信内容，会导致 XSS。
+      Markdown 用 react-markdown 渲染（它默认禁用原始 HTML）。
+    pattern-regex: |-
+      dangerouslySetInnerHTML
+
+  - id: no-rehype-raw
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      禁止给 react-markdown 配 rehype-raw，那等于开启 XSS —— 模型输出
+      <img src=x onerror=alert(1)> 就会被执行。见 .plan/07 的安全要求。
+    pattern-either:
+      - pattern-regex: |-
+          from\s+['"]rehype-raw['"]
+      - pattern-regex: |-
+          rehypeRaw
+
+  # ── SQL 注入 ────────────────────────────────────────────────
+  - id: no-sql-string-interpolation
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      禁止用模板字符串拼接 SQL。用 Drizzle 的参数化 API 或 sql`` 模板标签。
+      向量检索的相似度查询同样适用。
+    paths:
+      include:
+        - "/servers/**"
+        - "/tests/semgrep/**"
+    pattern-either:
+      - pattern-regex: |-
+          \.(query|execute|unsafe)\s*\(\s*`[^`]*\$\{
+      - pattern-regex: |-
+          \b(SELECT|INSERT INTO|UPDATE|DELETE FROM)\b[^;`]*['"]\s*\+\s*\w
+
+  # ── SSRF ────────────────────────────────────────────────────
+  - id: no-fetch-dynamic-url-without-guard
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      向用户/模型提供的 URL 发请求前必须调用 assertSafeUrl()：解析 IP 拦截私有网段、
+      只允许 http(s)、跟随重定向后重新校验。见 .plan/08 的 http-request 节点。
+    paths:
+      include:
+        - "/servers/**/workflow/**"
+        - "/servers/**/agent/**"
+        - "/tests/semgrep/**"
+    patterns:
+      - pattern-either:
+          - pattern: fetch($URL, ...)
+          - pattern: axios.$METHOD($URL, ...)
+      - pattern-not: fetch("...", ...)
+      - pattern-not: axios.$METHOD("...", ...)
+
+  # ── 配置与日志卫生 ──────────────────────────────────────────
+  - id: no-hardcoded-ollama-url
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      不要硬编码 Ollama 地址。走 ConfigService 读 OLLAMA_BASE_URL，
+      否则换端口要全局搜索替换。见 .cursor/rules/30-nestjs-server.mdc。
+    paths:
+      exclude:
+        - "**/*.example"
+        - "**/*.md"
+        - "**/config/**"
+        - "**/*.test.ts"
+        - "**/*.spec.ts"
+    pattern-regex: |-
+      https?://(127\.0\.0\.1|localhost):11434
+
+  - id: no-direct-process-env-in-server
+    languages: [typescript]
+    severity: WARNING
+    message: >-
+      服务端不要直接读 process.env。配置统一经 zod 校验后从 ConfigService 注入，
+      这样缺配置会在启动时快速失败，而不是运行到某个分支才报错。
+    paths:
+      include:
+        - "/servers/*/src/**"
+        - "/tests/semgrep/**"
+      exclude:
+        - "/servers/*/src/config/**"
+        - "/servers/*/src/main.ts"
+    pattern: process.env.$VAR
+
+  - id: no-full-content-logging
+    languages: [typescript, javascript]
+    severity: WARNING
+    message: >-
+      不要把用户输入、文件内容、模型完整响应打进日志。日志文件可能被分享出去，
+      这是隐私风险。改为记录长度、哈希或前 100 字符。
+      见 .cursor/rules/80-security.mdc。
+    paths:
+      include:
+        - "/servers/**"
+        - "/tests/semgrep/**"
+    pattern-either:
+      - pattern-regex: |-
+          logger\.\w+\([^)]*\b(content|prompt|fileContent|userInput|rawText)\b\s*[,)]
+      - pattern-regex: |-
+          console\.log\([^)]*\b(content|prompt|fileContent|userInput)\b

@@ -1,0 +1,36 @@
+{
+  "loading": "Loading…",
+  "nav": {
+    "brand": "Liangzui AI home",
+    "primary": "Main navigation",
+    "chat": "Chat",
+    "knowledge": "Knowledge",
+    "workflow": "Workflow",
+    "settings": "Settings"
+  },
+  "shell": {
+    "back": "Back"
+  },
+  "commandPalette": {
+    "title": "Command palette",
+    "placeholder": "Search pages…",
+    "empty": "No matching pages",
+    "close": "Close command palette",
+    "hint": "Esc to close · ⌘K / Ctrl+K to toggle"
+  },
+  "settings": {
+    "title": "Settings",
+    "description": "Manage the interface language, backend connection, and MCP tools.",
+    "effects": {
+      "cardTitle": "Visual effects",
+      "pointerTrailLabel": "Pointer trail",
+      "pointerTrailDescription": "Shows a subtle cursor trail. Disabled when the system prefers reduced motion."
+    },
+    "language": {
+      "cardTitle": "Interface language",
+      "label": "Language",
+      "description": "Changes apply immediately and are saved on this device.",
+      "changeError": "The language setting could not be saved. Please try again."
+    }
+  }
+}

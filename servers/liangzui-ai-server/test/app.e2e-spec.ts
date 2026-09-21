@@ -1,10 +1,14 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication } from '@nestjs/common';
+import 'reflect-metadata';
+import type { INestApplication } from '@nestjs/common';
+import { Test, type TestingModule } from '@nestjs/testing';
+import { ApiErrorSchema } from '@ai-engine/contracts';
 import request from 'supertest';
-import { App } from 'supertest/types';
+import type { App } from 'supertest/types';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AppModule } from './../src/app.module';
+import { applyHttpSetup } from './../src/http/setup-http';
 
-describe('AppController (e2e)', () => {
+describe('App HTTP (e2e)', () => {
   let app: INestApplication<App>;
 
   beforeEach(async () => {
@@ -12,15 +16,22 @@ describe('AppController (e2e)', () => {
       imports: [AppModule],
     }).compile();
 
-    app = moduleFixture.createNestApplication();
+    app = applyHttpSetup(moduleFixture.createNestApplication());
     await app.init();
   });
 
   it('/ (GET)', () => {
-    return request(app.getHttpServer())
-      .get('/')
-      .expect(200)
-      .expect('Hello World!');
+    return request(app.getHttpServer()).get('/').expect(200).expect('Hello World!');
+  });
+
+  it('POST /llm/translate 在 text 非字符串时返回契约错误体', async () => {
+    const response = await request(app.getHttpServer())
+      .post('/llm/translate')
+      .send({ text: 123 })
+      .expect(400);
+
+    expect(ApiErrorSchema.safeParse(response.body).success).toBe(true);
+    expect(response.body).toMatchObject({ code: 'BAD_REQUEST' });
   });
 
   afterEach(async () => {

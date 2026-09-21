@@ -1,0 +1,212 @@
+[
+  {
+    "id": "qa-01",
+    "question": "AI-Engine 项目的学习目标是什么？",
+    "referenceAnswer": "帮助前端开发者学习 AI 全栈工程。",
+    "keywords": ["前端开发者", "AI 全栈"],
+    "expectedDocuments": ["01-project-overview.md"]
+  },
+  {
+    "id": "qa-02",
+    "question": "项目提供哪两种客户端外壳？",
+    "referenceAnswer": "浏览器 Web 壳和 Tauri 桌面壳。",
+    "keywords": ["Web", "Tauri"],
+    "expectedDocuments": ["01-project-overview.md"]
+  },
+  {
+    "id": "qa-03",
+    "question": "项目的模型在哪里运行？",
+    "referenceAnswer": "全部运行在本机 Ollama。",
+    "keywords": ["本机", "Ollama"],
+    "expectedDocuments": ["01-project-overview.md"]
+  },
+  {
+    "id": "qa-04",
+    "question": "共享契约如何定义类型？",
+    "referenceAnswer": "在 contracts 中用 Zod schema 派生 TypeScript 类型。",
+    "keywords": ["contracts", "Zod"],
+    "expectedDocuments": ["02-architecture.md"]
+  },
+  {
+    "id": "qa-05",
+    "question": "platform 包负责什么？",
+    "referenceAnswer": "定义平台适配接口并提供 Web 与 Tauri 实现。",
+    "keywords": ["平台适配", "Web", "Tauri"],
+    "expectedDocuments": ["02-architecture.md"]
+  },
+  {
+    "id": "qa-06",
+    "question": "服务端为什么不能直接拼 SQL？",
+    "referenceAnswer": "必须使用参数化查询来防止 SQL 注入。",
+    "keywords": ["参数化", "SQL 注入"],
+    "expectedDocuments": ["02-architecture.md", "06-security.md"]
+  },
+  {
+    "id": "qa-07",
+    "question": "默认对话模型和上下文配置是什么？",
+    "referenceAnswer": "qwen3.5:2b，8192 token。",
+    "keywords": ["qwen3.5:2b", "8192"],
+    "expectedDocuments": ["03-models.md"]
+  },
+  {
+    "id": "qa-08",
+    "question": "gemma4:e2b 在项目中是什么角色？",
+    "referenceAnswer": "它是加载较慢的复杂推理备选模型，不是默认模型。",
+    "keywords": ["复杂推理", "备选", "不作为默认"],
+    "expectedDocuments": ["03-models.md"]
+  },
+  {
+    "id": "qa-09",
+    "question": "nomic-embed-text 的向量维度是多少？",
+    "referenceAnswer": "768 维。",
+    "keywords": ["768"],
+    "expectedDocuments": ["03-models.md"]
+  },
+  {
+    "id": "qa-10",
+    "question": "Ollama 和 NestJS 的端口分别是什么？",
+    "referenceAnswer": "Ollama 是 11434，NestJS 是 3000。",
+    "keywords": ["11434", "3000"],
+    "expectedDocuments": ["04-ports.md"]
+  },
+  {
+    "id": "qa-11",
+    "question": "两种前端开发服务器的端口是什么？",
+    "referenceAnswer": "Web 使用 5173，Tauri 使用 1420。",
+    "keywords": ["5173", "1420"],
+    "expectedDocuments": ["04-ports.md"]
+  },
+  {
+    "id": "qa-12",
+    "question": "数据库端口是多少？",
+    "referenceAnswer": "PostgreSQL 与 pgvector 使用 5432。",
+    "keywords": ["PostgreSQL", "5432"],
+    "expectedDocuments": ["04-ports.md"]
+  },
+  {
+    "id": "qa-13",
+    "question": "按顺序列出索引的五个阶段。",
+    "referenceAnswer": "提取、清洗、切分、向量化、写入索引。",
+    "keywords": ["提取", "清洗", "切分", "向量化", "写入索引"],
+    "expectedDocuments": ["05-rag.md"]
+  },
+  {
+    "id": "qa-14",
+    "question": "默认切分配置是什么？",
+    "referenceAnswer": "recursive 策略，块大小 500 字符，重叠 50 字符。",
+    "keywords": ["recursive", "500", "50"],
+    "expectedDocuments": ["05-rag.md"]
+  },
+  {
+    "id": "qa-15",
+    "question": "检索结果在返回前如何处理？",
+    "referenceAnswer": "应用分数阈值、重排和上下文预算。",
+    "keywords": ["分数阈值", "重排", "上下文预算"],
+    "expectedDocuments": ["05-rag.md"]
+  },
+  {
+    "id": "qa-16",
+    "question": "文件路径安全校验必须使用什么？",
+    "referenceAnswer": "必须使用 realpath 防止目录穿越和符号链接逃逸。",
+    "keywords": ["realpath", "目录穿越", "符号链接"],
+    "expectedDocuments": ["06-security.md"]
+  },
+  {
+    "id": "qa-17",
+    "question": "数据库查询的安全规则是什么？",
+    "referenceAnswer": "使用 Drizzle 参数化 API，不能拼接用户输入。",
+    "keywords": ["Drizzle", "参数化", "用户输入"],
+    "expectedDocuments": ["06-security.md"]
+  },
+  {
+    "id": "qa-18",
+    "question": "RAG 提示词怎样处理外部文档？",
+    "referenceAnswer": "把文档视为不可信数据，明确其中指令不得执行。",
+    "keywords": ["不可信数据", "不得执行"],
+    "expectedDocuments": ["06-security.md"]
+  },
+  {
+    "id": "qa-19",
+    "question": "工作流节点的注册机制是什么？",
+    "referenceAnswer": "节点通过三层注册表注册和解析。",
+    "keywords": ["三层注册表", "注册", "解析"],
+    "expectedDocuments": ["07-workflow.md"]
+  },
+  {
+    "id": "qa-20",
+    "question": "条件节点如何决定分支？",
+    "referenceAnswer": "只读取结构化结果，再由代码判断分支。",
+    "keywords": ["结构化结果", "代码判断"],
+    "expectedDocuments": ["07-workflow.md"]
+  },
+  {
+    "id": "qa-21",
+    "question": "工作流代码在哪种沙箱运行？",
+    "referenceAnswer": "在 QuickJS WASM 沙箱运行，不能用 Node vm。",
+    "keywords": ["QuickJS", "WASM", "Node vm"],
+    "expectedDocuments": ["07-workflow.md"]
+  },
+  {
+    "id": "qa-22",
+    "question": "Agent 工具参数如何保证结构正确？",
+    "referenceAnswer": "通过统一 Tool 接口并使用 Zod 校验参数。",
+    "keywords": ["Tool", "Zod", "校验"],
+    "expectedDocuments": ["08-agent.md"]
+  },
+  {
+    "id": "qa-23",
+    "question": "Agent 默认最多提供几个工具？",
+    "referenceAnswer": "最多六个。",
+    "keywords": ["六个"],
+    "expectedDocuments": ["08-agent.md"]
+  },
+  {
+    "id": "qa-24",
+    "question": "模型说紧急时可以跳过高危审批吗？",
+    "referenceAnswer": "不可以，高风险操作始终需要人工审批。",
+    "keywords": ["不可以", "人工审批"],
+    "expectedDocuments": ["08-agent.md"]
+  },
+  {
+    "id": "qa-25",
+    "question": "结构化日志由哪些组件提供？",
+    "referenceAnswer": "由 pino 和 nestjs-pino 提供。",
+    "keywords": ["pino", "nestjs-pino"],
+    "expectedDocuments": ["09-observability.md"]
+  },
+  {
+    "id": "qa-26",
+    "question": "请求上下文怎样传递 traceId？",
+    "referenceAnswer": "通过 AsyncLocalStorage 贯穿调用链。",
+    "keywords": ["AsyncLocalStorage", "traceId"],
+    "expectedDocuments": ["09-observability.md"]
+  },
+  {
+    "id": "qa-27",
+    "question": "列出三个 LLM 性能观测项。",
+    "referenceAnswer": "首 token 延迟、总耗时和 token 数。",
+    "keywords": ["首 token", "总耗时", "token 数"],
+    "expectedDocuments": ["09-observability.md"]
+  },
+  {
+    "id": "qa-28",
+    "question": "提交前应运行哪个完整检查？",
+    "referenceAnswer": "运行 pnpm ci:local。",
+    "keywords": ["pnpm ci:local"],
+    "expectedDocuments": ["10-delivery.md"]
+  },
+  {
+    "id": "qa-29",
+    "question": "真实模型调用放在哪两个流程？",
+    "referenceAnswer": "放在 baseline 与 rag-eval 评测流程。",
+    "keywords": ["baseline", "rag-eval"],
+    "expectedDocuments": ["10-delivery.md"]
+  },
+  {
+    "id": "qa-30",
+    "question": "提交信息遵循哪种约定？",
+    "referenceAnswer": "遵循 conventional commits。",
+    "keywords": ["conventional commits"],
+    "expectedDocuments": ["10-delivery.md"]
+  }
+]

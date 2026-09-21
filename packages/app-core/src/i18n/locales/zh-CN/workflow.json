@@ -1,0 +1,227 @@
+{
+  "list": {
+    "title": "工作流",
+    "description": "拖拽节点编排本地 AI 流程",
+    "create": "新建工作流",
+    "defaultName": "工作流 {{date}}",
+    "loadFailed": "加载失败",
+    "emptyTitle": "还没有工作流",
+    "emptyDescription": "新建一个工作流，从开始节点连接到结束节点。",
+    "version": "版本 {{version}}",
+    "edit": "编辑",
+    "delete": "删除"
+  },
+  "editor": {
+    "loading": "正在加载工作流…",
+    "loadFailed": "工作流加载失败",
+    "back": "← 工作流",
+    "name": "工作流名称",
+    "saveState": {
+      "saving": "保存中",
+      "unsaved": "未保存",
+      "saved": "已保存"
+    },
+    "saveFailed": "保存失败",
+    "saveAndValidate": "保存并校验",
+    "stop": "停止",
+    "preparing": "准备中…",
+    "run": "运行",
+    "runFailed": "运行失败",
+    "streamMissingBody": "工作流流式响应不可用",
+    "streamDisconnected": "工作流连接意外中断",
+    "stopFailed": "停止失败",
+    "stopWorkflowFailed": "停止工作流失败",
+    "nodeFallback": "节点 {{nodeId}}",
+    "latestRun": "最近一次运行",
+    "workflowStopped": "工作流已停止",
+    "workflowCompleted": "工作流执行完成",
+    "workflowFailed": "工作流执行失败"
+  },
+  "status": {
+    "idle": "等待",
+    "running": "运行中",
+    "completed": "成功",
+    "failed": "失败",
+    "stopped": "已停止"
+  },
+  "canvas": {
+    "nodes": "节点",
+    "addHint": "拖拽或点击添加",
+    "categories": {
+      "flow": "流程",
+      "data": "数据",
+      "ai": "AI",
+      "tools": "工具"
+    },
+    "inputHandle": "输入连接桩",
+    "outputHandle": "输出连接桩",
+    "branchHandle": "分支 {{branch}}",
+    "configTitle": "节点配置",
+    "close": "关闭",
+    "nodeTitle": "节点标题"
+  },
+  "runDialog": {
+    "title": "运行工作流",
+    "description": "填写开始节点定义的输入参数",
+    "invalidJson": "对象和数组请输入合法 JSON",
+    "cancel": "取消",
+    "start": "开始运行"
+  },
+  "logs": {
+    "title": "运行日志",
+    "empty": "运行工作流后，节点日志会显示在这里",
+    "collapse": "收起",
+    "expand": "展开",
+    "input": "输入：{{value}}",
+    "output": "输出：{{value}}"
+  },
+  "debug": {
+    "title": "单节点调试",
+    "description": "填写上游变量快照后独立执行当前节点",
+    "upstreamJson": "调试上游变量 JSON",
+    "invalidJson": "JSON 不合法",
+    "running": "调试中…",
+    "run": "运行当前节点",
+    "failed": "调试失败"
+  },
+  "variables": {
+    "system": "系统变量",
+    "invalidReference": "失效引用：{{selector}}",
+    "invalidDescription": "来源节点不存在或不是上游节点",
+    "option": "{{nodeTitle}} / {{variable}} · {{type}}",
+    "highlight": "{{label}}变量高亮",
+    "insertSource": "插入上游变量",
+    "insert": "插入变量",
+    "source": "来源变量",
+    "right": "右值变量"
+  },
+  "nodes": {
+    "start": {
+      "title": "开始",
+      "description": "定义工作流运行入参"
+    },
+    "end": {
+      "title": "结束",
+      "description": "组装工作流最终输出"
+    },
+    "variableAssigner": {
+      "title": "变量赋值",
+      "description": "创建常量或引用变量"
+    },
+    "ifElse": {
+      "title": "条件分支",
+      "description": "根据条件选择执行路径"
+    },
+    "llm": {
+      "title": "LLM",
+      "description": "调用本地模型生成文本"
+    },
+    "knowledgeRetrieval": {
+      "title": "知识检索",
+      "description": "从知识库检索相关内容"
+    },
+    "httpRequest": {
+      "title": "HTTP 请求",
+      "description": "请求公网 HTTP(S) 接口"
+    },
+    "code": {
+      "title": "代码",
+      "description": "在 QuickJS 沙箱中处理数据"
+    },
+    "summary": {
+      "inputFields": "{{count}} 个输入字段",
+      "outputFields": "{{count}} 个输出字段",
+      "variables": "{{count}} 个变量",
+      "branches": "{{count}} 个分支",
+      "codeLines": "{{count}} 行 JavaScript",
+      "incomplete": "配置不完整",
+      "configurePrompt": "配置提示词",
+      "topK": "前 {{count}} 条",
+      "selectKnowledgeBase": "请选择知识库",
+      "configureRequest": "配置请求",
+      "configureCode": "配置代码"
+    }
+  },
+  "panels": {
+    "start": {
+      "title": "运行入参",
+      "description": "运行时根据这些字段生成输入表单",
+      "fieldName": "字段 {{index}} 名称",
+      "fieldType": "字段 {{index}} 类型",
+      "defaultValue": "字段 {{index}} 默认值",
+      "defaultPlaceholder": "可选默认值",
+      "required": "必填",
+      "delete": "删除字段",
+      "add": "添加输入字段"
+    },
+    "end": {
+      "title": "工作流输出",
+      "outputName": "输出 {{index}} 名称",
+      "sourcePriority": "候选来源 {{index}}",
+      "propertyPath": "候选来源 {{index}} 子字段路径",
+      "propertyPathPlaceholder": "子字段路径（可选），例如 text",
+      "addFallback": "添加备用来源",
+      "deleteFallback": "删除备用来源",
+      "delete": "删除输出",
+      "add": "添加输出"
+    },
+    "variableAssigner": {
+      "title": "变量赋值",
+      "name": "变量 {{index}} 名称",
+      "source": "变量 {{index}} 来源",
+      "constant": "常量",
+      "reference": "变量引用",
+      "template": "模板",
+      "templateLabel": "变量 {{index}} 模板",
+      "constantLabel": "变量 {{index}} 常量",
+      "delete": "删除变量",
+      "add": "添加变量"
+    },
+    "ifElse": {
+      "title": "条件分支",
+      "description": "每个分支会成为节点右侧的连接桩",
+      "branchName": "分支名",
+      "relation": "分支 {{branch}} 条件关系",
+      "all": "全部满足（AND）",
+      "any": "任一满足（OR）",
+      "left": "条件 {{condition}} 左值",
+      "operator": "分支 {{branch}} 条件 {{condition}} 运算符",
+      "rightSource": "分支 {{branch}} 条件 {{condition}} 右值来源",
+      "rightValue": "分支 {{branch}} 条件 {{condition}} 右值",
+      "deleteCondition": "删除条件",
+      "addCondition": "添加条件",
+      "deleteBranch": "删除分支",
+      "addBranch": "添加分支",
+      "defaultBranch": "默认分支"
+    },
+    "llm": {
+      "title": "本地模型提示词",
+      "systemPrompt": "系统提示词",
+      "userPrompt": "用户提示词",
+      "maxTokens": "最大生成 token"
+    },
+    "knowledgeRetrieval": {
+      "title": "知识检索",
+      "knowledgeBase": "知识库",
+      "selectKnowledgeBase": "选择知识库",
+      "query": "检索问题",
+      "scoreThreshold": "相似度阈值"
+    },
+    "httpRequest": {
+      "title": "HTTP 请求",
+      "description": "仅允许访问公网 HTTP(S) 地址",
+      "method": "请求方法",
+      "headers": "请求头 JSON",
+      "invalidHeaders": "请求头必须是字符串键值对象",
+      "body": "请求体"
+    },
+    "code": {
+      "title": "JavaScript 代码",
+      "description": "在函数里通过 inputs.名称 读取输入，必须 return 对象。请用英文标点，例如 Number(inputs.value)。",
+      "inputName": "代码输入 {{index}} 名称",
+      "deleteInput": "删除输入",
+      "addInput": "添加代码输入",
+      "editor": "JavaScript 代码"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+#!/usr/bin/env sh
+
+# 只检查暂存文件，保证秒级反馈。
+# 故意不在这里跑测试和 typecheck —— 那会让每次提交等 30 秒以上，
+# 最后一定会开始用 --no-verify，规范就废了。测试留给 CI 和 `pnpm ci:local`。
+
+pnpm lint-staged
+
+# 密钥扫描。gitleaks 未安装时只提醒，不阻塞（避免新环境无法提交）。
+if command -v gitleaks >/dev/null 2>&1; then
+  gitleaks protect --staged --no-banner --redact --verbose || {
+    echo ""
+    echo "✗ 检测到疑似密钥。确认为误报时用 .gitleaksignore 豁免，并写明理由。"
+    exit 1
+  }
+else
+  echo "⚠ 未安装 gitleaks，跳过密钥扫描。安装：brew install gitleaks"
+fi

@@ -1,0 +1,43 @@
+# 本地开发数据库：PostgreSQL + pgvector
+#
+# 常用命令（在 docker/ 目录下执行）：
+#   docker compose up -d --wait     启动并等健康检查通过
+#   docker compose ps               看状态
+#   docker compose logs -f postgres 看日志
+#   docker compose stop             停止（保留数据）
+#   docker compose down             删容器（保留数据卷）
+#   docker compose down -v          删容器和数据卷（数据全丢，慎用）
+#   docker compose exec postgres psql -U ai_engine -d ai_engine
+#
+# 注意：init/ 里的 SQL 只在数据卷为空时执行一次。改了要生效必须 down -v 重建。
+# 这是 Docker 最容易困惑的行为，记住能省几小时。
+
+services:
+  postgres:
+    # tag 写死不用 latest，否则某天 pull 会静默升级大版本
+    image: pgvector/pgvector:pg17
+    container_name: ai-engine-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ai_engine}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ai_engine_dev_only}
+      POSTGRES_DB: ${POSTGRES_DB:-ai_engine}
+      # 中文全文检索用得到的排序规则
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C"
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - ./data:/var/lib/postgresql/data
+      - ./init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      # 有 healthcheck，`up --wait` 才能真正等到数据库可用
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ai_engine} -d ${POSTGRES_DB:-ai_engine}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    # 本地开发够用，避免 Docker Desktop 占太多内存
+    deploy:
+      resources:
+        limits:
+          memory: 1G

@@ -1,9 +1,12 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
-import { ragQuery as ragQueryFundamentals } from './fundamentals/rag';
+import { Inject, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { translate as translateFundamentals } from './fundamentals/translate';
+import { isLlmGatewayError } from './llm/llm-errors';
+import { LLM_GATEWAY, type LlmGateway } from './llm/llm-gateway';
 
 @Injectable()
 export class AppService {
+  constructor(@Inject(LLM_GATEWAY) private readonly llmGateway: LlmGateway) {}
+
   getHello(): string {
     return 'Hello World!';
   }
@@ -12,27 +15,13 @@ export class AppService {
     return `Hello, ${message}!`;
   }
 
-  async translate(text: string): Promise<string> {
+  async translate(text: string, signal?: AbortSignal): Promise<string> {
     try {
-      return await translateFundamentals(text);
+      return await translateFundamentals(this.llmGateway, text, signal);
     } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Ollama request failed';
-      throw new ServiceUnavailableException(
-        `Translation failed: ${message}. Check Ollama is running at ${process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434'}.`,
-      );
-    }
-  }
-
-  async ragQuery(question: string): Promise<string> {
-    try {
-      return await ragQueryFundamentals(question);
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Ollama request failed';
-      throw new ServiceUnavailableException(
-        `RAG query failed: ${message}. Check Ollama is running at ${process.env.OLLAMA_BASE_URL ?? 'http://127.0.0.1:11434'}.`,
-      );
+      if (isLlmGatewayError(error)) throw error;
+      const message = error instanceof Error ? error.message : 'Ollama request failed';
+      throw new ServiceUnavailableException(`Translation failed: ${message}`);
     }
   }
 }

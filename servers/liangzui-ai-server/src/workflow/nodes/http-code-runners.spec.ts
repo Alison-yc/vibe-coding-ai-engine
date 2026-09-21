@@ -1,0 +1,107 @@
+import { describe, expect, it, vi } from 'vitest';
+import { VariablePool } from '../engine/variable-pool';
+import { QuickJsSandbox } from '../sandbox/quickjs-sandbox';
+import type { AddressResolver, PinnedRequest } from '../security/safe-http';
+import { CodeNodeRunner } from './code.runner';
+import { HttpRequestNodeRunner } from './http-request.runner';
+
+const context = {
+  runId: '00000000-0000-4000-8000-000000000001',
+  nodeId: 'node',
+  signal: new AbortController().signal,
+  emit: vi.fn(),
+};
+
+const publicResolver: AddressResolver = async () => [{ address: '93.184.216.34', family: 4 }];
+
+describe('HttpRequestNodeRunner', () => {
+  it('渲染请求并返回状态、响应头和正文', async () => {
+    const requestImpl = vi.fn<PinnedRequest>().mockResolvedValue({
+      status: 201,
+      headers: { 'x-test': 'ok' },
+      body: 'created',
+    });
+    const runner = new HttpRequestNodeRunner({ resolve: publicResolver, requestImpl });
+    const result = await runner.run(
+      {
+        method: 'POST',
+        url: 'https://example.com/{{#sys.path#}}',
+        headers: { authorization: 'Bearer {{#sys.token#}}' },
+        body: '{"value":"{{#sys.value#}}"}',
+      },
+      new VariablePool({ path: 'items', token: 'secret', value: 'test' }),
+      context,
+    );
+    expect(result.outputs).toMatchObject({ status: 201, body: 'created' });
+    expect(requestImpl).toHaveBeenCalledWith(
+      expect.objectContaining({
+        url: new URL('https://example.com/items'),
+        method: 'POST',
+        headers: { authorization: 'Bearer secret' },
+        body: '{"value":"test"}',
+      }),
+    );
+  });
+
+  it('拒绝模板渲染后的内网目标', async () => {
+    await expect(
+      new HttpRequestNodeRunner().run(
+        { method: 'GET', url: 'http://{{#sys.host#}}', headers: {} },
+        new VariablePool({ host: '127.0.0.1' }),
+        context,
+      ),
+    ).rejects.toThrow('私有或保留');
+  });
+
+  it('响应正文是 JSON 时同时提供可按路径读取的 json 输出', async () => {
+    const requestImpl = vi.fn<PinnedRequest>().mockResolvedValue({
+      status: 200,
+      headers: { 'content-type': 'application/json' },
+      body: '{"body":{"text":"彩虹屁"}}',
+    });
+    const result = await new HttpRequestNodeRunner({
+      resolve: publicResolver,
+      requestImpl,
+    }).run(
+      { method: 'GET', url: 'https://example.com/message', headers: {} },
+      new VariablePool({}),
+      context,
+    );
+    expect(result.outputs).toMatchObject({
+      body: '{"body":{"text":"彩虹屁"}}',
+      json: { body: { text: '彩虹屁' } },
+    });
+  });
+});
+
+describe('CodeNodeRunner', () => {
+  it('读取选择器输入并在 QuickJS 中计算结果', async () => {
+    const pool = new VariablePool({});
+    pool.set('source', { count: 4 });
+    await expect(
+      new CodeNodeRunner(new QuickJsSandbox()).run(
+        { code: 'return { doubled: inputs.count * 2 };', inputs: { count: ['source', 'count'] } },
+        pool,
+        context,
+      ),
+    ).resolves.toEqual({ outputs: { doubled: 8 } });
+  });
+
+  it('拒绝缺失输入并隔离 Node 全局对象', async () => {
+    const runner = new CodeNodeRunner(new QuickJsSandbox());
+    await expect(
+      runner.run(
+        { code: 'return {};', inputs: { value: ['missing', 'value'] } },
+        new VariablePool({}),
+        context,
+      ),
+    ).rejects.toThrow('输入 value 不存在');
+    await expect(
+      runner.run(
+        { code: 'return { secret: process.env };', inputs: {} },
+        new VariablePool({}),
+        context,
+      ),
+    ).rejects.toThrow('执行失败');
+  });
+});
