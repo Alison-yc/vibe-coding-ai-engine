@@ -2,8 +2,9 @@ import { memo, type ReactNode } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
 import { cn } from '@ai-engine/ui';
 import { useTranslation } from 'react-i18next';
-import { NodeMetadataMap } from '../nodes/metadata';
+import { getNodePresentation, NodeMetadataMap } from '../nodes/metadata';
 import { NodeComponentMap } from '../nodes/registry';
+import { categoryBorderClass } from '../nodes/visual';
 import type { CanvasNode, NodeRunningStatus } from '../types';
 
 const statusClass: Record<NodeRunningStatus, string> = {
@@ -22,11 +23,13 @@ const BaseNode = ({
   const { t } = useTranslation('workflow');
   const status = data._runningStatus ?? 'idle';
   const metadata = NodeMetadataMap[data.type];
+  const { category } = getNodePresentation(t, data.type);
   const sourceHandles = metadata.getSourceHandles?.(data.config) ?? [];
   return (
     <div
       className={cn(
-        'bg-card text-card-foreground relative rounded-lg border-2 px-4 py-3 shadow-sm transition-[border-color,box-shadow]',
+        'bg-card text-card-foreground relative overflow-hidden rounded-lg border-2 border-l-4 px-4 py-3 shadow-sm transition-[border-color,box-shadow]',
+        categoryBorderClass[category],
         statusClass[status],
         selected && 'ring-ring ring-2',
       )}

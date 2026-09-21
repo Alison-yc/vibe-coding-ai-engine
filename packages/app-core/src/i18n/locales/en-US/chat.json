@@ -84,21 +84,6 @@
       "error": "Failed"
     }
   },
-  "theme": {
-    "appearance": "Appearance",
-    "palette": "Theme color",
-    "mode": {
-      "light": "Light",
-      "dark": "Dark",
-      "system": "Use system setting"
-    },
-    "paletteName": {
-      "neutral": "Default",
-      "blue": "Blue",
-      "green": "Green",
-      "purple": "Purple"
-    }
-  },
   "errors": {
     "selectSession": "Select a chat first",
     "approvalExpired": "The approval context has expired",

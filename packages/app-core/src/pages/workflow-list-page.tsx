@@ -1,11 +1,19 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
-import { Button, Card, CardContent, CardDescription, CardHeader, CardTitle } from '@ai-engine/ui';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+  GitBranch,
+} from '@ai-engine/ui';
 import type { WorkflowGraph } from '@ai-engine/contracts';
 import type { TFunction } from 'i18next';
 import { useTranslation } from 'react-i18next';
-import { AppNavLinks, EmptyState, PageShell } from '../components/page-shell';
+import { EmptyState, PageShell } from '../components/page-shell';
 import { createWorkflow, deleteWorkflow, listWorkflows } from '../workflow/workflow-api';
 import { localizeApiError } from '../i18n/localize-api-error';
 
@@ -70,7 +78,6 @@ export const WorkflowListPage = () => {
     <PageShell
       title={t('list.title')}
       description={t('list.description')}
-      nav={<AppNavLinks />}
       actions={
         <Button disabled={create.isPending} onClick={() => create.mutate()}>
           {t('list.create')}
@@ -88,6 +95,7 @@ export const WorkflowListPage = () => {
       ) : null}
       {!workflows.isPending && (workflows.data?.length ?? 0) === 0 ? (
         <EmptyState
+          icon={GitBranch}
           title={t('list.emptyTitle')}
           description={t('list.emptyDescription')}
           action={<Button onClick={() => create.mutate()}>{t('list.create')}</Button>}
@@ -95,12 +103,17 @@ export const WorkflowListPage = () => {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {(workflows.data ?? []).map((workflow) => (
-            <Card key={workflow.id}>
-              <CardHeader>
-                <CardTitle className="truncate">{workflow.name}</CardTitle>
-                <CardDescription>
-                  {t('list.version', { version: workflow.version })}
-                </CardDescription>
+            <Card key={workflow.id} className="transition-shadow hover:shadow-md">
+              <CardHeader className="flex-row items-start gap-3">
+                <span className="bg-node-cat-flow/15 text-node-cat-flow grid size-10 shrink-0 place-items-center rounded-lg">
+                  <GitBranch className="size-5" aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <CardTitle className="truncate">{workflow.name}</CardTitle>
+                  <CardDescription className="mt-1">
+                    {t('list.version', { version: workflow.version })}
+                  </CardDescription>
+                </div>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-2">
                 <Button onClick={() => void navigate(`/workflow/${workflow.id}`)}>

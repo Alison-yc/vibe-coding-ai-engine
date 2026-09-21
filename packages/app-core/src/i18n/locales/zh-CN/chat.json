@@ -84,21 +84,6 @@
       "error": "失败"
     }
   },
-  "theme": {
-    "appearance": "外观",
-    "palette": "主题色",
-    "mode": {
-      "light": "亮色",
-      "dark": "暗色",
-      "system": "跟随系统"
-    },
-    "paletteName": {
-      "neutral": "默认",
-      "blue": "蓝",
-      "green": "绿",
-      "purple": "紫"
-    }
-  },
   "errors": {
     "selectSession": "请先选择会话",
     "approvalExpired": "审批上下文已失效",

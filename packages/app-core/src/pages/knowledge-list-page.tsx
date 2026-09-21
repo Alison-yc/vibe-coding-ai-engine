@@ -1,5 +1,7 @@
 import type { Dataset } from '@ai-engine/contracts';
 import {
+  Badge,
+  BookOpen,
   Button,
   Card,
   CardContent,
@@ -14,7 +16,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
-import { AppNavLinks, EmptyState, PageShell } from '../components/page-shell';
+import { EmptyState, PageShell } from '../components/page-shell';
 import { createDataset, deleteDataset, listDatasets } from '../knowledge/knowledge-api';
 import { localizeApiError } from '../i18n/localize-api-error';
 import { useKnowledgeTranslation } from '../i18n/knowledge-i18n';
@@ -36,24 +38,38 @@ export const KnowledgeDatasetGrid = ({
 }) => {
   const t = useKnowledgeTranslation();
   if (datasets.length === 0) {
-    return <EmptyState title={t('list.empty.title')} description={t('list.empty.description')} />;
+    return (
+      <EmptyState
+        icon={BookOpen}
+        title={t('list.empty.title')}
+        description={t('list.empty.description')}
+      />
+    );
   }
   return (
     <section className="grid gap-4 sm:grid-cols-2">
       {datasets.map((dataset) => (
-        <Card key={dataset.id} className="min-w-0">
+        <Card key={dataset.id} className="min-w-0 transition-shadow hover:shadow-md">
           <CardHeader className="flex-row items-start justify-between gap-3">
-            <div className="min-w-0 flex-1">
-              <Link to={`/knowledge/${dataset.id}`} className="group block min-w-0">
-                <CardTitle className="group-hover:text-primary min-w-0 truncate transition-colors">
-                  {dataset.name}
-                </CardTitle>
-              </Link>
-              <CardDescription className="flex min-w-0 flex-wrap gap-x-1">
-                <span>{t('list.dataset.documentCount', { count: dataset.documentCount })}</span>
-                <span aria-hidden="true">·</span>
-                <span>{t('list.dataset.chunkCount', { count: dataset.chunkCount })}</span>
-              </CardDescription>
+            <div className="flex min-w-0 flex-1 gap-3">
+              <span className="bg-primary/10 text-primary grid size-10 shrink-0 place-items-center rounded-lg">
+                <BookOpen className="size-5" aria-hidden />
+              </span>
+              <div className="min-w-0 flex-1">
+                <Link to={`/knowledge/${dataset.id}`} className="group block min-w-0">
+                  <CardTitle className="group-hover:text-primary min-w-0 truncate transition-colors">
+                    {dataset.name}
+                  </CardTitle>
+                </Link>
+                <CardDescription className="mt-2 flex min-w-0 flex-wrap gap-2">
+                  <Badge variant="secondary">
+                    {t('list.dataset.documentCount', { count: dataset.documentCount })}
+                  </Badge>
+                  <Badge variant="outline">
+                    {t('list.dataset.chunkCount', { count: dataset.chunkCount })}
+                  </Badge>
+                </CardDescription>
+              </div>
             </div>
             {onRequestDelete && onConfirmDelete && onCancelDelete ? (
               pendingDeleteId === dataset.id ? (
@@ -133,7 +149,6 @@ export const KnowledgeListPage = () => {
     <PageShell
       title={t('list.title')}
       description={t('list.description')}
-      nav={<AppNavLinks />}
       actions={
         <Button
           type="button"

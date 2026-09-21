@@ -23,7 +23,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
-import { AppNavLinks, PageShell } from '../components/page-shell';
+import { PageShell } from '../components/page-shell';
 import { createKnowledgeDetailHandlers } from '../knowledge/knowledge-detail-actions';
 import { useKnowledgeTranslation } from '../i18n/knowledge-i18n';
 import { localizeApiError } from '../i18n/localize-api-error';
@@ -55,7 +55,7 @@ export const KnowledgeDetailPage = () => {
 
   if (!id) {
     return (
-      <PageShell title={t('detail.fallbackTitle')} nav={<AppNavLinks />}>
+      <PageShell title={t('detail.fallbackTitle')}>
         <p className="text-destructive text-sm">{t('detail.missingId')}</p>
       </PageShell>
     );
@@ -91,7 +91,6 @@ export const KnowledgeDetailPage = () => {
       description={t('detail.description')}
       backTo="/knowledge"
       backLabel={t('detail.backToList')}
-      nav={<AppNavLinks />}
       actions={
         <Button
           type="button"

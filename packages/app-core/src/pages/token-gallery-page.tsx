@@ -10,13 +10,12 @@ import {
   Input,
   Label,
   Textarea,
-  ThemeToggle,
 } from '@ai-engine/ui';
-import { useTheme } from '../theme-provider';
-import { ZH_CN_THEME_TOGGLE_LABELS } from '../components/theme-toggle-labels';
+import { AppLayout } from '../components/page-shell';
 
 const SWATCHES = [
   { name: 'background', className: 'bg-background' },
+  { name: 'sidebar', className: 'bg-sidebar' },
   { name: 'card', className: 'bg-card' },
   { name: 'popover', className: 'bg-popover' },
   { name: 'muted', className: 'bg-muted' },
@@ -32,6 +31,10 @@ const SWATCHES = [
   { name: 'chart-3', className: 'bg-chart-3' },
   { name: 'chart-4', className: 'bg-chart-4' },
   { name: 'chart-5', className: 'bg-chart-5' },
+  { name: 'node-cat-flow', className: 'bg-node-cat-flow' },
+  { name: 'node-cat-data', className: 'bg-node-cat-data' },
+  { name: 'node-cat-ai', className: 'bg-node-cat-ai' },
+  { name: 'node-cat-tools', className: 'bg-node-cat-tools' },
   { name: 'node-idle', className: 'bg-node-idle' },
   { name: 'node-running', className: 'bg-node-running' },
   { name: 'node-success', className: 'bg-node-success' },
@@ -44,23 +47,15 @@ const SWATCHES = [
   { name: 'citation-bg', className: 'bg-citation-bg' },
 ] as const;
 
-export const TokenGalleryPage = () => {
-  const { preference, setPreference } = useTheme();
-
-  return (
-    <main className="bg-background text-foreground flex flex-col gap-8 p-6">
+export const TokenGalleryPage = () => (
+  <AppLayout>
+    <main className="flex flex-col gap-8 overflow-y-auto p-6">
       <header className="flex flex-col gap-2">
         <h1 className="text-lg">设计令牌</h1>
         <p className="text-muted-foreground text-sm">
-          八种主题组合下查看当前语义色与 Button。业务页面只应使用这些令牌 class。
+          固定 light 品牌主题下的语义色与组件样例。业务页面只应使用这些令牌 class。
         </p>
       </header>
-
-      <ThemeToggle
-        preference={preference}
-        onPreferenceChange={setPreference}
-        labels={ZH_CN_THEME_TOGGLE_LABELS}
-      />
 
       <section className="flex flex-col gap-3">
         <h2 className="text-base">语义色</h2>
@@ -130,5 +125,5 @@ export const TokenGalleryPage = () => {
         </div>
       </section>
     </main>
-  );
-};
+  </AppLayout>
+);

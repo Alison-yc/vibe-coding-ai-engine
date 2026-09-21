@@ -7,4 +7,3 @@ export { Badge, badgeVariants, type BadgeProps } from './ui/badge';
 export { Select, type SelectProps } from './ui/select';
 export { Separator, type SeparatorProps } from './ui/separator';
 export { FileInput, type FileInputProps } from './ui/file-input';
-export { ThemeToggle } from './theme-toggle';

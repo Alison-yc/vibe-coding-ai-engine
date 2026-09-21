@@ -14,18 +14,22 @@ export { Badge, badgeVariants, type BadgeProps } from './components/ui/badge';
 export { Select, type SelectProps } from './components/ui/select';
 export { Separator, type SeparatorProps } from './components/ui/separator';
 export { FileInput, type FileInputProps } from './components/ui/file-input';
-export { ThemeToggle, type ThemeToggleLabels } from './components/theme-toggle';
 export { cn } from './lib/utils';
+export { applyAppTheme, applyDocumentTheme } from './theme';
 export {
-  applyDocumentTheme,
-  DEFAULT_THEME_PREFERENCE,
-  parseThemePreference,
-  resolveAppearance,
-  serializeThemePreference,
-  THEME_MODES,
-  THEME_PALETTES,
-  THEME_STORAGE_KEY,
-  type ThemeMode,
-  type ThemePalette,
-  type ThemePreference,
-} from './theme';
+  Activity,
+  BookOpen,
+  Bot,
+  Braces,
+  Flag,
+  GitBranch,
+  Globe,
+  Languages,
+  MessageSquare,
+  Play,
+  Server,
+  Settings,
+  Shuffle,
+  Variable,
+  Wrench,
+} from './icons';

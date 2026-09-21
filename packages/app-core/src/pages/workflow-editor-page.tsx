@@ -5,6 +5,7 @@ import { usePlatform } from '@ai-engine/platform';
 import { Badge, Button, Input } from '@ai-engine/ui';
 import { StartNodeConfigSchema } from '@ai-engine/contracts';
 import { useTranslation } from 'react-i18next';
+import { AppNavRail } from '../components/page-shell';
 import { WorkflowCanvas } from '../workflow/canvas/workflow-canvas';
 import { WorkflowConfigPanel } from '../workflow/canvas/config-panel';
 import { RunInputDialog } from '../workflow/canvas/run-input-dialog';
@@ -279,89 +280,92 @@ export const WorkflowEditorPage = () => {
     );
 
   return (
-    <main className="bg-background text-foreground relative flex h-dvh min-h-0 flex-col overflow-hidden">
-      <header
-        data-testid="workflow-toolbar"
-        className="border-border flex h-14 min-w-0 shrink-0 items-center gap-3 overflow-x-auto border-b px-4"
-      >
-        <Button className="shrink-0" size="sm" variant="ghost" asChild>
-          <Link className="max-w-32 truncate" to="/workflow">
-            {t('editor.back')}
-          </Link>
-        </Button>
-        <Input
-          aria-label={t('editor.name')}
-          className="w-48 shrink-0"
-          value={name}
-          onChange={(event) => {
-            setName(event.target.value);
-            setNameDirty(true);
-          }}
-        />
-        <Badge className="max-w-28 shrink-0 truncate" variant="secondary">
-          {save.isPending
-            ? t('editor.saveState.saving')
-            : dirty || nameDirty
-              ? t('editor.saveState.unsaved')
-              : t('editor.saveState.saved')}
-        </Badge>
-        <Badge
-          className="shrink-0"
-          variant={workflowStatus === 'failed' ? 'destructive' : 'outline'}
+    <div className="bg-background text-foreground flex h-dvh min-h-0 overflow-hidden">
+      <AppNavRail />
+      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+        <header
+          data-testid="workflow-toolbar"
+          className="border-border flex h-14 min-w-0 shrink-0 items-center gap-3 overflow-x-auto border-b px-4"
         >
-          {t(`status.${workflowStatus}`)}
-        </Badge>
-        {save.error ? (
-          <span className="text-destructive min-w-0 flex-1 truncate text-xs">
-            {localizeWorkflowError(save.error, t('editor.saveFailed'))}
-          </span>
-        ) : (
-          <span className="flex-1" />
-        )}
-        <Button
-          className="shrink-0"
-          size="sm"
-          variant="outline"
-          disabled={save.isPending || running || starting}
-          onClick={() => save.mutate({ validate: true })}
-        >
-          <span className="max-w-32 truncate">{t('editor.saveAndValidate')}</span>
-        </Button>
-        {running ? (
+          <Button className="shrink-0" size="sm" variant="ghost" asChild>
+            <Link className="max-w-32 truncate" to="/workflow">
+              {t('editor.back')}
+            </Link>
+          </Button>
+          <Input
+            aria-label={t('editor.name')}
+            className="w-48 shrink-0"
+            value={name}
+            onChange={(event) => {
+              setName(event.target.value);
+              setNameDirty(true);
+            }}
+          />
+          <Badge className="max-w-28 shrink-0 truncate" variant="secondary">
+            {save.isPending
+              ? t('editor.saveState.saving')
+              : dirty || nameDirty
+                ? t('editor.saveState.unsaved')
+                : t('editor.saveState.saved')}
+          </Badge>
+          <Badge
+            className="shrink-0"
+            variant={workflowStatus === 'failed' ? 'destructive' : 'outline'}
+          >
+            {t(`status.${workflowStatus}`)}
+          </Badge>
+          {save.error ? (
+            <span className="text-destructive min-w-0 flex-1 truncate text-xs">
+              {localizeWorkflowError(save.error, t('editor.saveFailed'))}
+            </span>
+          ) : (
+            <span className="flex-1" />
+          )}
           <Button
             className="shrink-0"
             size="sm"
-            variant="destructive"
-            onClick={() => void stopRun()}
+            variant="outline"
+            disabled={save.isPending || running || starting}
+            onClick={() => save.mutate({ validate: true })}
           >
-            {t('editor.stop')}
+            <span className="max-w-32 truncate">{t('editor.saveAndValidate')}</span>
           </Button>
-        ) : (
-          <Button
-            className="shrink-0"
-            size="sm"
-            disabled={!startConfig.success || starting}
-            onClick={() => setRunDialogOpen(true)}
-          >
-            {starting ? t('editor.preparing') : t('editor.run')}
-          </Button>
-        )}
-      </header>
-      <div className="flex min-h-0 flex-1">
-        <WorkflowCanvas />
-        <WorkflowConfigPanel
-          workflowId={id}
-          beforeDebugRun={() => save.mutateAsync({ validate: true }).then(() => undefined)}
-        />
-      </div>
-      <WorkflowRunLogPanel open={logsOpen} onToggle={() => setLogsOpen((open) => !open)} />
-      {runDialogOpen && startConfig.success ? (
-        <RunInputDialog
-          fields={startConfig.data.fields}
-          onClose={() => setRunDialogOpen(false)}
-          onRun={(inputs) => void startRun(inputs)}
-        />
-      ) : null}
-    </main>
+          {running ? (
+            <Button
+              className="shrink-0"
+              size="sm"
+              variant="destructive"
+              onClick={() => void stopRun()}
+            >
+              {t('editor.stop')}
+            </Button>
+          ) : (
+            <Button
+              className="shrink-0"
+              size="sm"
+              disabled={!startConfig.success || starting}
+              onClick={() => setRunDialogOpen(true)}
+            >
+              {starting ? t('editor.preparing') : t('editor.run')}
+            </Button>
+          )}
+        </header>
+        <div className="flex min-h-0 flex-1">
+          <WorkflowCanvas />
+          <WorkflowConfigPanel
+            workflowId={id}
+            beforeDebugRun={() => save.mutateAsync({ validate: true }).then(() => undefined)}
+          />
+        </div>
+        <WorkflowRunLogPanel open={logsOpen} onToggle={() => setLogsOpen((open) => !open)} />
+        {runDialogOpen && startConfig.success ? (
+          <RunInputDialog
+            fields={startConfig.data.fields}
+            onClose={() => setRunDialogOpen(false)}
+            onRun={(inputs) => void startRun(inputs)}
+          />
+        ) : null}
+      </main>
+    </div>
   );
 };

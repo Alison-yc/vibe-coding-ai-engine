@@ -1,16 +1,46 @@
 import type { ReactNode } from 'react';
-import { Badge, Input, Label } from '@ai-engine/ui';
+import { Badge, Input, Label, cn } from '@ai-engine/ui';
+import { useTranslation } from 'react-i18next';
+import { getNodePresentation } from './metadata';
 import type { NodeBodyProps } from './types';
+import { NodeIconMap, categoryAccentClass } from './visual';
 
-export const NodeSummary = ({ data, children }: NodeBodyProps & { children?: ReactNode }) => (
-  <div className="flex w-44 min-w-0 flex-col gap-2">
-    <div className="flex items-center justify-between gap-2">
-      <strong className="truncate text-sm">{data.title ?? data.type}</strong>
-      <Badge variant="secondary">{data.type}</Badge>
+export const NodeSummary = ({ data, children }: NodeBodyProps & { children?: ReactNode }) => {
+  const { t } = useTranslation('workflow');
+  const { category } = getNodePresentation(t, data.type);
+  const typeLabel = t(`canvas.categories.${category}`);
+  const Icon = NodeIconMap[data.type];
+  return (
+    <div className="flex w-48 min-w-0 flex-col gap-2">
+      <div
+        aria-hidden
+        className={cn(
+          'absolute inset-x-0 top-0 h-1 rounded-t-[calc(var(--radius-lg)-2px)]',
+          categoryAccentClass[category],
+        )}
+      />
+      <div className="flex items-start gap-2 pt-0.5">
+        <span
+          className={cn(
+            'bg-muted text-muted-foreground grid size-8 shrink-0 place-items-center rounded-md',
+            category === 'ai' && 'text-primary bg-primary/10',
+          )}
+        >
+          <Icon className="size-4" aria-hidden />
+        </span>
+        <div className="flex min-w-0 flex-1 flex-col gap-1">
+          <strong className="truncate text-sm">{data.title ?? data.type}</strong>
+          <Badge variant="secondary" className="max-w-full truncate">
+            {typeLabel}
+          </Badge>
+        </div>
+      </div>
+      {children ? (
+        <div className="text-muted-foreground line-clamp-2 pl-10 text-xs">{children}</div>
+      ) : null}
     </div>
-    {children ? <div className="text-muted-foreground line-clamp-2 text-xs">{children}</div> : null}
-  </div>
-);
+  );
+};
 
 export const PanelSection = ({
   title,

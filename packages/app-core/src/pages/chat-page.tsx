@@ -7,7 +7,7 @@ import {
   type Dataset,
   type PermissionDecision,
 } from '@ai-engine/contracts';
-import { Button, Input, Label, Select, Separator, Textarea, ThemeToggle, cn } from '@ai-engine/ui';
+import { Button, Input, Label, Select, Separator, Textarea, cn } from '@ai-engine/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type KeyboardEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -33,7 +33,7 @@ import { useStickToBottom } from '../chat/use-stick-to-bottom';
 import { useChatTranslation } from '../i18n/use-chat-translation';
 import { localizeApiError } from '../i18n/localize-api-error';
 import { listDatasets } from '../knowledge/knowledge-api';
-import { useTheme } from '../theme-provider';
+import { AppNavRail } from '../components/page-shell';
 
 export const ChatPage = () => {
   const { t } = useChatTranslation();
@@ -42,7 +42,6 @@ export const ChatPage = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
-  const { preference, setPreference } = useTheme();
   const [input, setInput] = useState('');
   const [renameId, setRenameId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -219,8 +218,6 @@ export const ChatPage = () => {
   })();
 
   const sidebarProps = {
-    preference,
-    setPreference,
     createPending: createMutation.isPending,
     onCreate: () => createMutation.mutate(),
     sessions: chatSessions,
@@ -248,9 +245,10 @@ export const ChatPage = () => {
 
   return (
     <div className="bg-background text-foreground flex h-dvh overflow-hidden">
+      <AppNavRail />
       <aside
         className={cn(
-          'border-border bg-muted/20 w-64 shrink-0 flex-col border-r',
+          'border-border bg-sidebar w-64 shrink-0 flex-col border-r',
           persistentSidebar ? 'flex' : 'hidden lg:flex',
         )}
       >
@@ -265,7 +263,7 @@ export const ChatPage = () => {
             className="bg-background/60 fixed inset-0 z-40 lg:hidden"
             onClick={() => setMobileSidebarOpen(false)}
           />
-          <aside className="border-border bg-muted/20 fixed inset-y-0 left-0 z-50 flex w-72 max-w-[85vw] flex-col border-r shadow-xl lg:hidden">
+          <aside className="border-border bg-sidebar fixed inset-y-0 left-[4.25rem] z-50 flex w-72 max-w-[85vw] flex-col border-r shadow-xl lg:hidden">
             <ChatSidebarPanel {...sidebarProps} />
           </aside>
         </>
@@ -557,8 +555,6 @@ export const ChatPage = () => {
 };
 
 type ChatSidebarPanelProps = {
-  preference: ReturnType<typeof useTheme>['preference'];
-  setPreference: ReturnType<typeof useTheme>['setPreference'];
   createPending: boolean;
   onCreate: () => void;
   sessions: ChatSession[];
@@ -578,8 +574,6 @@ type ChatSidebarPanelProps = {
 };
 
 export const ChatSidebarPanel = ({
-  preference,
-  setPreference,
   createPending,
   onCreate,
   sessions,
@@ -598,21 +592,6 @@ export const ChatSidebarPanel = ({
   onNavigate,
 }: ChatSidebarPanelProps) => {
   const { t } = useChatTranslation();
-  const themeLabels = {
-    appearance: t('theme.appearance'),
-    palette: t('theme.palette'),
-    modes: {
-      light: t('theme.mode.light'),
-      dark: t('theme.mode.dark'),
-      system: t('theme.mode.system'),
-    },
-    palettes: {
-      neutral: t('theme.paletteName.neutral'),
-      blue: t('theme.paletteName.blue'),
-      green: t('theme.paletteName.green'),
-      purple: t('theme.paletteName.purple'),
-    },
-  };
   return (
     <>
       <header className="border-border flex min-w-0 items-center justify-between gap-2 border-b px-4 py-3">
@@ -645,30 +624,6 @@ export const ChatSidebarPanel = ({
           <p className="text-destructive line-clamp-2 text-sm">{t('sidebar.loadError')}</p>
         ) : null}
       </div>
-      <div className="border-border flex min-w-0 flex-col gap-3 border-t p-4">
-        <nav aria-label={t('common:nav.primary')} className="grid min-w-0 grid-cols-3 gap-1">
-          <Button variant="ghost" size="sm" className="min-w-0 px-1.5" asChild>
-            <Link to="/knowledge" title={t('common:nav.knowledge')} onClick={onNavigate}>
-              <span className="truncate">{t('common:nav.knowledge')}</span>
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" className="min-w-0 px-1.5" asChild>
-            <Link to="/workflow" title={t('common:nav.workflow')} onClick={onNavigate}>
-              <span className="truncate">{t('common:nav.workflow')}</span>
-            </Link>
-          </Button>
-          <Button variant="ghost" size="sm" className="min-w-0 px-1.5" asChild>
-            <Link to="/settings" title={t('common:nav.settings')} onClick={onNavigate}>
-              <span className="truncate">{t('common:nav.settings')}</span>
-            </Link>
-          </Button>
-        </nav>
-        <ThemeToggle
-          preference={preference}
-          onPreferenceChange={setPreference}
-          labels={themeLabels}
-        />
-      </div>
     </>
   );
 };
@@ -698,7 +653,7 @@ export const ChatBubble = ({ message }: { message: ChatMessage }) => {
           'min-w-0',
           isUser
             ? 'bg-primary text-primary-foreground max-w-[85%] rounded-2xl rounded-tr-sm px-4 py-2.5 shadow-sm'
-            : 'w-full max-w-full px-1 py-1',
+            : 'border-border bg-card w-full max-w-3xl rounded-2xl rounded-tl-sm border px-4 py-3 shadow-sm',
         )}
       >
         {isUser ? (

@@ -2,6 +2,7 @@ import { ObservabilityMetricsResponseSchema } from '@ai-engine/contracts';
 import { createMemoryKeyValueStore, PlatformProvider } from '@ai-engine/platform';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
+import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { appendClientErrorLog, AppErrorBoundary } from '../components/app-error-boundary';
 import {
@@ -169,14 +170,18 @@ describe('ObservabilityPage', () => {
   it('devTools 关闭时提示不可用', () => {
     const html = renderToStaticMarkup(
       createElement(
-        PlatformProvider,
-        {
-          value: {
-            ...stubPlatform,
-            capabilities: { ...stubPlatform.capabilities, devTools: false },
+        MemoryRouter,
+        null,
+        createElement(
+          PlatformProvider,
+          {
+            value: {
+              ...stubPlatform,
+              capabilities: { ...stubPlatform.capabilities, devTools: false },
+            },
           },
-        },
-        createElement(ObservabilityPage),
+          createElement(ObservabilityPage),
+        ),
       ),
     );
     expect(html).toContain('仅开发环境可用');

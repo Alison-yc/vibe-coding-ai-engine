@@ -5,7 +5,7 @@ import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { I18nextProvider } from 'react-i18next';
 import { MemoryRouter } from 'react-router';
 import { createI18nOptions } from '../i18n/resources';
-import { AppNavLinks, PageShell } from './page-shell';
+import { PageShell } from './page-shell';
 
 const i18n = createInstance();
 
@@ -19,14 +19,12 @@ const renderShell = (path: string) =>
   render(
     <I18nextProvider i18n={i18n}>
       <MemoryRouter initialEntries={[path]}>
-        <PageShell title="测试" nav={<AppNavLinks />}>
-          内容
-        </PageShell>
+        <PageShell title="测试">内容</PageShell>
       </MemoryRouter>
     </I18nextProvider>,
   );
 
-describe('PageShell 主导航', () => {
+describe('AppNavRail 主导航', () => {
   it('高亮当前页面并提供主导航语义', () => {
     renderShell('/settings');
 

@@ -15,7 +15,11 @@ import {
   CardTitle,
   Input,
   Label,
+  Globe,
+  Languages,
   Select,
+  Server,
+  Wrench,
 } from '@ai-engine/ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
@@ -27,7 +31,7 @@ import {
   normalizeApiBaseUrl,
   persistApiBaseUrl,
 } from '../backend-connection';
-import { AppNavLinks, EmptyState, PageShell } from '../components/page-shell';
+import { EmptyState, PageShell } from '../components/page-shell';
 import {
   listExposedAgentTools,
   listMcpServerTools,
@@ -57,7 +61,10 @@ const LanguageCard = () => {
   return (
     <Card data-testid="language-card" className="w-full min-w-0 overflow-visible">
       <CardHeader>
-        <CardTitle className="line-clamp-2">{t('settings.language.cardTitle')}</CardTitle>
+        <CardTitle className="flex min-w-0 items-center gap-2">
+          <Languages className="text-primary size-5 shrink-0" aria-hidden />
+          <span className="line-clamp-2 min-w-0">{t('settings.language.cardTitle')}</span>
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex min-w-0 flex-col gap-3">
         <Label id="settings-ui-locale-label" htmlFor="settings-ui-locale">
@@ -109,7 +116,10 @@ const BackendAddressCard = () => {
   return (
     <Card className="w-full min-w-0 overflow-hidden">
       <CardHeader>
-        <CardTitle className="line-clamp-2">{t('backend.cardTitle')}</CardTitle>
+        <CardTitle className="flex min-w-0 items-center gap-2">
+          <Globe className="text-primary size-5 shrink-0" aria-hidden />
+          <span className="line-clamp-2 min-w-0">{t('backend.cardTitle')}</span>
+        </CardTitle>
       </CardHeader>
       <CardContent className="flex min-w-0 flex-col gap-3">
         <Label htmlFor="settings-backend-address">{t('backend.addressLabel')}</Label>
@@ -284,11 +294,7 @@ export const SettingsPage = () => {
   });
 
   return (
-    <PageShell
-      title={commonT('settings.title')}
-      description={commonT('settings.description')}
-      nav={<AppNavLinks />}
-    >
+    <PageShell title={commonT('settings.title')} description={commonT('settings.description')}>
       <LanguageCard />
       {platform.capabilities.backendConnectionSetup ? <BackendAddressCard /> : null}
       {servers.error || exposed.error ? (
@@ -297,7 +303,11 @@ export const SettingsPage = () => {
         </p>
       ) : null}
       {(servers.data ?? []).length === 0 ? (
-        <EmptyState title={t('mcp.emptyTitle')} description={t('mcp.emptyDescription')} />
+        <EmptyState
+          icon={Server}
+          title={t('mcp.emptyTitle')}
+          description={t('mcp.emptyDescription')}
+        />
       ) : (
         <section className="flex min-w-0 flex-col gap-4">
           {(servers.data ?? []).map((server) => (
@@ -307,7 +317,10 @@ export const SettingsPage = () => {
       )}
       <Card className="w-full min-w-0 overflow-hidden">
         <CardHeader>
-          <CardTitle className="line-clamp-2">{t('automaticTools.cardTitle')}</CardTitle>
+          <CardTitle className="flex min-w-0 items-center gap-2">
+            <Wrench className="text-primary size-5 shrink-0" aria-hidden />
+            <span className="line-clamp-2 min-w-0">{t('automaticTools.cardTitle')}</span>
+          </CardTitle>
         </CardHeader>
         <CardContent className="min-w-0 text-sm">
           <p className="text-muted-foreground mb-2 line-clamp-3">

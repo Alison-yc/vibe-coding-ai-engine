@@ -28,7 +28,7 @@ import { CustomNode } from './custom-node';
 const nodeTypes: NodeTypes = { 'custom-node': CustomNode };
 const canvasTheme = {
   '--xy-background-color-default': 'var(--background)',
-  '--xy-background-pattern-dot-color-default': 'var(--muted-foreground)',
+  '--xy-background-pattern-dot-color-default': 'var(--border)',
   '--xy-edge-stroke-default': 'var(--border)',
   '--xy-edge-stroke-selected-default': 'var(--primary)',
   '--xy-connectionline-stroke-default': 'var(--primary)',

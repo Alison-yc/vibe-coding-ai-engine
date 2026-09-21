@@ -1,7 +1,6 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { ThemeToggle } from './components/theme-toggle';
 import { Badge } from './components/ui/badge';
 import { Button } from './components/ui/button';
 import {
@@ -19,13 +18,7 @@ import { Select } from './components/ui/select';
 import { Separator } from './components/ui/separator';
 import { Textarea } from './components/ui/textarea';
 import { cn } from './lib/utils';
-import {
-  applyDocumentTheme,
-  DEFAULT_THEME_PREFERENCE,
-  parseThemePreference,
-  resolveAppearance,
-  serializeThemePreference,
-} from './theme';
+import { applyAppTheme, applyDocumentTheme } from './theme';
 
 describe('cn', () => {
   it('合并冲突的 Tailwind class', () => {
@@ -33,66 +26,22 @@ describe('cn', () => {
   });
 });
 
-describe('parseThemePreference', () => {
-  it('空值与非法 JSON 回退默认', () => {
-    expect(parseThemePreference(null)).toEqual(DEFAULT_THEME_PREFERENCE);
-    expect(parseThemePreference('{')).toEqual(DEFAULT_THEME_PREFERENCE);
-    expect(parseThemePreference('[]')).toEqual(DEFAULT_THEME_PREFERENCE);
-    expect(parseThemePreference('{"palette":"neon","mode":"light"}')).toEqual(
-      DEFAULT_THEME_PREFERENCE,
-    );
-  });
-
-  it('接受合法偏好', () => {
-    expect(parseThemePreference('{"palette":"blue","mode":"dark"}')).toEqual({
-      palette: 'blue',
-      mode: 'dark',
-    });
-    expect(serializeThemePreference({ palette: 'blue', mode: 'dark' })).toBe(
-      '{"palette":"blue","mode":"dark"}',
-    );
-  });
-});
-
-describe('resolveAppearance', () => {
-  it('system 跟随系统，其余用显式模式', () => {
-    expect(resolveAppearance('system', 'dark')).toBe('dark');
-    expect(resolveAppearance('light', 'dark')).toBe('light');
-  });
-});
-
-describe('applyDocumentTheme', () => {
-  it('默认主题去掉 data-theme 并切换 dark class', () => {
-    const toggled: Array<[string, boolean | undefined]> = [];
+describe('applyAppTheme', () => {
+  it('移除 data-theme 与 dark class', () => {
+    const removed: string[] = [];
     const root = {
       classList: {
-        toggle: (token: string, force?: boolean) => {
-          toggled.push([token, force]);
+        remove: (token: string) => {
+          removed.push(token);
         },
       },
-      setAttribute: () => undefined,
       removeAttribute: (name: string) => {
         expect(name).toBe('data-theme');
       },
     };
-    applyDocumentTheme(root, 'neutral', 'dark');
-    expect(toggled).toEqual([['dark', true]]);
-  });
-
-  it('非默认主题写入 data-theme', () => {
-    const attrs: Record<string, string> = {};
-    applyDocumentTheme(
-      {
-        classList: { toggle: () => undefined },
-        setAttribute: (name, value) => {
-          attrs[name] = value;
-        },
-        removeAttribute: () => undefined,
-      },
-      'green',
-      'light',
-    );
-    expect(attrs['data-theme']).toBe('green');
+    applyAppTheme(root);
+    expect(removed).toEqual(['dark']);
+    applyDocumentTheme(root);
   });
 });
 
@@ -165,27 +114,5 @@ describe('表单与内容原语', () => {
     expect(html).toContain('aria-orientation="horizontal"');
     expect(html).toContain('aria-orientation="vertical"');
     expect(html).toContain('底部');
-  });
-});
-
-describe('ThemeToggle', () => {
-  it('渲染外观与主题色按钮', () => {
-    const html = renderToStaticMarkup(
-      createElement(ThemeToggle, {
-        preference: DEFAULT_THEME_PREFERENCE,
-        onPreferenceChange: () => undefined,
-        labels: {
-          appearance: '外观',
-          palette: '主题色',
-          modes: { light: '亮色', dark: '暗色', system: '跟随系统' },
-          palettes: { neutral: '默认', blue: '蓝', green: '绿', purple: '紫' },
-        },
-      }),
-    );
-    expect(html).toContain('跟随系统');
-    expect(html).toContain('蓝');
-    expect(html).toContain('grid-cols-3');
-    expect(html).toContain('grid-cols-4');
-    expect(html).not.toContain('flex-wrap');
   });
 });

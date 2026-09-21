@@ -84,21 +84,6 @@
       "error": "失敗"
     }
   },
-  "theme": {
-    "appearance": "外観",
-    "palette": "テーマカラー",
-    "mode": {
-      "light": "ライト",
-      "dark": "ダーク",
-      "system": "システム設定"
-    },
-    "paletteName": {
-      "neutral": "デフォルト",
-      "blue": "ブルー",
-      "green": "グリーン",
-      "purple": "パープル"
-    }
-  },
   "errors": {
     "selectSession": "先にチャットを選択してください",
     "approvalExpired": "承認情報の有効期限が切れました",

@@ -2,9 +2,10 @@ import {
   ObservabilityMetricsResponseSchema,
   type ObservabilityMetricsResponse,
 } from '@ai-engine/contracts';
-import { Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@ai-engine/ui';
+import { Activity, Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@ai-engine/ui';
 import { useCallback, useState } from 'react';
 import { usePlatform, type Platform } from '@ai-engine/platform';
+import { AppLayout } from '../components/page-shell';
 
 export const formatMs = (value: number | null | undefined): string =>
   value == null ? '—' : `${Math.round(value)} ms`;
@@ -117,40 +118,47 @@ export const ObservabilityPage = () => {
 
   if (!platform.capabilities.devTools) {
     return (
-      <main className="bg-background text-foreground p-6">
-        <h1 className="text-lg">可观测性面板</h1>
-        <p className="text-muted-foreground text-sm">仅开发环境可用。</p>
-      </main>
+      <AppLayout>
+        <main className="text-foreground flex flex-col gap-2 overflow-y-auto p-6">
+          <h1 className="text-lg">可观测性面板</h1>
+          <p className="text-muted-foreground text-sm">仅开发环境可用。</p>
+        </main>
+      </AppLayout>
     );
   }
 
   return (
-    <main className="bg-background text-foreground flex flex-col gap-6 p-6">
-      <header className="flex flex-col gap-2">
-        <div className="flex items-center justify-between gap-3">
-          <h1 className="text-lg">可观测性</h1>
-          <Button
-            type="button"
-            variant="outline"
-            disabled={loading}
-            onClick={() => void loadMetrics()}
-          >
-            {metrics ? '刷新' : '加载指标'}
-          </Button>
-        </div>
-        <p className="text-muted-foreground text-sm">
-          最近 50 次 LLM 调用指标。finishReason=length 通常表示输出被 numPredict 截断。
-        </p>
-      </header>
+    <AppLayout>
+      <main className="text-foreground flex flex-col gap-6 overflow-y-auto p-6">
+        <header className="flex flex-col gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="flex items-center gap-2 text-lg">
+              <Activity className="text-primary size-5" aria-hidden />
+              可观测性
+            </h1>
+            <Button
+              type="button"
+              variant="outline"
+              disabled={loading}
+              onClick={() => void loadMetrics()}
+            >
+              {metrics ? '刷新' : '加载指标'}
+            </Button>
+          </div>
+          <p className="text-muted-foreground text-sm">
+            最近 50 次 LLM 调用指标。finishReason=length 通常表示输出被 numPredict 截断。
+          </p>
+        </header>
 
-      {error ? <p className="text-destructive text-sm">{error}</p> : null}
+        {error ? <p className="text-destructive text-sm">{error}</p> : null}
 
-      {!metrics && !loading && !error ? (
-        <p className="text-muted-foreground text-sm">点击「加载指标」拉取最近 50 次 LLM 调用。</p>
-      ) : null}
+        {!metrics && !loading && !error ? (
+          <p className="text-muted-foreground text-sm">点击「加载指标」拉取最近 50 次 LLM 调用。</p>
+        ) : null}
 
-      {metrics ? <ObservabilityMetricsPanel metrics={metrics} /> : null}
-    </main>
+        {metrics ? <ObservabilityMetricsPanel metrics={metrics} /> : null}
+      </main>
+    </AppLayout>
   );
 };
 
