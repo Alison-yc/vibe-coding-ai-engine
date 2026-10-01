@@ -12,8 +12,8 @@
 
 | 子阶段 | 内容                               | 所属批次  | 状态   |
 | ------ | ---------------------------------- | --------- | ------ |
-| 21-0   | 规划、ADR-017、路线图登记          | CR-AUTH-0 | 待 CR  |
-| 21-A   | 契约与数据层（7 张新表 + 归属列）  | CR-AUTH-1 | 未开始 |
+| 21-0   | 规划、ADR-017、路线图登记          | CR-AUTH-0 | 已完成 |
+| 21-A   | 契约与数据层（7 张新表 + 归属列）  | CR-AUTH-1 | 待开发 |
 | 21-B   | 认证服务与 `/auth/*` 接口          | CR-AUTH-2 | 未开始 |
 | 21-C   | 前端登录态接入（不门控）           | CR-AUTH-3 | 未开始 |
 | 21-D   | 服务端强制鉴权、资源隔离、前端门控 | CR-AUTH-4 | 未开始 |
@@ -53,7 +53,7 @@
 
 ## CR-AUTH-0 审查记录（2026-10-02）
 
-对照现有 Controller、前端 `fetch`、内存 repository、E2E 和 sidecar 的 `NODE_ENV` 做了审查。下面几项会让后续批次做错，已写回本文件。本批次仍是 `待 CR`，不进入 CR-AUTH-1。
+对照现有 Controller、前端 `fetch`、内存 repository、E2E 和 sidecar 的 `NODE_ENV` 做了审查。下面几项会让后续批次做错，已写回本文件。
 
 | 问题                                                                              | 处理                                                                                                   |
 | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -64,6 +64,8 @@
 | 静态码写在 `.env.example`，而 sidecar 固定 `NODE_ENV=production`                  | 不在 production 拒绝启动（否则 dmg 验收做不了）；改为每次校验成功打 warn，并记入风险                   |
 
 同一前缀的策略以更具体的那一行优先。`retrieve`、`answer`、`split-preview`、`validate` 不改数据，不是写操作。
+
+第二轮复审补齐：风险编号改为 R17～R20（首轮新增了 R20）；E2E 补模拟的接口统一写成 `/auth/guest` 与 `/auth/me`；验证命令补 `db:migrate` 与 platform 单测。**CR 通过（2026-10-02），CR-AUTH-1 转 `待开发`。**
 
 ## 现状与差距
 
@@ -410,15 +412,18 @@
 
 ### CR-AUTH-0 · 规划与决策
 
-- **包含**：本文件；ADR-017 与风险 R17～R19；`19` 登记 M6 批次；`README` 当前执行点与进度表。
+- **包含**：本文件；ADR-017 与风险 R17～R20；`19` 登记 M6 批次；`README` 当前执行点与进度表。
 - **不包含**：任何代码与配置改动。
 - **通过条件**：用户评审通过。
+
+已通过（2026-10-02）。两轮审查共修订 6 项，见上文「CR-AUTH-0 审查记录」。
 
 ### CR-AUTH-1 · 契约与数据层
 
 - **包含**：`commitlint.config.js` 新增 `auth` scope（本批次第一个提交）；contracts `auth/*` 与错误码扩展及其单测；`schema/auth.ts` 七张表；三张表 `owner_id`；角色种子；迁移；`AuthRepository`（只含数据访问）；`RUN_DB_INTEGRATION` 集成测试。
 - **不包含**：HTTP 接口、Guard、密码哈希。
 - **提交边界**：contracts；schema + 迁移；repository + 集成测试。
+- **注意**：`DatabaseLifecycle` 只在 `SIDECAR_MODE` 下自动 `migrate()`，开发机要手动 `db:migrate`，否则新表不存在而报错。
 - **通过条件**：
   - 空库执行全部迁移成功，三条角色种子存在。
   - 唯一约束（同类型同标识）、CHECK 约束、复合主键、级联删除、`set null` 各有一条会失败的反例测试。
@@ -444,7 +449,7 @@
 
 ### CR-AUTH-4 · 强制鉴权与资源隔离（必须单独 CR）
 
-- **包含**：全局 `AuthGuard` + `PermissionsGuard`；所有路由标注策略；路由策略完整性测试；chat / knowledge / workflow / agent repository 归属过滤；对话参数层权限 ∩ 模型能力；CORS 白名单；前端门控（路由守卫、锁图标、对话页与设置页访客态）；`scripts/rag-eval` 先登录再调用；现有 E2E 补 `/auth/me` 模拟；新增访客 / 登录两条 E2E。
+- **包含**：全局 `AuthGuard` + `PermissionsGuard`；所有路由标注策略；路由策略完整性测试；chat / knowledge / workflow / agent repository 归属过滤；对话参数层权限 ∩ 模型能力；CORS 白名单；前端门控（路由守卫、锁图标、对话页与设置页访客态）；`scripts/rag-eval` 先登录再调用；现有 E2E 补 `/auth/guest` 与 `/auth/me` 模拟；新增访客 / 登录两条 E2E。
 - **不包含**：设备管理、清理任务。
 - **提交边界**：Guard 与装饰器；各模块归属过滤（每模块一个提交）；对话参数层；前端门控；脚本与 E2E。
 - **通过条件**：
@@ -476,8 +481,11 @@
 
 ```bash
 pnpm --filter @ai-engine/contracts test
+# 生成迁移后必须本地执行一次：自动迁移只在 SIDECAR_MODE 下发生（database.providers.ts）
 pnpm --filter liangzui-ai-server db:generate
+pnpm --filter liangzui-ai-server db:migrate
 RUN_DB_INTEGRATION=true pnpm --filter liangzui-ai-server test
+pnpm --filter @ai-engine/platform test
 pnpm --filter @ai-engine/app-core test
 pnpm test:e2e
 pnpm ci:local
