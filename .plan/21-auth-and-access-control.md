@@ -15,7 +15,7 @@
 | 21-0   | 规划、ADR-017、路线图登记          | CR-AUTH-0 | 已完成 |
 | 21-A   | 契约与数据层（7 张新表 + 归属列）  | CR-AUTH-1 | 已完成 |
 | 21-B   | 认证服务与 `/auth/*` 接口          | CR-AUTH-2 | 已完成 |
-| 21-C   | 前端登录态接入（不门控）           | CR-AUTH-3 | 开发中 |
+| 21-C   | 前端登录态接入（不门控）           | CR-AUTH-3 | 待 CR  |
 | 21-D   | 服务端强制鉴权、资源隔离、前端门控 | CR-AUTH-4 | 未开始 |
 | 21-E   | 加固、CI、打包验证                 | CR-AUTH-5 | 未开始 |
 
@@ -461,6 +461,15 @@
 - **不包含**：页面门控与锁图标（后端尚未强制，应用照常可用）。
 - **提交边界**：platform 接口；请求函数重构（行为不变）；auth 状态与页面；i18n。
 - **通过条件**：Web 与 Tauri 都能注册、登录、退出；刷新保持登录态；app-core 单测与现有 E2E 全绿；app-core 中搜不到 `localStorage`。
+
+待 CR（2026-10-02）。CR-AUTH-3 自检记录：
+
+- 提交：platform 接口 → 请求函数重构（行为不变）→ AuthProvider / `useAuth` / `useCan` → `auth.json` 三语 → 登录、注册、重置页与导航账号入口 → 验证码输入行布局修正。另有一个独立的 `test(workflow)` 提交，修正拖拽用例在 jsdom 下缺 Pointer Capture 与 `elementFromPoint`（本批次之前就已失败）。
+- 设计取舍：登录类接口以 `anonymous` 发送，不带 token，因此其 401（如 `INVALID_CREDENTIALS`）不会触发会话失效处理；注册携带访客 token，以便原地升级。401 处理只清理确实被拒的 token，避免迟到的 401 冲掉刚登录的新 token。`X-Client` 来自 `capabilities.client`（web / desktop）。
+- 单测：`http`、`auth-api`、`AuthProvider`、`safeRedirect`、三个页面与导航入口共 50 余条；变异自检：去掉「只清被拒 token」判断、去掉 `//` 拦截，对应用例均变红。全仓 `test:cov` 737 条通过；`format:check`、`lint`、`typecheck`、`build` 通过；app-core 中无 `localStorage`。
+- 浏览器实测（Web，真实后端 + 临时空库，验证后已删库）：访客签发 → 发码与 60 秒倒计时 → 注册（访客原地升级，首个用户获得 `user,admin`，邮箱脱敏显示）→ 刷新保持登录 → 退出换回新访客、旧 token 401 → 错误密码统一提示 → 密码登录 → 验证码登录 → `redirect=//evil.example` 落到 `/chat`。
+- 未验证：Tauri 壳只做了 `secrets` 与 `client` 单测，未在桌面打包版中实跑登录，CR 时需人工走一遍。
+- 已知遗留（本批次之前已失败，与登录态无关，按约定后续单独修）：E2E `chat.spec` 中「新建」按钮出现两个导致 strict 选择器冲突；`workflow.spec` 拖入节点后计数为 27。其余 8 条 E2E 通过。`sec:sca` 报告的 27 个依赖漏洞为既有依赖，本批次未新增依赖。
 
 ### CR-AUTH-4 · 强制鉴权与资源隔离（必须单独 CR）
 
