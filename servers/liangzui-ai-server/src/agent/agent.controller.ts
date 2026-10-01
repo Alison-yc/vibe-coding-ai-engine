@@ -55,6 +55,9 @@ export class AgentController {
     @Req() request: Request,
     @Res() response: Response,
   ) {
+    if (!(await this.agent.ownsAgentSession(principal.userId, sessionId))) {
+      throw new NotFoundException('文件助手会话不存在');
+    }
     response.status(200);
     response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     response.setHeader('Cache-Control', 'no-cache, no-transform');

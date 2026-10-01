@@ -29,6 +29,7 @@ const responseStub = () => {
 describe('AgentController', () => {
   it('把 Agent 事件编码为 SSE 并结束响应', async () => {
     const agent = {
+      ownsAgentSession: vi.fn().mockResolvedValue(true),
       stream: vi.fn(
         async (
           _ownerId: string,
@@ -58,6 +59,7 @@ describe('AgentController', () => {
 
   it('执行异常时发送 error 事件', async () => {
     const agent = {
+      ownsAgentSession: vi.fn().mockResolvedValue(true),
       stream: vi.fn().mockRejectedValue(new Error('模型失败')),
       respondPermission: vi.fn(),
       listExposedTools: vi.fn(),
@@ -78,6 +80,7 @@ describe('AgentController', () => {
   it('客户端断开后忽略后台继续产生的事件', async () => {
     const { response, writes } = responseStub();
     const agent = {
+      ownsAgentSession: vi.fn().mockResolvedValue(true),
       stream: vi.fn(
         async (
           _ownerId: string,
@@ -106,6 +109,7 @@ describe('AgentController', () => {
 
   it('列出暴露给模型的工具，非法 sessionId 返回 404', async () => {
     const agent = {
+      ownsAgentSession: vi.fn().mockResolvedValue(true),
       stream: vi.fn(),
       respondPermission: vi.fn(),
       listExposedTools: vi.fn().mockResolvedValue({
@@ -140,6 +144,7 @@ describe('AgentController', () => {
     expect(respond.mock.calls[0]?.[0]).toBe('user-a');
 
     const missing = new AgentController({
+      ownsAgentSession: vi.fn().mockResolvedValue(true),
       stream: vi.fn(),
       respondPermission: vi.fn().mockResolvedValue(false),
     } as never);

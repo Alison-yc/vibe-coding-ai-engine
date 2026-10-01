@@ -25,6 +25,12 @@ import { findModelCapability, listEvaluatedModelCapabilities } from '../llm/mode
 import { hasUtilityToolIntent } from '../mcp/merge-tools';
 import { CHAT_REPOSITORY, type ChatRepository } from './chat.repository';
 import {
+  hasChatPermission,
+  resolveChatAccess,
+  type ChatAccess,
+  type ChatActor,
+} from './chat-access';
+import {
   toLlmMessages,
   trimToBudget,
   estimateTokenCount,
@@ -37,6 +43,15 @@ const PROMPT_RESERVE_TOKENS = 800;
 const RAG_PROMPT_OVERHEAD = 350;
 /** 参考资料最多占上下文预算的比例，其余留给历史与生成 */
 const RAG_CITATION_BUDGET_RATIO = 0.45;
+
+export type PreparedChatStream = {
+  ownerId: string;
+  session: ChatSession;
+  request: ChatStreamRequest;
+  datasetIds: string[];
+  access: ChatAccess;
+  toolIntent: boolean;
+};
 
 const isAbortError = (error: unknown): boolean =>
   (error instanceof Error && error.name === 'AbortError') ||
@@ -52,10 +67,11 @@ export class ChatService {
     @Inject(forwardRef(() => AgentService)) private readonly agent: AgentService,
   ) {}
 
-  async createSession(ownerId: string, request: CreateChatSessionRequest): Promise<ChatSession> {
+  async createSession(actor: ChatActor, request: CreateChatSessionRequest): Promise<ChatSession> {
+    this.assertSessionPatchAllowed(actor, request);
     if (request.modelId) await this.assertModelInstalled(request.modelId);
-    await this.assertDatasetsOwned(ownerId, request.datasetIds);
-    return this.repository.createSession(ownerId, {
+    await this.assertDatasetsOwned(actor.ownerId, request.datasetIds);
+    return this.repository.createSession(actor.ownerId, {
       title: request.title ?? '新对话',
       modelId: request.modelId ?? this.config.get('OLLAMA_MODEL', { infer: true }),
       datasetIds: request.datasetIds ?? [],
@@ -74,14 +90,15 @@ export class ChatService {
   }
 
   async updateSession(
-    ownerId: string,
+    actor: ChatActor,
     id: string,
     request: UpdateChatSessionRequest,
   ): Promise<ChatSession> {
-    await this.getSession(ownerId, id);
+    await this.getSession(actor.ownerId, id);
+    this.assertSessionPatchAllowed(actor, request);
     if (request.modelId) await this.assertModelInstalled(request.modelId);
-    await this.assertDatasetsOwned(ownerId, request.datasetIds);
-    const updated = await this.repository.updateSession(ownerId, id, request);
+    await this.assertDatasetsOwned(actor.ownerId, request.datasetIds);
+    const updated = await this.repository.updateSession(actor.ownerId, id, request);
     if (!updated) throw new Error(`NOT_FOUND:会话不存在`);
     return updated;
   }
@@ -136,27 +153,63 @@ export class ChatService {
     return this.repository.listMessages(sessionId);
   }
 
+  /** 写出 SSE 响应头之前调用：归属与权限错误必须以 404 / 403 返回，而不是流内错误事件。 */
+  async prepareStream(
+    actor: ChatActor,
+    sessionId: string,
+    request: ChatStreamRequest,
+  ): Promise<PreparedChatStream> {
+    const session = await this.getSession(actor.ownerId, sessionId);
+    if (
+      request.fileAccess &&
+      !(hasChatPermission(actor, 'chat:tools') && hasChatPermission(actor, 'chat:file-access'))
+    ) {
+      throw new Error('FORBIDDEN:当前账号无权开启文件访问');
+    }
+    const datasetIds = request.datasetIds ?? session.datasetIds;
+    if (datasetIds.length > 0 && !hasChatPermission(actor, 'chat:rag')) {
+      throw new Error('FORBIDDEN:当前账号无权使用知识库问答');
+    }
+    if (request.datasetIds) await this.assertDatasetsOwned(actor.ownerId, request.datasetIds);
+    const toolIntent =
+      request.fileAccess ||
+      (hasChatPermission(actor, 'chat:tools') && hasUtilityToolIntent(request.content));
+    return {
+      ownerId: actor.ownerId,
+      session,
+      request,
+      datasetIds,
+      access: resolveChatAccess(findModelCapability(session.modelId), actor.permissions),
+      toolIntent,
+    };
+  }
+
   async stream(
-    ownerId: string,
+    actor: ChatActor,
     sessionId: string,
     request: ChatStreamRequest,
     signal: AbortSignal,
     emit: (event: ChatStreamEvent) => void,
   ): Promise<void> {
+    await this.runStream(await this.prepareStream(actor, sessionId, request), signal, emit);
+  }
+
+  async runStream(
+    prepared: PreparedChatStream,
+    signal: AbortSignal,
+    emit: (event: ChatStreamEvent) => void,
+  ): Promise<void> {
+    const { ownerId, session, request, datasetIds, access, toolIntent } = prepared;
+    const sessionId = session.id;
     const send = (event: ChatStreamEvent): void => {
       emit(ChatStreamEventSchema.parse(event));
     };
-    const session = await this.getSession(ownerId, sessionId);
-    const datasetIds = request.datasetIds ?? session.datasetIds;
     if (request.datasetIds) {
-      await this.assertDatasetsOwned(ownerId, request.datasetIds);
       await this.repository.updateSession(ownerId, sessionId, { datasetIds: request.datasetIds });
     }
 
-    const toolIntent = request.fileAccess || hasUtilityToolIntent(request.content);
     if (toolIntent) {
-      const capability = findModelCapability(session.modelId);
-      if (!capability?.supportsTools) {
+      if (!access.tools) {
         throw new Error(`模型 ${session.modelId} 未通过工具能力测评，仅支持普通对话与知识库问答`);
       }
       if (request.fileAccess && datasetIds.length > 0) {
@@ -333,6 +386,18 @@ export class ChatService {
       parts,
     });
     send({ event: 'done', data: { messageId: assistantId, status: 'complete' } });
+  }
+
+  private assertSessionPatchAllowed(
+    actor: ChatActor,
+    request: { modelId?: string; datasetIds?: string[] },
+  ): void {
+    if (request.modelId && !hasChatPermission(actor, 'chat:model-switch')) {
+      throw new Error('FORBIDDEN:当前账号无权切换模型');
+    }
+    if (request.datasetIds?.length && !hasChatPermission(actor, 'chat:rag')) {
+      throw new Error('FORBIDDEN:当前账号无权挂载知识库');
+    }
   }
 
   private async assertDatasetsOwned(ownerId: string, datasetIds: string[] = []): Promise<void> {

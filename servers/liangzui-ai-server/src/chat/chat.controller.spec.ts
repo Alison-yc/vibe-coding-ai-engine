@@ -1,10 +1,10 @@
-import { NotFoundException } from '@nestjs/common';
+import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { describe, expect, it, vi } from 'vitest';
 import { ChatController } from './chat.controller';
 import { ModelsController } from './models.controller';
 
 const SESSION = '00000000-0000-4000-8000-000000000001';
-const principal = { userId: 'user-a' } as never;
+const principal = { userId: 'user-a', permissions: ['chat:basic'] } as never;
 
 describe('ChatController', () => {
   it('把 NOT_FOUND 映射为 404', async () => {
@@ -40,15 +40,21 @@ describe('ChatController', () => {
     await expect(controller.deleteSession(principal, SESSION)).resolves.toEqual({ ok: true });
     await expect(controller.listMessages(principal, SESSION)).resolves.toEqual({ messages: [] });
     const ownedMethods = Object.entries(chat).filter(([name]) => name !== 'listModels');
-    for (const [, method] of ownedMethods) {
+    const actorMethods = new Set(['createSession', 'updateSession']);
+    for (const [name, method] of ownedMethods) {
       expect(method).toHaveBeenCalled();
-      for (const call of method.mock.calls) expect(call[0]).toBe('user-a');
+      const expected = actorMethods.has(name)
+        ? { ownerId: 'user-a', permissions: ['chat:basic'] }
+        : 'user-a';
+      for (const call of method.mock.calls) expect(call[0]).toEqual(expected);
     }
   });
 
   it('stream 设置 SSE 头，失败时写 error 事件并结束响应', async () => {
+    const prepared = { session: { id: SESSION } };
     const chat = {
-      stream: vi.fn().mockRejectedValue(new Error('fetch failed')),
+      prepareStream: vi.fn().mockResolvedValue(prepared),
+      runStream: vi.fn().mockRejectedValue(new Error('fetch failed')),
     };
     const controller = new ChatController(chat as never);
     const writes: string[] = [];
@@ -74,5 +80,23 @@ describe('ChatController', () => {
     expect(writes.join('')).toContain('event: error');
     expect(response.flush).toHaveBeenCalled();
     expect(response.end).toHaveBeenCalled();
+    expect(chat.runStream).toHaveBeenCalledWith(prepared, expect.anything(), expect.any(Function));
+  });
+
+  it('stream 预检失败时在写响应头之前返回 404 / 403', async () => {
+    const response = { status: vi.fn(), setHeader: vi.fn(), flushHeaders: vi.fn() };
+    const body = { content: '你好', fileAccess: true, mode: 'edit' as const };
+    for (const [message, type] of [
+      ['NOT_FOUND:会话不存在', NotFoundException],
+      ['FORBIDDEN:当前账号无权开启文件访问', ForbiddenException],
+    ] as const) {
+      const chat = { prepareStream: vi.fn().mockRejectedValue(new Error(message)) };
+      const controller = new ChatController(chat as never);
+      await expect(
+        controller.stream(principal, SESSION, body, { on: vi.fn() } as never, response as never),
+      ).rejects.toBeInstanceOf(type);
+    }
+    expect(response.flushHeaders).not.toHaveBeenCalled();
+    expect(response.status).not.toHaveBeenCalled();
   });
 });

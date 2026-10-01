@@ -231,6 +231,12 @@ export class AgentService implements OnModuleInit {
     );
   }
 
+  /** 写出 SSE 响应头之前调用，让他人会话以 404 返回。 */
+  async ownsAgentSession(ownerId: string, sessionId: string): Promise<boolean> {
+    const session = await this.chatRepository.getSession(ownerId, sessionId);
+    return session?.agentType === 'agent';
+  }
+
   async streamConversation(
     ownerId: string,
     sessionId: string,

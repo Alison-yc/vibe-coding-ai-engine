@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Inject,
   NotFoundException,
@@ -29,6 +30,12 @@ import { ChatService } from './chat.service';
 import { RequirePermissions } from '../auth/access-policy';
 import type { AuthPrincipal } from '../auth/auth.service';
 import { CurrentPrincipal } from '../auth/current-principal';
+import type { ChatActor } from './chat-access';
+
+const actorOf = (principal: AuthPrincipal): ChatActor => ({
+  ownerId: principal.userId,
+  permissions: principal.permissions,
+});
 
 const flushResponse = (response: Response): void => {
   (response as Response & { flush?: () => void }).flush?.();
@@ -44,7 +51,7 @@ export class ChatController {
     @CurrentPrincipal() principal: AuthPrincipal,
     @Body(new ZodValidationPipe(CreateChatSessionRequestSchema)) body: CreateChatSessionRequest,
   ) {
-    return this.chat.createSession(principal.userId, body);
+    return this.wrap(() => this.chat.createSession(actorOf(principal), body));
   }
 
   @RequirePermissions('chat:basic')
@@ -71,7 +78,7 @@ export class ChatController {
     @Param('sessionId', new ZodValidationPipe(UuidSchema)) sessionId: string,
     @Body(new ZodValidationPipe(UpdateChatSessionRequestSchema)) body: UpdateChatSessionRequest,
   ) {
-    return this.wrap(() => this.chat.updateSession(principal.userId, sessionId, body));
+    return this.wrap(() => this.chat.updateSession(actorOf(principal), sessionId, body));
   }
 
   @RequirePermissions('chat:basic')
@@ -105,6 +112,9 @@ export class ChatController {
     @Req() request: Request,
     @Res() response: Response,
   ) {
+    const prepared = await this.wrap(() =>
+      this.chat.prepareStream(actorOf(principal), sessionId, body),
+    );
     response.status(200);
     response.setHeader('Content-Type', 'text/event-stream; charset=utf-8');
     response.setHeader('Cache-Control', 'no-cache, no-transform');
@@ -112,17 +122,11 @@ export class ChatController {
     response.setHeader('X-Accel-Buffering', 'no');
     response.flushHeaders();
     try {
-      await this.chat.stream(
-        principal.userId,
-        sessionId,
-        body,
-        abortOnClientClose(request),
-        (event) => {
-          response.write(`event: ${event.event}\n`);
-          response.write(`data: ${JSON.stringify(event.data)}\n\n`);
-          flushResponse(response);
-        },
-      );
+      await this.chat.runStream(prepared, abortOnClientClose(request), (event) => {
+        response.write(`event: ${event.event}\n`);
+        response.write(`data: ${JSON.stringify(event.data)}\n\n`);
+        flushResponse(response);
+      });
     } catch (error) {
       const message = error instanceof Error ? error.message : '生成失败';
       if (message.startsWith('NOT_FOUND:')) {
@@ -143,6 +147,9 @@ export class ChatController {
       const message = error instanceof Error ? error.message : '会话操作失败';
       if (message.startsWith('NOT_FOUND:')) {
         throw new NotFoundException(message.slice('NOT_FOUND:'.length));
+      }
+      if (message.startsWith('FORBIDDEN:')) {
+        throw new ForbiddenException(message.slice('FORBIDDEN:'.length));
       }
       throw error;
     }
