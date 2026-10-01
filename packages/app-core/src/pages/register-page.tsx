@@ -13,7 +13,7 @@ import {
   type AuthFieldError,
 } from '../auth/auth-form';
 import { AuthField, AuthFormError, AuthPageLayout } from '../auth/auth-page-layout';
-import { SendCodeButton } from '../auth/send-code-button';
+import { CodeInputRow } from '../auth/code-input-row';
 import { useAuth } from '../auth/use-auth';
 import { AUTH_LINK_CLASS_NAME, useRedirectQuery } from '../auth/use-redirect-query';
 import { useFeatureTranslation } from '../i18n/feature-resources';
@@ -112,22 +112,14 @@ export const RegisterPage = () => {
           />
         </AuthField>
         <AuthField id="register-code" label={t('fields.code')}>
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start">
-            <Input
-              id="register-code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              className="min-w-0 flex-1"
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-            />
-            <SendCodeButton
-              purpose="register"
-              identifier={identifier}
-              onInvalidIdentifier={() => setFieldError('identifier')}
-            />
-          </div>
+          <CodeInputRow
+            id="register-code"
+            value={code}
+            onChange={setCode}
+            purpose="register"
+            identifier={identifier}
+            onInvalidIdentifier={() => setFieldError('identifier')}
+          />
         </AuthField>
         <AuthField id="register-display-name" label={t('fields.displayName')}>
           <Input

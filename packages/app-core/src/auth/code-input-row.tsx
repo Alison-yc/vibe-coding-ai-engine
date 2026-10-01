@@ -1,17 +1,23 @@
 import type { IdentifierInput, VerificationPurpose } from '@ai-engine/contracts';
 import { usePlatform } from '@ai-engine/platform';
-import { Button } from '@ai-engine/ui';
+import { Button, Input } from '@ai-engine/ui';
 import { useMutation } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useFeatureTranslation } from '../i18n/feature-resources';
 import { localizeApiError } from '../i18n/localize-api-error';
 import { sendVerificationCode } from './auth-api';
 
-export const SendCodeButton = ({
+export const CodeInputRow = ({
+  id,
+  value,
+  onChange,
   purpose,
   identifier,
   onInvalidIdentifier,
 }: {
+  id: string;
+  value: string;
+  onChange: (value: string) => void;
   purpose: VerificationPurpose;
   identifier: IdentifierInput | null;
   onInvalidIdentifier: () => void;
@@ -27,29 +33,40 @@ export const SendCodeButton = ({
 
   useEffect(() => {
     if (remaining <= 0) return;
-    const timer = setTimeout(() => setRemaining((value) => value - 1), 1_000);
+    const timer = setTimeout(() => setRemaining((seconds) => seconds - 1), 1_000);
     return () => clearTimeout(timer);
   }, [remaining]);
 
-  const label = remaining > 0 ? t('code.resendIn', { seconds: remaining }) : t('code.send');
-
   return (
-    <div className="flex min-w-0 flex-col gap-1">
-      <Button
-        type="button"
-        variant="outline"
-        className="shrink-0 sm:min-w-32"
-        disabled={send.isPending || remaining > 0}
-        onClick={() => {
-          if (!identifier) {
-            onInvalidIdentifier();
-            return;
-          }
-          send.mutate(identifier);
-        }}
-      >
-        <span className="truncate">{label}</span>
-      </Button>
+    <div className="flex min-w-0 flex-col gap-2">
+      <div className="flex min-w-0 gap-2">
+        <Input
+          id={id}
+          inputMode="numeric"
+          autoComplete="one-time-code"
+          maxLength={6}
+          className="min-w-0 flex-1"
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+        />
+        <Button
+          type="button"
+          variant="outline"
+          className="w-32 shrink-0"
+          disabled={send.isPending || remaining > 0}
+          onClick={() => {
+            if (!identifier) {
+              onInvalidIdentifier();
+              return;
+            }
+            send.mutate(identifier);
+          }}
+        >
+          <span className="truncate">
+            {remaining > 0 ? t('code.resendIn', { seconds: remaining }) : t('code.send')}
+          </span>
+        </Button>
+      </div>
       {send.data ? (
         <p className="text-muted-foreground text-xs" role="status">
           {t('code.sent', { minutes: Math.ceil(send.data.expiresInSec / 60) })}{' '}

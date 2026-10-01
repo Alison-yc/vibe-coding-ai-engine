@@ -13,7 +13,7 @@ import {
   type AuthFieldError,
 } from '../auth/auth-form';
 import { AuthField, AuthFormError, AuthPageLayout } from '../auth/auth-page-layout';
-import { SendCodeButton } from '../auth/send-code-button';
+import { CodeInputRow } from '../auth/code-input-row';
 import { AUTH_ME_QUERY_KEY } from '../auth/use-auth';
 import { AUTH_LINK_CLASS_NAME, useRedirectQuery } from '../auth/use-redirect-query';
 import { useFeatureTranslation } from '../i18n/feature-resources';
@@ -81,22 +81,14 @@ export const ResetPasswordPage = () => {
           />
         </AuthField>
         <AuthField id="reset-code" label={t('fields.code')}>
-          <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-start">
-            <Input
-              id="reset-code"
-              inputMode="numeric"
-              autoComplete="one-time-code"
-              maxLength={6}
-              className="min-w-0 flex-1"
-              value={code}
-              onChange={(event) => setCode(event.target.value)}
-            />
-            <SendCodeButton
-              purpose="reset_password"
-              identifier={identifier}
-              onInvalidIdentifier={() => setFieldError('identifier')}
-            />
-          </div>
+          <CodeInputRow
+            id="reset-code"
+            value={code}
+            onChange={setCode}
+            purpose="reset_password"
+            identifier={identifier}
+            onInvalidIdentifier={() => setFieldError('identifier')}
+          />
         </AuthField>
         <AuthField id="reset-password" label={t('fields.newPassword')}>
           <Input
