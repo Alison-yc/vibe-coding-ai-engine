@@ -15,8 +15,8 @@
 | 21-0   | 规划、ADR-017、路线图登记          | CR-AUTH-0 | 已完成 |
 | 21-A   | 契约与数据层（7 张新表 + 归属列）  | CR-AUTH-1 | 已完成 |
 | 21-B   | 认证服务与 `/auth/*` 接口          | CR-AUTH-2 | 已完成 |
-| 21-C   | 前端登录态接入（不门控）           | CR-AUTH-3 | 待 CR  |
-| 21-D   | 服务端强制鉴权、资源隔离、前端门控 | CR-AUTH-4 | 未开始 |
+| 21-C   | 前端登录态接入（不门控）           | CR-AUTH-3 | 已完成 |
+| 21-D   | 服务端强制鉴权、资源隔离、前端门控 | CR-AUTH-4 | 待开发 |
 | 21-E   | 加固、CI、打包验证                 | CR-AUTH-5 | 未开始 |
 
 ## 目标
@@ -462,7 +462,14 @@
 - **提交边界**：platform 接口；请求函数重构（行为不变）；auth 状态与页面；i18n。
 - **通过条件**：Web 与 Tauri 都能注册、登录、退出；刷新保持登录态；app-core 单测与现有 E2E 全绿；app-core 中搜不到 `localStorage`。
 
-待 CR（2026-10-02）。CR-AUTH-3 自检记录：
+已通过（2026-10-02）。CR-AUTH-3 审查记录：
+
+- 修订：服务端会话已失效时退出，`/auth/logout` 的 401 与 `logout` 自身各重置一次 `me`，被取消的旧 queryFn 不会中止，会并发签发两个访客。访客签发改为按 platform 单飞；新增用例断言只签发一次，已确认旧实现下变红。
+- 修订：导航账号入口用例要等完「登录 → 写 token → 重取 me」整条链路，全量运行时默认 1 秒等待偶发超时，放宽到 5 秒。
+- 遗留：Tauri 桌面端未实跑登录 / 注册 / 退出，已挂到 README「并行保留」；2 条既有 E2E 失败见下方自检记录，后续单独修。
+- 留给 CR-AUTH-4：后端启动时不可达会使 `me` 停在 `unavailable`，目前要等设置页保存后台地址或刷新才会重取，前端门控落地时需要补自动恢复；已登录用户再次登录时旧会话只在本地被覆盖，服务端按 TTL 过期。
+
+CR-AUTH-3 自检记录：
 
 - 提交：platform 接口 → 请求函数重构（行为不变）→ AuthProvider / `useAuth` / `useCan` → `auth.json` 三语 → 登录、注册、重置页与导航账号入口 → 验证码输入行布局修正。另有一个独立的 `test(workflow)` 提交，修正拖拽用例在 jsdom 下缺 Pointer Capture 与 `elementFromPoint`（本批次之前就已失败）。
 - 设计取舍：登录类接口以 `anonymous` 发送，不带 token，因此其 401（如 `INVALID_CREDENTIALS`）不会触发会话失效处理；注册携带访客 token，以便原地升级。401 处理只清理确实被拒的 token，避免迟到的 401 冲掉刚登录的新 token。`X-Client` 来自 `capabilities.client`（web / desktop）。
