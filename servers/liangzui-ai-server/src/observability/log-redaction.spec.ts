@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import pino from 'pino';
 import { redactRequestBody, summarizeText } from './log-redaction';
 
 describe('summarizeText', () => {
@@ -20,5 +21,54 @@ describe('redactRequestBody', () => {
     }) as { text: { length: number }; nested: { content: { hash: string } } };
     expect(redacted.text.length).toBeGreaterThan(0);
     expect(redacted.nested.content.hash).toHaveLength(12);
+  });
+
+  it('密码、验证码、token 和标识只留长度与哈希', () => {
+    const body = {
+      password: 'correct-horse',
+      code: '246810',
+      token: 'opaque-token-value',
+      identifier: 'user@example.com',
+      nested: { authorization: 'Bearer opaque-token-value' },
+    };
+    const text = JSON.stringify(redactRequestBody(body));
+    expect(text).not.toContain('correct-horse');
+    expect(text).not.toContain('246810');
+    expect(text).not.toContain('opaque-token-value');
+    expect(text).not.toContain('user@example.com');
+    expect(text).not.toContain('preview');
+  });
+
+  it('pino 序列化请求体后仍不含密码、验证码、token 和完整标识', () => {
+    const lines: string[] = [];
+    const logger = pino(
+      {
+        serializers: {
+          req(request: { body?: unknown }) {
+            return { body: redactRequestBody(request.body) };
+          },
+        },
+      },
+      {
+        write(chunk: string) {
+          lines.push(chunk);
+        },
+      },
+    );
+    logger.info({
+      req: {
+        body: {
+          password: 'correct-horse',
+          code: '246810',
+          token: 'opaque-token-value',
+          identifier: 'user@example.com',
+        },
+      },
+    });
+    const text = lines.join('');
+    expect(text).not.toContain('correct-horse');
+    expect(text).not.toContain('246810');
+    expect(text).not.toContain('opaque-token-value');
+    expect(text).not.toContain('user@example.com');
   });
 });

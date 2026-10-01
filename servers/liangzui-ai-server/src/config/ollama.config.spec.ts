@@ -47,4 +47,21 @@ describe('Ollama 配置', () => {
     expect(validateEnvironment({ SERVER_PORT: '0', SIDECAR_MODE: 'true' }).SERVER_PORT).toBe(0);
     expect(() => validateEnvironment({ SERVER_PORT: '70000' })).toThrow();
   });
+
+  it('校验认证环境变量并给出静态验证码默认值', () => {
+    expect(validateEnvironment({})).toMatchObject({
+      AUTH_VERIFICATION_MODE: 'static',
+      AUTH_STATIC_VERIFICATION_CODE: '246810',
+      AUTH_SESSION_TTL_DAYS: 7,
+      AUTH_GUEST_TTL_DAYS: 30,
+    });
+    expect(
+      validateEnvironment({
+        AUTH_SESSION_TTL_DAYS: '14',
+        AUTH_GUEST_TTL_DAYS: '3',
+      }),
+    ).toMatchObject({ AUTH_SESSION_TTL_DAYS: 14, AUTH_GUEST_TTL_DAYS: 3 });
+    expect(() => validateEnvironment({ AUTH_STATIC_VERIFICATION_CODE: '12345' })).toThrow();
+    expect(() => validateEnvironment({ AUTH_VERIFICATION_MODE: 'sms' })).toThrow();
+  });
 });

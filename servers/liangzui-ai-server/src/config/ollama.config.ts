@@ -18,6 +18,13 @@ const EnvironmentSchema = z.object({
     (value) => (value === '' ? undefined : value),
     z.string().url().optional(),
   ),
+  AUTH_VERIFICATION_MODE: z.enum(['static']).default('static'),
+  AUTH_STATIC_VERIFICATION_CODE: z
+    .string()
+    .regex(/^\d{6}$/)
+    .default('246810'),
+  AUTH_SESSION_TTL_DAYS: z.coerce.number().int().positive().default(7),
+  AUTH_GUEST_TTL_DAYS: z.coerce.number().int().positive().default(30),
   OLLAMA_EMBED_BATCH_SIZE: z.coerce.number().int().min(1).max(128).default(32),
   RUN_DB_INTEGRATION: z
     .string()

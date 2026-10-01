@@ -1,20 +1,102 @@
-import { eq } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, isNull, sql } from 'drizzle-orm';
 import type { AppDatabase } from '../database/pg-vector-store';
 import {
   authEvents,
   authSessions,
+  chatSessions,
+  datasets,
   roles,
   userIdentities,
   userRoles,
   users,
   verificationCodes,
+  workflows,
 } from '../database/schema';
+import { FIRST_ADMIN_LOCK_KEY } from './auth.constants';
 
 export type AuthUserKind = 'guest' | 'registered';
 export type AuthIdentityType = 'email' | 'phone';
 export type AuthClient = 'web' | 'desktop';
+export type AuthEventType =
+  'code_sent' | 'register' | 'login_success' | 'login_failed' | 'logout' | 'password_reset';
+export type VerificationPurpose = 'register' | 'login' | 'reset_password';
 
-export class DrizzleAuthRepository {
+export const AUTH_REPOSITORY = Symbol('AUTH_REPOSITORY');
+
+export type AuthUserRecord = typeof users.$inferSelect;
+export type AuthIdentityRecord = typeof userIdentities.$inferSelect;
+export type VerificationCodeRecord = typeof verificationCodes.$inferSelect;
+export type AuthSessionRecord = typeof authSessions.$inferSelect;
+
+export type AuthUserPatch = Partial<
+  Pick<
+    AuthUserRecord,
+    'kind' | 'displayName' | 'passwordHash' | 'status' | 'lastLoginAt' | 'updatedAt'
+  >
+>;
+
+export interface AuthRepository {
+  transaction<T>(run: (repo: AuthRepository) => Promise<T>): Promise<T>;
+  lockFirstAdmin(): Promise<void>;
+  insertUser(input: {
+    kind: AuthUserKind;
+    displayName?: string | null;
+    passwordHash?: string | null;
+    status?: 'active' | 'disabled';
+  }): Promise<AuthUserRecord>;
+  updateUser(id: string, patch: AuthUserPatch): Promise<AuthUserRecord>;
+  findUserById(id: string): Promise<AuthUserRecord | null>;
+  insertIdentity(input: {
+    userId: string;
+    type: AuthIdentityType;
+    identifier: string;
+    verifiedAt?: Date | null;
+  }): Promise<AuthIdentityRecord>;
+  findIdentity(type: AuthIdentityType, identifier: string): Promise<AuthIdentityRecord | null>;
+  listIdentities(userId: string): Promise<AuthIdentityRecord[]>;
+  grantRole(userId: string, roleKey: string): Promise<unknown>;
+  revokeRole(userId: string, roleKey: string): Promise<void>;
+  listRoleKeys(userId: string): Promise<string[]>;
+  hasAdmin(): Promise<boolean>;
+  insertVerificationCode(input: {
+    type: AuthIdentityType;
+    identifier: string;
+    purpose: VerificationPurpose;
+    codeHash: string;
+    expiresAt: Date;
+  }): Promise<VerificationCodeRecord>;
+  findLatestCode(
+    type: AuthIdentityType,
+    identifier: string,
+    purpose: VerificationPurpose,
+  ): Promise<VerificationCodeRecord | null>;
+  countCodesSince(type: AuthIdentityType, identifier: string, since: Date): Promise<number>;
+  incrementCodeAttempt(id: string): Promise<VerificationCodeRecord | null>;
+  consumeCode(id: string): Promise<void>;
+  insertSession(input: {
+    userId: string;
+    tokenHash: string;
+    client: AuthClient;
+    expiresAt: Date;
+    userAgent?: string | null;
+  }): Promise<AuthSessionRecord>;
+  findSessionByTokenHash(tokenHash: string): Promise<AuthSessionRecord | null>;
+  touchSession(
+    id: string,
+    input: { lastSeenAt: Date; expiresAt: Date },
+  ): Promise<AuthSessionRecord>;
+  revokeSession(id: string): Promise<void>;
+  revokeSessionsForUser(userId: string): Promise<void>;
+  insertEvent(input: {
+    userId?: string | null;
+    type: AuthEventType;
+    identifierHash?: string | null;
+  }): Promise<unknown>;
+  countEventsSince(type: AuthEventType, identifierHash: string, since: Date): Promise<number>;
+  claimUnownedResources(userId: string): Promise<void>;
+}
+
+export class DrizzleAuthRepository implements AuthRepository {
   constructor(private readonly db: AppDatabase) {}
 
   async insertUser(input: {
@@ -124,5 +206,187 @@ export class DrizzleAuthRepository {
 
   async deleteUser(id: string) {
     await this.db.delete(users).where(eq(users.id, id));
+  }
+
+  async transaction<T>(run: (repo: AuthRepository) => Promise<T>): Promise<T> {
+    return this.db.transaction(async (tx) => run(new DrizzleAuthRepository(tx)));
+  }
+
+  async lockFirstAdmin(): Promise<void> {
+    await this.db.execute(sql`select pg_advisory_xact_lock(${FIRST_ADMIN_LOCK_KEY}::bigint)`);
+  }
+
+  async updateUser(id: string, patch: AuthUserPatch): Promise<AuthUserRecord> {
+    const [row] = await this.db.update(users).set(patch).where(eq(users.id, id)).returning();
+    if (!row) throw new Error('更新用户失败');
+    return row;
+  }
+
+  async findUserById(id: string): Promise<AuthUserRecord | null> {
+    const [row] = await this.db.select().from(users).where(eq(users.id, id)).limit(1);
+    return row ?? null;
+  }
+
+  async findIdentity(
+    type: AuthIdentityType,
+    identifier: string,
+  ): Promise<AuthIdentityRecord | null> {
+    const [row] = await this.db
+      .select()
+      .from(userIdentities)
+      .where(and(eq(userIdentities.type, type), eq(userIdentities.identifier, identifier)))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async listIdentities(userId: string): Promise<AuthIdentityRecord[]> {
+    return this.db
+      .select()
+      .from(userIdentities)
+      .where(eq(userIdentities.userId, userId))
+      .orderBy(asc(userIdentities.createdAt));
+  }
+
+  async revokeRole(userId: string, roleKey: string): Promise<void> {
+    const [role] = await this.db.select().from(roles).where(eq(roles.key, roleKey)).limit(1);
+    if (!role) return;
+    await this.db
+      .delete(userRoles)
+      .where(and(eq(userRoles.userId, userId), eq(userRoles.roleId, role.id)));
+  }
+
+  async listRoleKeys(userId: string): Promise<string[]> {
+    const rows = await this.db
+      .select({ key: roles.key })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(eq(userRoles.userId, userId));
+    return rows.map((row) => row.key);
+  }
+
+  async hasAdmin(): Promise<boolean> {
+    const [row] = await this.db
+      .select({ userId: userRoles.userId })
+      .from(userRoles)
+      .innerJoin(roles, eq(userRoles.roleId, roles.id))
+      .where(eq(roles.key, 'admin'))
+      .limit(1);
+    return Boolean(row);
+  }
+
+  async findLatestCode(
+    type: AuthIdentityType,
+    identifier: string,
+    purpose: VerificationPurpose,
+  ): Promise<VerificationCodeRecord | null> {
+    const [row] = await this.db
+      .select()
+      .from(verificationCodes)
+      .where(
+        and(
+          eq(verificationCodes.type, type),
+          eq(verificationCodes.identifier, identifier),
+          eq(verificationCodes.purpose, purpose),
+        ),
+      )
+      .orderBy(desc(verificationCodes.createdAt))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async countCodesSince(type: AuthIdentityType, identifier: string, since: Date): Promise<number> {
+    const [row] = await this.db
+      .select({ value: count() })
+      .from(verificationCodes)
+      .where(
+        and(
+          eq(verificationCodes.type, type),
+          eq(verificationCodes.identifier, identifier),
+          gte(verificationCodes.createdAt, since),
+        ),
+      );
+    return Number(row?.value ?? 0);
+  }
+
+  async incrementCodeAttempt(id: string): Promise<VerificationCodeRecord | null> {
+    const [current] = await this.db
+      .select()
+      .from(verificationCodes)
+      .where(eq(verificationCodes.id, id))
+      .limit(1);
+    if (!current) return null;
+    const [row] = await this.db
+      .update(verificationCodes)
+      .set({ attemptCount: current.attemptCount + 1 })
+      .where(eq(verificationCodes.id, id))
+      .returning();
+    return row ?? null;
+  }
+
+  async consumeCode(id: string): Promise<void> {
+    await this.db
+      .update(verificationCodes)
+      .set({ consumedAt: new Date() })
+      .where(eq(verificationCodes.id, id));
+  }
+
+  async findSessionByTokenHash(tokenHash: string): Promise<AuthSessionRecord | null> {
+    const [row] = await this.db
+      .select()
+      .from(authSessions)
+      .where(eq(authSessions.tokenHash, tokenHash))
+      .limit(1);
+    return row ?? null;
+  }
+
+  async touchSession(
+    id: string,
+    input: { lastSeenAt: Date; expiresAt: Date },
+  ): Promise<AuthSessionRecord> {
+    const [row] = await this.db
+      .update(authSessions)
+      .set({ lastSeenAt: input.lastSeenAt, expiresAt: input.expiresAt })
+      .where(eq(authSessions.id, id))
+      .returning();
+    if (!row) throw new Error('更新会话失败');
+    return row;
+  }
+
+  async revokeSession(id: string): Promise<void> {
+    await this.db
+      .update(authSessions)
+      .set({ revokedAt: new Date() })
+      .where(eq(authSessions.id, id));
+  }
+
+  async revokeSessionsForUser(userId: string): Promise<void> {
+    await this.db
+      .update(authSessions)
+      .set({ revokedAt: new Date() })
+      .where(and(eq(authSessions.userId, userId), isNull(authSessions.revokedAt)));
+  }
+
+  async countEventsSince(
+    type: AuthEventType,
+    identifierHash: string,
+    since: Date,
+  ): Promise<number> {
+    const [row] = await this.db
+      .select({ value: count() })
+      .from(authEvents)
+      .where(
+        and(
+          eq(authEvents.type, type),
+          eq(authEvents.identifierHash, identifierHash),
+          gte(authEvents.createdAt, since),
+        ),
+      );
+    return Number(row?.value ?? 0);
+  }
+
+  async claimUnownedResources(userId: string): Promise<void> {
+    await this.db.update(chatSessions).set({ ownerId: userId }).where(isNull(chatSessions.ownerId));
+    await this.db.update(datasets).set({ ownerId: userId }).where(isNull(datasets.ownerId));
+    await this.db.update(workflows).set({ ownerId: userId }).where(isNull(workflows.ownerId));
   }
 }
