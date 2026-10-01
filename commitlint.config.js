@@ -38,6 +38,7 @@ export default {
         'rag',
         'agent',
         'chat',
+        'auth',
         'mcp',
         'llm',
         'db',
