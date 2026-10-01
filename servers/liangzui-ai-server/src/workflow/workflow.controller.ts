@@ -31,6 +31,8 @@ import { ZodValidationPipe } from '../http/zod-validation.pipe';
 import { WorkflowGraphValidationError } from './engine/workflow-engine';
 import { WorkflowService } from './workflow.service';
 import { RequirePermissions } from '../auth/access-policy';
+import type { AuthPrincipal } from '../auth/auth.service';
+import { CurrentPrincipal } from '../auth/current-principal';
 
 @Controller('workflows')
 export class WorkflowController {
@@ -38,68 +40,86 @@ export class WorkflowController {
 
   @RequirePermissions('workflow:write')
   @Post()
-  create(@Body(new ZodValidationPipe(CreateWorkflowRequestSchema)) body: CreateWorkflowRequest) {
-    return this.workflows.createWorkflow(body);
+  create(
+    @CurrentPrincipal() principal: AuthPrincipal,
+    @Body(new ZodValidationPipe(CreateWorkflowRequestSchema)) body: CreateWorkflowRequest,
+  ) {
+    return this.workflows.createWorkflow(principal.userId, body);
   }
 
   @RequirePermissions('workflow:read')
   @Get()
-  list() {
-    return this.workflows.listWorkflows();
+  list(@CurrentPrincipal() principal: AuthPrincipal) {
+    return this.workflows.listWorkflows(principal.userId);
   }
 
   @RequirePermissions('workflow:read')
   @Get('runs/:runId')
-  getRun(@Param('runId', new ZodValidationPipe(UuidSchema)) runId: string) {
-    return this.wrap(() => this.workflows.getRun(runId));
+  getRun(
+    @CurrentPrincipal() principal: AuthPrincipal,
+    @Param('runId', new ZodValidationPipe(UuidSchema)) runId: string,
+  ) {
+    return this.wrap(() => this.workflows.getRun(principal.userId, runId));
   }
 
   @RequirePermissions('workflow:read')
   @Get(':workflowId/runs')
-  listRuns(@Param('workflowId', new ZodValidationPipe(UuidSchema)) workflowId: string) {
-    return this.wrap(() => this.workflows.listRuns(workflowId));
+  listRuns(
+    @CurrentPrincipal() principal: AuthPrincipal,
+    @Param('workflowId', new ZodValidationPipe(UuidSchema)) workflowId: string,
+  ) {
+    return this.wrap(() => this.workflows.listRuns(principal.userId, workflowId));
   }
 
   @RequirePermissions('workflow:read')
   @Get(':workflowId')
-  get(@Param('workflowId', new ZodValidationPipe(UuidSchema)) workflowId: string) {
-    return this.wrap(() => this.workflows.getWorkflow(workflowId));
+  get(
+    @CurrentPrincipal() principal: AuthPrincipal,
+    @Param('workflowId', new ZodValidationPipe(UuidSchema)) workflowId: string,
+  ) {
+    return this.wrap(() => this.workflows.getWorkflow(principal.userId, workflowId));
   }
 
   @RequirePermissions('workflow:write')
   @Patch(':workflowId')
   update(
+    @CurrentPrincipal() principal: AuthPrincipal,
     @Param('workflowId', new ZodValidationPipe(UuidSchema)) workflowId: string,
     @Body(new ZodValidationPipe(UpdateWorkflowRequestSchema)) body: UpdateWorkflowRequest,
   ) {
-    return this.wrap(() => this.workflows.updateWorkflow(workflowId, body));
+    return this.wrap(() => this.workflows.updateWorkflow(principal.userId, workflowId, body));
   }
 
   @RequirePermissions('workflow:write')
   @Delete(':workflowId')
-  delete(@Param('workflowId', new ZodValidationPipe(UuidSchema)) workflowId: string) {
-    return this.wrap(() => this.workflows.deleteWorkflow(workflowId));
+  delete(
+    @CurrentPrincipal() principal: AuthPrincipal,
+    @Param('workflowId', new ZodValidationPipe(UuidSchema)) workflowId: string,
+  ) {
+    return this.wrap(() => this.workflows.deleteWorkflow(principal.userId, workflowId));
   }
 
   @RequirePermissions('workflow:read')
   @Post(':workflowId/validate')
   validate(
+    @CurrentPrincipal() principal: AuthPrincipal,
     @Param('workflowId', new ZodValidationPipe(UuidSchema)) workflowId: string,
     @Body(new ZodValidationPipe(ValidateWorkflowRequestSchema)) body: ValidateWorkflowRequest,
   ) {
-    return this.wrap(() => this.workflows.validate(workflowId, body));
+    return this.wrap(() => this.workflows.validate(principal.userId, workflowId, body));
   }
 
   @RequirePermissions('workflow:run')
   @Post(':workflowId/run')
   async run(
+    @CurrentPrincipal() principal: AuthPrincipal,
     @Param('workflowId', new ZodValidationPipe(UuidSchema)) workflowId: string,
     @Body(new ZodValidationPipe(RunWorkflowRequestSchema)) body: RunWorkflowRequest,
     @Req() request: Request,
     @Res() response: Response,
   ) {
     try {
-      await this.workflows.assertRunnable(workflowId);
+      await this.workflows.assertRunnable(principal.userId, workflowId);
     } catch (error) {
       this.throwHttpError(error);
     }
@@ -110,10 +130,16 @@ export class WorkflowController {
     response.setHeader('X-Accel-Buffering', 'no');
     response.flushHeaders();
     try {
-      await this.workflows.stream(workflowId, body, abortOnClientClose(request), (event) => {
-        response.write(`event: ${event.event}\n`);
-        response.write(`data: ${JSON.stringify(event.data)}\n\n`);
-      });
+      await this.workflows.stream(
+        principal.userId,
+        workflowId,
+        body,
+        abortOnClientClose(request),
+        (event) => {
+          response.write(`event: ${event.event}\n`);
+          response.write(`data: ${JSON.stringify(event.data)}\n\n`);
+        },
+      );
     } finally {
       response.end();
     }
@@ -121,18 +147,22 @@ export class WorkflowController {
 
   @RequirePermissions('workflow:run')
   @Post('runs/:runId/stop')
-  stop(@Param('runId', new ZodValidationPipe(UuidSchema)) runId: string) {
-    return StopWorkflowResponseSchema.parse(this.workflows.stop(runId));
+  stop(
+    @CurrentPrincipal() principal: AuthPrincipal,
+    @Param('runId', new ZodValidationPipe(UuidSchema)) runId: string,
+  ) {
+    return StopWorkflowResponseSchema.parse(this.workflows.stop(principal.userId, runId));
   }
 
   @RequirePermissions('workflow:run')
   @Post(':workflowId/nodes/:nodeId/run')
   runNode(
+    @CurrentPrincipal() principal: AuthPrincipal,
     @Param('workflowId', new ZodValidationPipe(UuidSchema)) workflowId: string,
     @Param('nodeId') nodeId: string,
     @Body(new ZodValidationPipe(RunNodeRequestSchema)) body: RunNodeRequest,
   ) {
-    return this.wrap(() => this.workflows.runNode(workflowId, nodeId, body));
+    return this.wrap(() => this.workflows.runNode(principal.userId, workflowId, nodeId, body));
   }
 
   private async wrap<T>(run: () => Promise<T> | T): Promise<T> {

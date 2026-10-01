@@ -71,6 +71,17 @@ export const createAuthHarness = (override?: Partial<AuthRuntimeConfig>) => {
   return { repo, config, logs, passwords, tokens, verification, auth, logger };
 };
 
+export const registerTestUser = async (
+  harness: ReturnType<typeof createAuthHarness>,
+  identifier: string,
+) => {
+  await harness.auth.sendCode({ type: 'email', identifier, purpose: 'register' });
+  return harness.auth.register(
+    { type: 'email', identifier, password: 'correct-horse', code: harness.config.staticCode },
+    testMeta(),
+  );
+};
+
 export const expectAuthError = async (
   run: Promise<unknown>,
   status: number,

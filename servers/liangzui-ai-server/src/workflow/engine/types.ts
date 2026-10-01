@@ -16,6 +16,8 @@ export interface VariablePoolReader {
 
 export type NodeRunContext = {
   readonly runId: string;
+  /** 工作流所有者。节点访问其他用户资源（如知识库）时必须按它校验归属。 */
+  readonly ownerId: string;
   readonly nodeId: string;
   readonly signal: AbortSignal;
   emit: (text: string) => void;
@@ -42,6 +44,7 @@ export type WorkflowExecutionObserver = {
 
 export type WorkflowExecutionInput = {
   runId: string;
+  ownerId: string;
   graph: WorkflowGraph;
   inputs: Record<string, unknown>;
   signal: AbortSignal;

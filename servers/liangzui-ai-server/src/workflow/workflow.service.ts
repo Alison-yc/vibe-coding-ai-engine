@@ -48,7 +48,7 @@ const toRunDto = (run: WorkflowRunRecord) => {
 
 @Injectable()
 export class WorkflowService {
-  private readonly activeRuns = new Map<string, AbortController>();
+  private readonly activeRuns = new Map<string, { ownerId: string; controller: AbortController }>();
 
   constructor(
     @Inject(WORKFLOW_REPOSITORY) private readonly repository: WorkflowRepository,
@@ -56,54 +56,53 @@ export class WorkflowService {
     @Inject(NODE_REGISTRY) private readonly registry: NodeRegistry,
   ) {}
 
-  createWorkflow(request: CreateWorkflowRequest) {
-    return this.repository.createWorkflow(request);
+  createWorkflow(ownerId: string, request: CreateWorkflowRequest) {
+    return this.repository.createWorkflow(ownerId, request);
   }
 
-  async listWorkflows() {
+  async listWorkflows(ownerId: string) {
     return WorkflowListResponseSchema.parse({
-      workflows: await this.repository.listWorkflows(),
+      workflows: await this.repository.listWorkflows(ownerId),
     });
   }
 
-  async getWorkflow(id: string) {
-    const workflow = await this.repository.getWorkflow(id);
+  async getWorkflow(ownerId: string, id: string) {
+    const workflow = await this.repository.getWorkflow(ownerId, id);
     if (!workflow) throw notFound('工作流');
     return workflow;
   }
 
-  async updateWorkflow(id: string, request: UpdateWorkflowRequest) {
-    const workflow = await this.repository.updateWorkflow(id, request);
+  async updateWorkflow(ownerId: string, id: string, request: UpdateWorkflowRequest) {
+    const workflow = await this.repository.updateWorkflow(ownerId, id, request);
     if (!workflow) throw notFound('工作流');
     return workflow;
   }
 
-  async deleteWorkflow(id: string): Promise<void> {
-    await this.getWorkflow(id);
-    await this.repository.deleteWorkflow(id);
+  async deleteWorkflow(ownerId: string, id: string): Promise<void> {
+    if (!(await this.repository.deleteWorkflow(ownerId, id))) throw notFound('工作流');
   }
 
-  async validate(id: string, graphOverride?: ValidateWorkflowRequest) {
-    const workflow = await this.getWorkflow(id);
+  async validate(ownerId: string, id: string, graphOverride?: ValidateWorkflowRequest) {
+    const workflow = await this.getWorkflow(ownerId, id);
     return validateWorkflowGraph(graphOverride ?? workflow.graph, this.registry);
   }
 
-  async assertRunnable(id: string): Promise<void> {
-    const result = await this.validate(id);
+  async assertRunnable(ownerId: string, id: string): Promise<void> {
+    const result = await this.validate(ownerId, id);
     if (!result.valid) {
       throw new WorkflowGraphValidationError(result.errors.map((item) => item.message));
     }
   }
 
-  async listRuns(workflowId: string) {
-    await this.getWorkflow(workflowId);
+  async listRuns(ownerId: string, workflowId: string) {
+    await this.getWorkflow(ownerId, workflowId);
     return WorkflowRunListResponseSchema.parse({
       runs: (await this.repository.listRuns(workflowId)).map(toRunDto),
     });
   }
 
-  async getRun(runId: string) {
-    const run = await this.repository.getRun(runId);
+  async getRun(ownerId: string, runId: string) {
+    const run = await this.repository.getRun(ownerId, runId);
     if (!run) throw notFound('运行记录');
     return WorkflowRunDetailResponseSchema.parse({
       run: toRunDto(run),
@@ -117,18 +116,19 @@ export class WorkflowService {
   }
 
   async stream(
+    ownerId: string,
     workflowId: string,
     request: RunWorkflowRequest,
     disconnected: AbortSignal,
     emit: (event: WorkflowRunEvent) => void,
   ): Promise<void> {
-    const workflow = await this.getWorkflow(workflowId);
+    const workflow = await this.getWorkflow(ownerId, workflowId);
     const run = await this.repository.createRun(workflowId, request.inputs, workflow.graph);
     const controller = new AbortController();
     const stopOnDisconnect = () => controller.abort(new Error('客户端已断开'));
     if (disconnected.aborted) stopOnDisconnect();
     else disconnected.addEventListener('abort', stopOnDisconnect, { once: true });
-    this.activeRuns.set(run.id, controller);
+    this.activeRuns.set(run.id, { ownerId, controller });
     const nodeRuns = new Map<string, WorkflowNodeRunRecord>();
     let terminalSent = false;
     const emitTracked = (event: WorkflowRunEvent) => {
@@ -141,6 +141,7 @@ export class WorkflowService {
     try {
       const result = await this.engine.execute({
         runId: run.id,
+        ownerId,
         graph: workflow.graph,
         inputs: request.inputs,
         signal: controller.signal,
@@ -216,15 +217,18 @@ export class WorkflowService {
     }
   }
 
-  stop(runId: string): { accepted: boolean } {
-    const controller = this.activeRuns.get(runId);
-    if (!controller || controller.signal.aborted) return { accepted: false };
-    controller.abort(new Error('用户停止'));
+  /** 他人的运行与不存在的运行同样回答 `accepted: false`，不泄露运行是否存在。 */
+  stop(ownerId: string, runId: string): { accepted: boolean } {
+    const active = this.activeRuns.get(runId);
+    if (!active || active.ownerId !== ownerId || active.controller.signal.aborted) {
+      return { accepted: false };
+    }
+    active.controller.abort(new Error('用户停止'));
     return { accepted: true };
   }
 
-  async runNode(workflowId: string, nodeId: string, request: RunNodeRequest) {
-    const workflow = await this.getWorkflow(workflowId);
+  async runNode(ownerId: string, workflowId: string, nodeId: string, request: RunNodeRequest) {
+    const workflow = await this.getWorkflow(ownerId, workflowId);
     const node = workflow.graph.nodes.find((candidate) => candidate.id === nodeId);
     if (!node) throw notFound('节点');
     const runner = this.registry.get(node.data.type);
@@ -236,6 +240,7 @@ export class WorkflowService {
     const pool = new VariablePool(sys, upstreamValues);
     return runner.run(config, pool, {
       runId: randomUUID(),
+      ownerId,
       nodeId,
       signal: new AbortController().signal,
       emit: () => undefined,

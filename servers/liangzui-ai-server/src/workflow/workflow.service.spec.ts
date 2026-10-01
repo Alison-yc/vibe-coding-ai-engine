@@ -9,6 +9,9 @@ import { StartNodeRunner } from './nodes/start.runner';
 import { InMemoryWorkflowRepository } from './workflow.repository';
 import { WorkflowService } from './workflow.service';
 
+const OWNER = '00000000-0000-4000-8000-0000000000a1';
+const INTRUDER = '00000000-0000-4000-8000-0000000000b2';
+
 const graph: WorkflowGraph = {
   nodes: [
     {
@@ -68,9 +71,10 @@ describe('WorkflowService', () => {
       { event: 'chunk', data: { text: '答案' } },
       { event: 'done', data: { finishReason: 'stop' } },
     ]);
-    const workflow = await service.createWorkflow({ name: '问答', graph });
+    const workflow = await service.createWorkflow(OWNER, { name: '问答', graph });
     const events: WorkflowRunEvent[] = [];
     await service.stream(
+      OWNER,
       workflow.id,
       { inputs: { query: '问题' } },
       new AbortController().signal,
@@ -78,15 +82,15 @@ describe('WorkflowService', () => {
     );
     const started = events.find((event) => event.event === 'workflow_started');
     if (!started || started.event !== 'workflow_started') throw new Error('缺少开始事件');
-    expect(await repository.getRun(started.data.runId)).toMatchObject({
+    expect(await repository.getRun(OWNER, started.data.runId)).toMatchObject({
       status: 'completed',
       outputs: { answer: '答案' },
     });
     expect(await repository.listNodeRuns(started.data.runId)).toHaveLength(3);
-    expect(await service.listRuns(workflow.id)).toMatchObject({
+    expect(await service.listRuns(OWNER, workflow.id)).toMatchObject({
       runs: [{ id: started.data.runId, graphSnapshot: graph, finishedAt: expect.any(String) }],
     });
-    expect(await service.getRun(started.data.runId)).toMatchObject({
+    expect(await service.getRun(OWNER, started.data.runId)).toMatchObject({
       run: { status: 'completed', error: null },
       nodeRuns: [{ nodeId: 'start' }, { nodeId: 'llm' }, { nodeId: 'end' }],
     });
@@ -98,10 +102,11 @@ describe('WorkflowService', () => {
 
   it('停止运行时中断 LLM 并将运行和节点记录标记为 stopped', async () => {
     const { repository, service } = setup();
-    const workflow = await service.createWorkflow({ name: '可停止', graph });
+    const workflow = await service.createWorkflow(OWNER, { name: '可停止', graph });
     const events: WorkflowRunEvent[] = [];
     let runId = '';
     await service.stream(
+      OWNER,
       workflow.id,
       { inputs: { query: '问题' } },
       new AbortController().signal,
@@ -109,12 +114,13 @@ describe('WorkflowService', () => {
         events.push(event);
         if (event.event === 'workflow_started') runId = event.data.runId;
         if (event.event === 'node_started' && event.data.nodeId === 'llm') {
-          expect(service.stop(runId)).toEqual({ accepted: true });
-          expect(service.stop(runId)).toEqual({ accepted: false });
+          expect(service.stop(INTRUDER, runId)).toEqual({ accepted: false });
+          expect(service.stop(OWNER, runId)).toEqual({ accepted: true });
+          expect(service.stop(OWNER, runId)).toEqual({ accepted: false });
         }
       },
     );
-    expect(await repository.getRun(runId)).toMatchObject({ status: 'stopped' });
+    expect(await repository.getRun(OWNER, runId)).toMatchObject({ status: 'stopped' });
     expect(await repository.listNodeRuns(runId)).toEqual(
       expect.arrayContaining([expect.objectContaining({ nodeId: 'llm', status: 'stopped' })]),
     );
@@ -128,16 +134,17 @@ describe('WorkflowService', () => {
         data: expect.objectContaining({ nodeId: 'llm', status: 'stopped' }),
       }),
     );
-    expect(service.stop(runId)).toEqual({ accepted: false });
+    expect(service.stop(OWNER, runId)).toEqual({ accepted: false });
   });
 
   it('客户端在监听注册前已断开时仍立即停止运行', async () => {
     const { repository, service } = setup();
-    const workflow = await service.createWorkflow({ name: '已断开', graph });
+    const workflow = await service.createWorkflow(OWNER, { name: '已断开', graph });
     const disconnected = new AbortController();
     disconnected.abort(new Error('连接关闭'));
     let runId = '';
     await service.stream(
+      OWNER,
       workflow.id,
       { inputs: { query: '问题' } },
       disconnected.signal,
@@ -145,7 +152,7 @@ describe('WorkflowService', () => {
         if (event.event === 'workflow_started') runId = event.data.runId;
       },
     );
-    expect(await repository.getRun(runId)).toMatchObject({
+    expect(await repository.getRun(OWNER, runId)).toMatchObject({
       status: 'stopped',
       finishedAt: expect.any(Date),
     });
@@ -154,9 +161,10 @@ describe('WorkflowService', () => {
   it('节点失败时持久化运行级错误和完成时间', async () => {
     const { gateway, repository, service } = setup();
     gateway.enqueueStream([{ event: 'error', data: { message: '模型不可用' } }]);
-    const workflow = await service.createWorkflow({ name: '失败流', graph });
+    const workflow = await service.createWorkflow(OWNER, { name: '失败流', graph });
     let runId = '';
     await service.stream(
+      OWNER,
       workflow.id,
       { inputs: { query: '问题' } },
       new AbortController().signal,
@@ -164,7 +172,7 @@ describe('WorkflowService', () => {
         if (event.event === 'workflow_started') runId = event.data.runId;
       },
     );
-    expect(await repository.getRun(runId)).toMatchObject({
+    expect(await repository.getRun(OWNER, runId)).toMatchObject({
       status: 'failed',
       error: '模型不可用',
       finishedAt: expect.any(Date),
@@ -186,9 +194,10 @@ describe('WorkflowService', () => {
       edges: [{ id: 'edge', source: 'start', target: 'end' }],
       viewport: graph.viewport,
     };
-    const workflow = await service.createWorkflow({ name: '记录失败', graph: minimalGraph });
+    const workflow = await service.createWorkflow(OWNER, { name: '记录失败', graph: minimalGraph });
     const events: WorkflowRunEvent[] = [];
     await service.stream(
+      OWNER,
       workflow.id,
       { inputs: { query: '问题' } },
       new AbortController().signal,
@@ -220,10 +229,11 @@ describe('WorkflowService', () => {
       new EndNodeRunner(),
     ]);
     const service = new WorkflowService(repository, new WorkflowEngine(registry), registry);
-    const workflow = await service.createWorkflow({ name: '停止记录失败', graph });
+    const workflow = await service.createWorkflow(OWNER, { name: '停止记录失败', graph });
     const events: WorkflowRunEvent[] = [];
     let runId = '';
     await service.stream(
+      OWNER,
       workflow.id,
       { inputs: { query: '问题' } },
       new AbortController().signal,
@@ -231,11 +241,11 @@ describe('WorkflowService', () => {
         events.push(event);
         if (event.event === 'workflow_started') runId = event.data.runId;
         if (event.event === 'node_started' && event.data.nodeId === 'llm') {
-          service.stop(runId);
+          service.stop(OWNER, runId);
         }
       },
     );
-    expect(await repository.getRun(runId)).toMatchObject({ status: 'stopped', error: null });
+    expect(await repository.getRun(OWNER, runId)).toMatchObject({ status: 'stopped', error: null });
     expect(events.at(-1)).toMatchObject({
       event: 'workflow_finished',
       data: { status: 'stopped' },
@@ -248,21 +258,21 @@ describe('WorkflowService', () => {
       { event: 'chunk', data: { text: '调试结果' } },
       { event: 'done', data: {} },
     ]);
-    const workflow = await service.createWorkflow({ name: '原名', graph });
-    expect(await service.listWorkflows()).toMatchObject({ workflows: [{ name: '原名' }] });
+    const workflow = await service.createWorkflow(OWNER, { name: '原名', graph });
+    expect(await service.listWorkflows(OWNER)).toMatchObject({ workflows: [{ name: '原名' }] });
     expect(
-      await service.updateWorkflow(workflow.id, { name: '新名', bumpVersion: true }),
+      await service.updateWorkflow(OWNER, workflow.id, { name: '新名', bumpVersion: true }),
     ).toMatchObject({
       name: '新名',
       version: 2,
     });
-    expect(await service.validate(workflow.id)).toMatchObject({ valid: true });
+    expect(await service.validate(OWNER, workflow.id)).toMatchObject({ valid: true });
     await expect(
-      service.runNode(workflow.id, 'llm', {
+      service.runNode(OWNER, workflow.id, 'llm', {
         upstreamValues: { start: { query: '手动输入' } },
       }),
     ).resolves.toEqual({ outputs: { text: '调试结果' } });
-    await service.deleteWorkflow(workflow.id);
-    await expect(service.getWorkflow(workflow.id)).rejects.toThrow('NOT_FOUND');
+    await service.deleteWorkflow(OWNER, workflow.id);
+    await expect(service.getWorkflow(OWNER, workflow.id)).rejects.toThrow('NOT_FOUND');
   });
 });

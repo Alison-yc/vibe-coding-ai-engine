@@ -6,6 +6,7 @@ import { CodeNodeRunner } from './code.runner';
 import { HttpRequestNodeRunner } from './http-request.runner';
 
 const context = {
+  ownerId: '00000000-0000-4000-8000-0000000000a1',
   runId: '00000000-0000-4000-8000-000000000001',
   nodeId: 'node',
   signal: new AbortController().signal,

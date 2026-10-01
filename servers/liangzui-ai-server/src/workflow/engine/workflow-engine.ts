@@ -68,6 +68,7 @@ export class WorkflowEngine {
         const result = NodeRunResultSchema.parse(
           await runner.run(config, pool, {
             runId: input.runId,
+            ownerId: input.ownerId,
             nodeId,
             signal: input.signal,
             emit: (text) =>

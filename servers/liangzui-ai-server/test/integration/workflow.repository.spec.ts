@@ -2,6 +2,7 @@ import type { WorkflowGraph } from '@ai-engine/contracts';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { DrizzleAuthRepository } from '../../src/auth/auth.repository';
 import * as schema from '../../src/database/schema';
 import { withTransaction } from '../../src/database/with-transaction';
 import { DrizzleWorkflowRepository } from '../../src/workflow/workflow.repository';
@@ -43,7 +44,8 @@ describe('DrizzleWorkflowRepository integration', () => {
     const db = drizzle(pool, { schema });
     await withTransaction(db, async (tx) => {
       const repository = new DrizzleWorkflowRepository(tx);
-      const workflow = await repository.createWorkflow({ name: 'integration', graph });
+      const owner = await new DrizzleAuthRepository(tx).insertUser({ kind: 'registered' });
+      const workflow = await repository.createWorkflow(owner.id, { name: 'integration', graph });
       const run = await repository.createRun(workflow.id, { query: '你好' }, graph);
       const nodeRun = await repository.createNodeRun({
         runId: run.id,

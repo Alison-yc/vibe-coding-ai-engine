@@ -7,7 +7,7 @@ import {
   type WorkflowGraph,
   type WorkflowStatus,
 } from '@ai-engine/contracts';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { z } from 'zod';
 import type { AppDatabase } from '../database/pg-vector-store';
 import { workflowNodeRuns, workflowRuns, workflows } from '../database/schema';
@@ -38,21 +38,24 @@ export type WorkflowNodeRunRecord = {
   createdAt: Date;
 };
 
+export type WorkflowPatch = Partial<{ name: string; graph: WorkflowGraph; bumpVersion?: boolean }>;
+
+/**
+ * 工作流读写一律带 `ownerId`，他人工作流与不存在同样返回 null。
+ * 运行记录、节点运行记录是子表：`getRun` 经父工作流判断归属，其余调用方必须先确认父工作流。
+ */
 export interface WorkflowRepository {
-  createWorkflow(input: { name: string; graph: WorkflowGraph }): Promise<Workflow>;
-  listWorkflows(): Promise<Workflow[]>;
-  getWorkflow(id: string): Promise<Workflow | null>;
-  updateWorkflow(
-    id: string,
-    patch: Partial<{ name: string; graph: WorkflowGraph; bumpVersion?: boolean }>,
-  ): Promise<Workflow | null>;
-  deleteWorkflow(id: string): Promise<void>;
+  createWorkflow(ownerId: string, input: { name: string; graph: WorkflowGraph }): Promise<Workflow>;
+  listWorkflows(ownerId: string): Promise<Workflow[]>;
+  getWorkflow(ownerId: string, id: string): Promise<Workflow | null>;
+  updateWorkflow(ownerId: string, id: string, patch: WorkflowPatch): Promise<Workflow | null>;
+  deleteWorkflow(ownerId: string, id: string): Promise<boolean>;
   createRun(
     workflowId: string,
     inputs: Record<string, unknown>,
     graphSnapshot: WorkflowGraph,
   ): Promise<WorkflowRunRecord>;
-  getRun(id: string): Promise<WorkflowRunRecord | null>;
+  getRun(ownerId: string, id: string): Promise<WorkflowRunRecord | null>;
   listRuns(workflowId: string): Promise<WorkflowRunRecord[]>;
   updateRun(
     id: string,
@@ -115,8 +118,17 @@ export class InMemoryWorkflowRepository implements WorkflowRepository {
   private readonly workflowRecords = new Map<string, Workflow>();
   private readonly runRecords = new Map<string, WorkflowRunRecord>();
   private readonly nodeRunRecords = new Map<string, WorkflowNodeRunRecord>();
+  private readonly owners = new Map<string, string>();
 
-  async createWorkflow(input: { name: string; graph: WorkflowGraph }): Promise<Workflow> {
+  private owned(ownerId: string, id: string): Workflow | null {
+    if (this.owners.get(id) !== ownerId) return null;
+    return this.workflowRecords.get(id) ?? null;
+  }
+
+  async createWorkflow(
+    ownerId: string,
+    input: { name: string; graph: WorkflowGraph },
+  ): Promise<Workflow> {
     await Promise.resolve();
     const record = WorkflowSchema.parse({
       id: randomUUID(),
@@ -126,26 +138,30 @@ export class InMemoryWorkflowRepository implements WorkflowRepository {
       createdAt: new Date().toISOString(),
     });
     this.workflowRecords.set(record.id, record);
+    this.owners.set(record.id, ownerId);
     return cloneRecord(record);
   }
 
-  async listWorkflows(): Promise<Workflow[]> {
+  async listWorkflows(ownerId: string): Promise<Workflow[]> {
     await Promise.resolve();
-    return [...this.workflowRecords.values()].map(cloneRecord);
+    return [...this.workflowRecords.values()]
+      .filter((record) => this.owners.get(record.id) === ownerId)
+      .map(cloneRecord);
   }
 
-  async getWorkflow(id: string): Promise<Workflow | null> {
+  async getWorkflow(ownerId: string, id: string): Promise<Workflow | null> {
     await Promise.resolve();
-    const record = this.workflowRecords.get(id);
+    const record = this.owned(ownerId, id);
     return record ? cloneRecord(record) : null;
   }
 
   async updateWorkflow(
+    ownerId: string,
     id: string,
-    patch: Partial<{ name: string; graph: WorkflowGraph; bumpVersion?: boolean }>,
+    patch: WorkflowPatch,
   ): Promise<Workflow | null> {
     await Promise.resolve();
-    const current = this.workflowRecords.get(id);
+    const current = this.owned(ownerId, id);
     if (!current) return null;
     const bumpVersion = patch.bumpVersion ?? false;
     const { bumpVersion: _ignored, ...data } = patch;
@@ -158,9 +174,11 @@ export class InMemoryWorkflowRepository implements WorkflowRepository {
     return cloneRecord(next);
   }
 
-  async deleteWorkflow(id: string): Promise<void> {
+  async deleteWorkflow(ownerId: string, id: string): Promise<boolean> {
     await Promise.resolve();
+    if (!this.owned(ownerId, id)) return false;
     this.workflowRecords.delete(id);
+    this.owners.delete(id);
     const runIds = new Set(
       [...this.runRecords.values()]
         .filter((record) => record.workflowId === id)
@@ -170,6 +188,7 @@ export class InMemoryWorkflowRepository implements WorkflowRepository {
     for (const [nodeRunId, record] of this.nodeRunRecords) {
       if (runIds.has(record.runId)) this.nodeRunRecords.delete(nodeRunId);
     }
+    return true;
   }
 
   async createRun(
@@ -207,10 +226,11 @@ export class InMemoryWorkflowRepository implements WorkflowRepository {
     if (current) this.runRecords.set(id, { ...current, ...cloneRecord(patch) });
   }
 
-  async getRun(id: string): Promise<WorkflowRunRecord | null> {
+  async getRun(ownerId: string, id: string): Promise<WorkflowRunRecord | null> {
     await Promise.resolve();
     const record = this.runRecords.get(id);
-    return record ? cloneRecord(record) : null;
+    if (!record || this.owners.get(record.workflowId) !== ownerId) return null;
+    return cloneRecord(record);
   }
 
   async listRuns(workflowId: string): Promise<WorkflowRunRecord[]> {
@@ -264,31 +284,44 @@ export class InMemoryWorkflowRepository implements WorkflowRepository {
   }
 }
 
+const ownedWorkflow = (ownerId: string, id: string) =>
+  and(eq(workflows.id, id), eq(workflows.ownerId, ownerId));
+
 export class DrizzleWorkflowRepository implements WorkflowRepository {
   constructor(private readonly db: AppDatabase) {}
 
-  async createWorkflow(input: { name: string; graph: WorkflowGraph }): Promise<Workflow> {
-    const [row] = await this.db.insert(workflows).values(input).returning();
+  async createWorkflow(
+    ownerId: string,
+    input: { name: string; graph: WorkflowGraph },
+  ): Promise<Workflow> {
+    const [row] = await this.db
+      .insert(workflows)
+      .values({ ...input, ownerId })
+      .returning();
     if (!row) throw new Error('创建工作流失败');
     return toWorkflow(row);
   }
 
-  async listWorkflows(): Promise<Workflow[]> {
-    return (await this.db.select().from(workflows).orderBy(desc(workflows.createdAt))).map(
-      toWorkflow,
-    );
+  async listWorkflows(ownerId: string): Promise<Workflow[]> {
+    const rows = await this.db
+      .select()
+      .from(workflows)
+      .where(eq(workflows.ownerId, ownerId))
+      .orderBy(desc(workflows.createdAt));
+    return rows.map(toWorkflow);
   }
 
-  async getWorkflow(id: string): Promise<Workflow | null> {
-    const [row] = await this.db.select().from(workflows).where(eq(workflows.id, id)).limit(1);
+  async getWorkflow(ownerId: string, id: string): Promise<Workflow | null> {
+    const [row] = await this.db.select().from(workflows).where(ownedWorkflow(ownerId, id)).limit(1);
     return row ? toWorkflow(row) : null;
   }
 
   async updateWorkflow(
+    ownerId: string,
     id: string,
-    patch: Partial<{ name: string; graph: WorkflowGraph; bumpVersion?: boolean }>,
+    patch: WorkflowPatch,
   ): Promise<Workflow | null> {
-    const current = await this.getWorkflow(id);
+    const current = await this.getWorkflow(ownerId, id);
     if (!current) return null;
     const bumpVersion = patch.bumpVersion ?? false;
     const { bumpVersion: _ignored, ...data } = patch;
@@ -298,13 +331,17 @@ export class DrizzleWorkflowRepository implements WorkflowRepository {
         ...data,
         version: bumpVersion ? current.version + 1 : current.version,
       })
-      .where(eq(workflows.id, id))
+      .where(ownedWorkflow(ownerId, id))
       .returning();
     return row ? toWorkflow(row) : null;
   }
 
-  async deleteWorkflow(id: string): Promise<void> {
-    await this.db.delete(workflows).where(eq(workflows.id, id));
+  async deleteWorkflow(ownerId: string, id: string): Promise<boolean> {
+    const rows = await this.db
+      .delete(workflows)
+      .where(ownedWorkflow(ownerId, id))
+      .returning({ id: workflows.id });
+    return rows.length > 0;
   }
 
   async createRun(
@@ -332,10 +369,14 @@ export class DrizzleWorkflowRepository implements WorkflowRepository {
     await this.db.update(workflowRuns).set(patch).where(eq(workflowRuns.id, id));
   }
 
-  async getRun(id: string): Promise<WorkflowRunRecord | null> {
-    const [row] = await this.db.select().from(workflowRuns).where(eq(workflowRuns.id, id)).limit(1);
-    if (!row) return null;
-    return toRunRecord(row);
+  async getRun(ownerId: string, id: string): Promise<WorkflowRunRecord | null> {
+    const [row] = await this.db
+      .select({ run: workflowRuns })
+      .from(workflowRuns)
+      .innerJoin(workflows, eq(workflows.id, workflowRuns.workflowId))
+      .where(and(eq(workflowRuns.id, id), eq(workflows.ownerId, ownerId)))
+      .limit(1);
+    return row ? toRunRecord(row.run) : null;
   }
 
   async listRuns(workflowId: string): Promise<WorkflowRunRecord[]> {

@@ -88,6 +88,7 @@ describe('WorkflowEngine', () => {
     const observer = { onNodeFinished: vi.fn() };
     const result = await new WorkflowEngine(registry).execute({
       runId: '00000000-0000-4000-8000-000000000001',
+      ownerId: '00000000-0000-4000-8000-0000000000a1',
       graph,
       inputs: { query: '问题' },
       signal: new AbortController().signal,
@@ -123,6 +124,7 @@ describe('WorkflowEngine', () => {
     await expect(
       new WorkflowEngine(registry).execute({
         runId: '00000000-0000-4000-8000-000000000001',
+        ownerId: '00000000-0000-4000-8000-0000000000a1',
         graph: cyclic,
         inputs: {},
         signal: new AbortController().signal,
@@ -152,6 +154,7 @@ describe('WorkflowEngine', () => {
     await expect(
       new WorkflowEngine(registry).execute({
         runId: '00000000-0000-4000-8000-000000000001',
+        ownerId: '00000000-0000-4000-8000-0000000000a1',
         graph: failingGraph,
         inputs: {},
         signal: new AbortController().signal,
@@ -177,6 +180,7 @@ describe('WorkflowEngine', () => {
     await expect(
       new WorkflowEngine(registry).execute({
         runId: '00000000-0000-4000-8000-000000000001',
+        ownerId: '00000000-0000-4000-8000-0000000000a1',
         graph,
         inputs: {},
         signal: new AbortController().signal,
@@ -202,6 +206,7 @@ describe('WorkflowEngine', () => {
     await expect(
       new WorkflowEngine(registry).execute({
         runId: '00000000-0000-4000-8000-000000000001',
+        ownerId: '00000000-0000-4000-8000-0000000000a1',
         graph: deadEndGraph,
         inputs: {},
         signal: new AbortController().signal,
@@ -221,6 +226,7 @@ describe('WorkflowEngine', () => {
     const events: WorkflowRunEvent[] = [];
     const result = await new WorkflowEngine(registry).execute({
       runId: '00000000-0000-4000-8000-000000000001',
+      ownerId: '00000000-0000-4000-8000-0000000000a1',
       graph: {
         nodes: [nodeById('start'), nodeById('end')],
         edges: [{ id: 'edge', source: 'start', target: 'end' }],

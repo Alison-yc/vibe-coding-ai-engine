@@ -1,3 +1,4 @@
+import type { WorkflowGraph } from '@ai-engine/contracts';
 import { drizzle } from 'drizzle-orm/node-postgres';
 import { Pool } from 'pg';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -5,10 +6,30 @@ import { DrizzleAuthRepository } from '../../src/auth/auth.repository';
 import { DrizzleChatRepository } from '../../src/chat/chat.repository';
 import * as schema from '../../src/database/schema';
 import type { AppDatabase } from '../../src/database/pg-vector-store';
+import { DrizzleWorkflowRepository } from '../../src/workflow/workflow.repository';
 
 const databaseUrl = process.env.DATABASE_URL;
 
 class Rollback extends Error {}
+
+const graph: WorkflowGraph = {
+  nodes: [
+    {
+      id: 'start',
+      type: 'custom-node',
+      position: { x: 0, y: 0 },
+      data: { type: 'start', config: { fields: [] } },
+    },
+    {
+      id: 'end',
+      type: 'custom-node',
+      position: { x: 1, y: 0 },
+      data: { type: 'end', config: { outputs: [] } },
+    },
+  ],
+  edges: [{ id: 'edge', source: 'start', target: 'end' }],
+  viewport: { x: 0, y: 0, zoom: 1 },
+};
 
 const createUsers = async (db: AppDatabase) => {
   const auth = new DrizzleAuthRepository(db);
@@ -69,6 +90,28 @@ describe('资源归属（PostgreSQL）', () => {
       });
       await expect(repository.getSession(owner, orphan[0]!.id)).resolves.toBeNull();
       await expect(repository.deleteSession(owner, session.id)).resolves.toBe(true);
+    });
+  });
+
+  it('工作流与运行记录：他人读、改、删、查运行都当作不存在', async () => {
+    await inRolledBackTransaction(pool, async (tx) => {
+      const db = tx as unknown as AppDatabase;
+      const { owner, intruder } = await createUsers(db);
+      const repository = new DrizzleWorkflowRepository(db);
+      const workflow = await repository.createWorkflow(owner, { name: '甲', graph });
+      const run = await repository.createRun(workflow.id, {}, graph);
+
+      await expect(repository.listWorkflows(intruder)).resolves.toEqual([]);
+      await expect(repository.getWorkflow(intruder, workflow.id)).resolves.toBeNull();
+      await expect(
+        repository.updateWorkflow(intruder, workflow.id, { name: '乙' }),
+      ).resolves.toBeNull();
+      await expect(repository.getRun(intruder, run.id)).resolves.toBeNull();
+      await expect(repository.deleteWorkflow(intruder, workflow.id)).resolves.toBe(false);
+      await expect(repository.getRun(owner, run.id)).resolves.toMatchObject({ id: run.id });
+      await expect(repository.getWorkflow(owner, workflow.id)).resolves.toMatchObject({
+        name: '甲',
+      });
     });
   });
 });
