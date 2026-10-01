@@ -64,4 +64,20 @@ describe('Ollama 配置', () => {
     expect(() => validateEnvironment({ AUTH_STATIC_VERIFICATION_CODE: '12345' })).toThrow();
     expect(() => validateEnvironment({ AUTH_VERIFICATION_MODE: 'sms' })).toThrow();
   });
+
+  it('CORS 白名单默认覆盖两端开发来源与 Tauri，拒绝通配与带路径的来源', () => {
+    expect(validateEnvironment({}).CORS_ORIGINS).toEqual([
+      'http://localhost:5173',
+      'http://localhost:1420',
+      'tauri://localhost',
+    ]);
+    expect(
+      validateEnvironment({ CORS_ORIGINS: ' http://127.0.0.1:5173 , ,https://app.example ' })
+        .CORS_ORIGINS,
+    ).toEqual(['http://127.0.0.1:5173', 'https://app.example']);
+    expect(() => validateEnvironment({ CORS_ORIGINS: '*' })).toThrow();
+    expect(() => validateEnvironment({ CORS_ORIGINS: 'http://localhost:5173/app' })).toThrow();
+    expect(() => validateEnvironment({ CORS_ORIGINS: 'file://localhost' })).toThrow();
+    expect(() => validateEnvironment({ CORS_ORIGINS: ' , ' })).toThrow();
+  });
 });

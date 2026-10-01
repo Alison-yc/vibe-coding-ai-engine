@@ -29,6 +29,25 @@ describe('App HTTP (e2e)', () => {
     expect(response.body).toMatchObject({ status: 'ok' });
   });
 
+  it('CORS 只放行白名单来源', async () => {
+    const preflight = (origin: string) =>
+      request(app.getHttpServer())
+        .options('/chat/sessions')
+        .set('origin', origin)
+        .set('access-control-request-method', 'POST')
+        .set('access-control-request-headers', 'authorization,content-type,x-client');
+
+    const allowed = await preflight('http://localhost:5173');
+    expect(allowed.headers['access-control-allow-origin']).toBe('http://localhost:5173');
+    expect(allowed.headers['access-control-allow-headers']).toContain('authorization');
+
+    const tauri = await preflight('tauri://localhost');
+    expect(tauri.headers['access-control-allow-origin']).toBe('tauri://localhost');
+
+    const denied = await preflight('https://evil.example');
+    expect(denied.headers['access-control-allow-origin']).toBeUndefined();
+  });
+
   it('受保护接口无 token 返回 401 契约错误体', async () => {
     const response = await request(app.getHttpServer())
       .post('/llm/translate')
