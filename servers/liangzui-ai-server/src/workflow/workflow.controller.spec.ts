@@ -65,7 +65,12 @@ describe('WorkflowController', () => {
     await request(app.getHttpServer()).get(`/workflows/${id}`).expect(200);
     await request(app.getHttpServer())
       .patch(`/workflows/${id}`)
-      .send({ name: '新名称' })
+      .send({ name: '草稿名' })
+      .expect(200)
+      .expect(({ body }) => expect(body).toMatchObject({ name: '草稿名', version: 1 }));
+    await request(app.getHttpServer())
+      .patch(`/workflows/${id}`)
+      .send({ name: '新名称', bumpVersion: true })
       .expect(200)
       .expect(({ body }) => expect(body).toMatchObject({ name: '新名称', version: 2 }));
     await request(app.getHttpServer())

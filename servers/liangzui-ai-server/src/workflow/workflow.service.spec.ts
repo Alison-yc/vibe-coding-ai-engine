@@ -250,7 +250,9 @@ describe('WorkflowService', () => {
     ]);
     const workflow = await service.createWorkflow({ name: '原名', graph });
     expect(await service.listWorkflows()).toMatchObject({ workflows: [{ name: '原名' }] });
-    expect(await service.updateWorkflow(workflow.id, { name: '新名' })).toMatchObject({
+    expect(
+      await service.updateWorkflow(workflow.id, { name: '新名', bumpVersion: true }),
+    ).toMatchObject({
       name: '新名',
       version: 2,
     });

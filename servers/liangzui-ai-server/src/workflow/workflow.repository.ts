@@ -44,7 +44,7 @@ export interface WorkflowRepository {
   getWorkflow(id: string): Promise<Workflow | null>;
   updateWorkflow(
     id: string,
-    patch: Partial<{ name: string; graph: WorkflowGraph }>,
+    patch: Partial<{ name: string; graph: WorkflowGraph; bumpVersion?: boolean }>,
   ): Promise<Workflow | null>;
   deleteWorkflow(id: string): Promise<void>;
   createRun(
@@ -142,12 +142,18 @@ export class InMemoryWorkflowRepository implements WorkflowRepository {
 
   async updateWorkflow(
     id: string,
-    patch: Partial<{ name: string; graph: WorkflowGraph }>,
+    patch: Partial<{ name: string; graph: WorkflowGraph; bumpVersion?: boolean }>,
   ): Promise<Workflow | null> {
     await Promise.resolve();
     const current = this.workflowRecords.get(id);
     if (!current) return null;
-    const next = WorkflowSchema.parse({ ...current, ...patch, version: current.version + 1 });
+    const bumpVersion = patch.bumpVersion ?? false;
+    const { bumpVersion: _ignored, ...data } = patch;
+    const next = WorkflowSchema.parse({
+      ...current,
+      ...data,
+      version: bumpVersion ? current.version + 1 : current.version,
+    });
     this.workflowRecords.set(id, next);
     return cloneRecord(next);
   }
@@ -280,13 +286,18 @@ export class DrizzleWorkflowRepository implements WorkflowRepository {
 
   async updateWorkflow(
     id: string,
-    patch: Partial<{ name: string; graph: WorkflowGraph }>,
+    patch: Partial<{ name: string; graph: WorkflowGraph; bumpVersion?: boolean }>,
   ): Promise<Workflow | null> {
     const current = await this.getWorkflow(id);
     if (!current) return null;
+    const bumpVersion = patch.bumpVersion ?? false;
+    const { bumpVersion: _ignored, ...data } = patch;
     const [row] = await this.db
       .update(workflows)
-      .set({ ...patch, version: current.version + 1 })
+      .set({
+        ...data,
+        version: bumpVersion ? current.version + 1 : current.version,
+      })
       .where(eq(workflows.id, id))
       .returning();
     return row ? toWorkflow(row) : null;

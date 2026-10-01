@@ -122,7 +122,9 @@ describe('workflow api', () => {
       id: workflowId,
     });
     await expect(getWorkflow(platform, workflowId)).resolves.toMatchObject({ name: '测试' });
-    await expect(updateWorkflow(platform, workflowId, { name: '新名称' })).resolves.toMatchObject({
+    await expect(
+      updateWorkflow(platform, workflowId, { name: '新名称', bumpVersion: true }),
+    ).resolves.toMatchObject({
       version: 2,
     });
     await expect(validateWorkflow(platform, workflowId, graph)).resolves.toMatchObject({

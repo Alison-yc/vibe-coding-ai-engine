@@ -61,8 +61,12 @@ export const UpdateWorkflowRequestSchema = z
   .object({
     name: z.string().trim().min(1).max(100).optional(),
     graph: WorkflowGraphSchema.optional(),
+    /** 为 true 时递增 workflows.version；未保存的编辑仅改 graph/name 时不应传 true */
+    bumpVersion: z.boolean().optional(),
   })
-  .refine((value) => Object.keys(value).length > 0, { message: '至少提供一个更新字段' });
+  .refine((value) => value.name !== undefined || value.graph !== undefined, {
+    message: '至少提供一个更新字段',
+  });
 export type UpdateWorkflowRequest = z.infer<typeof UpdateWorkflowRequestSchema>;
 
 export const WorkflowListResponseSchema = z.object({ workflows: z.array(WorkflowSchema) });

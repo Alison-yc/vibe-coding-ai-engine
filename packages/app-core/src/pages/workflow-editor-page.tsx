@@ -136,7 +136,7 @@ export const WorkflowEditorPage = () => {
   );
 
   const save = useMutation({
-    mutationFn: async ({ validate }: { validate: boolean }) => {
+    mutationFn: async ({ validate, bumpVersion }: { validate: boolean; bumpVersion: boolean }) => {
       flushConfigDrafts();
       const state = useWorkflowStore.getState();
       const graph = serializeWorkflowGraph(state.nodes, state.edges, state.viewport);
@@ -165,7 +165,7 @@ export const WorkflowEditorPage = () => {
           );
         }
       }
-      return updateWorkflow(platform, id, { name: name.trim(), graph });
+      return updateWorkflow(platform, id, { name: name.trim(), graph, bumpVersion });
     },
     onSuccess: async () => {
       markSaved();
@@ -176,9 +176,15 @@ export const WorkflowEditorPage = () => {
   });
 
   useEffect(() => {
-    if ((!dirty && !nameDirty) || running || starting || !id || !name.trim()) return;
-    const timer = globalThis.setTimeout(() => save.mutate({ validate: false }), 1200);
-    return () => globalThis.clearTimeout(timer);
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || event.key.toLowerCase() !== 's') return;
+      event.preventDefault();
+      if (save.isPending || running || starting || !id || !name.trim()) return;
+      if (!dirty && !nameDirty) return;
+      save.mutate({ validate: false, bumpVersion: true });
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
   }, [dirty, id, name, nameDirty, running, save, starting]);
 
   const startRun = async (inputs: Record<string, unknown>) => {
@@ -189,7 +195,7 @@ export const WorkflowEditorPage = () => {
     const session = activeRun.current + 1;
     activeRun.current = session;
     try {
-      await save.mutateAsync({ validate: true });
+      await save.mutateAsync({ validate: true, bumpVersion: true });
       if (activeRun.current !== session) return;
       const controller = new AbortController();
       streamController.current = controller;
@@ -325,8 +331,17 @@ export const WorkflowEditorPage = () => {
             className="shrink-0"
             size="sm"
             variant="outline"
+            disabled={save.isPending || running || starting || (!dirty && !nameDirty)}
+            onClick={() => save.mutate({ validate: false, bumpVersion: true })}
+          >
+            <span className="max-w-32 truncate">{t('editor.save')}</span>
+          </Button>
+          <Button
+            className="shrink-0"
+            size="sm"
+            variant="outline"
             disabled={save.isPending || running || starting}
-            onClick={() => save.mutate({ validate: true })}
+            onClick={() => save.mutate({ validate: true, bumpVersion: true })}
           >
             <span className="max-w-32 truncate">{t('editor.saveAndValidate')}</span>
           </Button>
@@ -354,7 +369,9 @@ export const WorkflowEditorPage = () => {
           <WorkflowCanvas />
           <WorkflowConfigPanel
             workflowId={id}
-            beforeDebugRun={() => save.mutateAsync({ validate: true }).then(() => undefined)}
+            beforeDebugRun={() =>
+              save.mutateAsync({ validate: true, bumpVersion: true }).then(() => undefined)
+            }
           />
         </div>
         <WorkflowRunLogPanel open={logsOpen} onToggle={() => setLogsOpen((open) => !open)} />

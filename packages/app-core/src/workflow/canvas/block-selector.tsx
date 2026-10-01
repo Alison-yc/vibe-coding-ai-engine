@@ -1,9 +1,11 @@
-import { Button, cn } from '@ai-engine/ui';
+import { cn } from '@ai-engine/ui';
 import { useTranslation } from 'react-i18next';
 import { NodeDefinitions } from '../nodes/registry';
 import { getNodePresentation, type NodeCategory } from '../nodes/metadata';
 import { NodeIconMap, categoryBorderClass } from '../nodes/visual';
+import type { NodeType } from '@ai-engine/contracts';
 import type { CanvasNode } from '../types';
+import type { PointerEvent as ReactPointerEvent } from 'react';
 
 const categories: NodeCategory[] = ['flow', 'data', 'ai', 'tools'];
 
@@ -17,9 +19,17 @@ const categoryHeadingClass: Record<NodeCategory, string> = {
 export const BlockSelector = ({
   nodes,
   onAdd,
+  onPalettePointerDown,
+  consumePointerClick,
 }: {
   nodes: CanvasNode[];
   onAdd: (type: keyof typeof NodeDefinitions) => void;
+  onPalettePointerDown: (
+    type: NodeType,
+    label: string,
+    event: ReactPointerEvent<HTMLElement>,
+  ) => void;
+  consumePointerClick: () => boolean;
 }) => {
   const { t } = useTranslation('workflow');
   return (
@@ -47,19 +57,30 @@ export const BlockSelector = ({
                 definition.singleton === true &&
                 nodes.some((node) => node.data.type === definition.type);
               return (
-                <Button
-                  className={cn(
-                    'h-auto min-w-0 justify-start border-l-4 px-3 py-2 text-left',
-                    categoryBorderClass[category],
-                  )}
-                  disabled={singleton}
-                  draggable={!singleton}
+                <div
                   key={definition.type}
-                  variant="outline"
-                  onClick={() => onAdd(definition.type)}
-                  onDragStart={(event) => {
-                    event.dataTransfer.setData('application/ai-engine-node', definition.type);
-                    event.dataTransfer.effectAllowed = 'move';
+                  role="button"
+                  tabIndex={singleton ? -1 : 0}
+                  aria-disabled={singleton}
+                  className={cn(
+                    'border-input bg-background hover:bg-accent hover:text-accent-foreground inline-flex h-auto min-w-0 cursor-grab justify-start rounded-md border border-l-4 px-3 py-2 text-left text-sm font-medium shadow-xs active:cursor-grabbing',
+                    categoryBorderClass[category],
+                    singleton && 'pointer-events-none opacity-50',
+                  )}
+                  onPointerDown={(event) => {
+                    if (!singleton)
+                      onPalettePointerDown(definition.type, presentation.title, event);
+                  }}
+                  onClick={() => {
+                    if (singleton || consumePointerClick()) return;
+                    onAdd(definition.type);
+                  }}
+                  onKeyDown={(event) => {
+                    if (singleton) return;
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      onAdd(definition.type);
+                    }
                   }}
                 >
                   <span className="flex min-w-0 items-start gap-2">
@@ -71,7 +92,7 @@ export const BlockSelector = ({
                       </span>
                     </span>
                   </span>
-                </Button>
+                </div>
               );
             })}
         </section>

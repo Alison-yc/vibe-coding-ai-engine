@@ -1,4 +1,4 @@
-import { useCallback, useRef, type CSSProperties } from 'react';
+import { useCallback, useRef, type CSSProperties, type DragEvent } from 'react';
 import {
   addEdge,
   Background,
@@ -15,7 +15,8 @@ import {
   type XYPosition,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { NodeTypeSchema, type NodeType } from '@ai-engine/contracts';
+import './workflow-canvas.css';
+import type { NodeType } from '@ai-engine/contracts';
 import { useTranslation } from 'react-i18next';
 import { NodeDefinitions } from '../nodes/registry';
 import { getNodePresentation } from '../nodes/metadata';
@@ -24,6 +25,9 @@ import type { CanvasEdge, CanvasNode } from '../types';
 import { canConnectNodes } from '../graph-utils';
 import { BlockSelector } from './block-selector';
 import { CustomNode } from './custom-node';
+import { readDropNodeType } from './read-drop-node-type';
+import { PaletteDragGhost } from './palette-drag-ghost';
+import { usePalettePointerPlacement } from './use-palette-pointer-placement';
 
 const nodeTypes: NodeTypes = { 'custom-node': CustomNode };
 const canvasTheme = {
@@ -54,7 +58,39 @@ const CanvasInner = () => {
   const undo = useWorkflowStore((state) => state.undo);
   const redo = useWorkflowStore((state) => state.redo);
   const copiedNode = useRef<CanvasNode | null>(null);
+  const canvasRef = useRef<HTMLDivElement>(null);
   const { screenToFlowPosition } = useReactFlow();
+
+  const addNodeAt = useCallback(
+    (type: NodeType, position: XYPosition) => {
+      const definition = NodeDefinitions[type];
+      if (definition.singleton && nodes.some((node) => node.data.type === type)) return;
+      recordSnapshot();
+      const id = `${type}_${Date.now().toString(36)}`;
+      useWorkflowStore.setState((state) => ({
+        nodes: [
+          ...state.nodes,
+          {
+            id,
+            type: 'custom-node',
+            position,
+            data: {
+              type,
+              title: getNodePresentation(t, type).title,
+              config: structuredClone(definition.defaultConfig),
+              _runningStatus: 'idle',
+            },
+          },
+        ],
+        dirty: true,
+        selectedNodeId: id,
+        panelOpen: true,
+      }));
+    },
+    [nodes, recordSnapshot, t],
+  );
+
+  const palettePlacement = usePalettePointerPlacement(addNodeAt, screenToFlowPosition, canvasRef);
 
   const addNode = useCallback(
     (type: NodeType, position?: XYPosition) => {
@@ -116,6 +152,24 @@ const CanvasInner = () => {
     [onEdgesChange, recordSnapshot],
   );
 
+  const allowCanvasDrop = useCallback((event: DragEvent) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+  }, []);
+
+  const onCanvasDrop = useCallback(
+    (event: DragEvent) => {
+      event.preventDefault();
+      event.stopPropagation();
+      const type = readDropNodeType(event);
+      if (type) {
+        addNodeAt(type, screenToFlowPosition({ x: event.clientX, y: event.clientY }));
+      }
+    },
+    [addNodeAt, screenToFlowPosition],
+  );
+
   return (
     <div
       className="flex min-h-0 flex-1 outline-none"
@@ -153,23 +207,22 @@ const CanvasInner = () => {
         }
       }}
     >
-      <BlockSelector nodes={nodes} onAdd={addNode} />
+      <PaletteDragGhost ghost={palettePlacement.ghost} />
+      <BlockSelector
+        nodes={nodes}
+        onAdd={addNode}
+        consumePointerClick={palettePlacement.consumePointerClick}
+        onPalettePointerDown={palettePlacement.onPalettePointerDown}
+      />
       <div
-        className="bg-muted/20 min-w-0 flex-1"
-        onDragOver={(event) => {
-          event.preventDefault();
-          event.dataTransfer.dropEffect = 'move';
-        }}
-        onDrop={(event) => {
-          event.preventDefault();
-          const value = event.dataTransfer.getData('application/ai-engine-node');
-          const type = NodeTypeSchema.safeParse(value);
-          if (type.success) {
-            addNode(type.data, screenToFlowPosition({ x: event.clientX, y: event.clientY }));
-          }
-        }}
+        ref={canvasRef}
+        className="bg-muted/20 relative min-h-0 min-w-0 flex-1"
+        onDragEnter={allowCanvasDrop}
+        onDragOver={allowCanvasDrop}
+        onDrop={onCanvasDrop}
       >
         <ReactFlow
+          className="h-full w-full"
           style={canvasTheme}
           nodes={nodes}
           edges={edges}
@@ -177,8 +230,12 @@ const CanvasInner = () => {
           viewport={viewport}
           deleteKeyCode={['Backspace', 'Delete']}
           isValidConnection={isValidConnection}
-          onlyRenderVisibleElements
+          autoPanOnNodeDrag
+          autoPanOnConnect
           onConnect={onConnect}
+          onDragEnter={allowCanvasDrop}
+          onDragOver={allowCanvasDrop}
+          onDrop={onCanvasDrop}
           onEdgesChange={applyEdgeChanges}
           onNodesChange={applyNodeChanges}
           onNodeClick={(_, node) => selectNode(node.id)}

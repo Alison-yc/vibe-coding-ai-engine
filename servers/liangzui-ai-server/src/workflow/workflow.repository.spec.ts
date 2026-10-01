@@ -99,8 +99,16 @@ describe('InMemoryWorkflowRepository', () => {
     const created = await repository.createWorkflow({ name: '测试', graph });
     expect(await repository.getWorkflow(created.id)).toMatchObject({ name: '测试', version: 1 });
     expect(await repository.listWorkflows()).toHaveLength(1);
-    expect(await repository.updateWorkflow(created.id, { name: '新版' })).toMatchObject({
+    expect(
+      await repository.updateWorkflow(created.id, { name: '新版', bumpVersion: true }),
+    ).toMatchObject({
       name: '新版',
+      version: 2,
+    });
+    expect(
+      await repository.updateWorkflow(created.id, { name: '草稿名', bumpVersion: false }),
+    ).toMatchObject({
+      name: '草稿名',
       version: 2,
     });
     expect(await repository.updateWorkflow('00000000-0000-4000-8000-000000000099', {})).toBeNull();
@@ -160,7 +168,7 @@ describe('DrizzleWorkflowRepository', () => {
     await expect(repository.listWorkflows()).resolves.toHaveLength(1);
     await expect(repository.getWorkflow(workflowRow.id)).resolves.toMatchObject({ name: '测试' });
     await expect(
-      repository.updateWorkflow(workflowRow.id, { name: '新版' }),
+      repository.updateWorkflow(workflowRow.id, { name: '新版', bumpVersion: true }),
     ).resolves.toMatchObject({ name: '新版', version: 2 });
     await expect(repository.updateWorkflow(workflowRow.id, {})).resolves.toBeNull();
     await expect(repository.updateWorkflow(workflowRow.id, {})).resolves.toBeNull();

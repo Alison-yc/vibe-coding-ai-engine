@@ -181,6 +181,45 @@ describe('工作流组件', () => {
     expect(screen.getAllByText('HTTP 请求', { exact: true }).length).toBeGreaterThan(1);
   });
 
+  it('从左侧面板拖拽节点到画布会添加节点', () => {
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe() {}
+        unobserve() {}
+        disconnect() {}
+      },
+    );
+    loadWorkflowGraph({
+      nodes: [start, end],
+      edges: [],
+      viewport: { x: 0, y: 0, zoom: 1 },
+    });
+    renderWithProviders(<WorkflowCanvas />);
+    const before = useWorkflowStore.getState().nodes.length;
+    const llmButton = screen.getByRole('button', { name: /^LLM/ });
+    const pane = document.querySelector('.react-flow');
+    if (!pane) throw new Error('react-flow 画布未挂载');
+    const canvasWrap = pane.parentElement;
+    if (!canvasWrap) throw new Error('画布容器未挂载');
+    vi.spyOn(canvasWrap, 'getBoundingClientRect').mockReturnValue({
+      left: 0,
+      top: 0,
+      right: 800,
+      bottom: 600,
+      width: 800,
+      height: 600,
+      x: 0,
+      y: 0,
+      toJSON: () => ({}),
+    } as DOMRect);
+    fireEvent.pointerDown(llmButton, { pointerId: 1, button: 0, clientX: 40, clientY: 40 });
+    fireEvent.pointerMove(window, { pointerId: 1, buttons: 1, clientX: 320, clientY: 240 });
+    fireEvent.pointerUp(window, { pointerId: 1, button: 0, clientX: 320, clientY: 240 });
+    expect(useWorkflowStore.getState().nodes.length).toBe(before + 1);
+    expect(useWorkflowStore.getState().nodes.some((node) => node.data.type === 'llm')).toBe(true);
+  });
+
   it('八类节点摘要与配置面板都能由注册表渲染', () => {
     vi.stubGlobal(
       'fetch',
@@ -294,9 +333,16 @@ describe('工作流组件', () => {
 
   it('节点面板点击添加节点并限制开始、结束单例', () => {
     const onAdd = vi.fn();
-    render(<BlockSelector nodes={nodes} onAdd={onAdd} />);
-    expect(screen.getByRole('button', { name: /开始/ }).hasAttribute('disabled')).toBe(true);
-    expect(screen.getByRole('button', { name: /结束/ }).hasAttribute('disabled')).toBe(true);
+    render(
+      <BlockSelector
+        nodes={nodes}
+        onAdd={onAdd}
+        onPalettePointerDown={() => undefined}
+        consumePointerClick={() => false}
+      />,
+    );
+    expect(screen.getByRole('button', { name: /开始/ }).getAttribute('aria-disabled')).toBe('true');
+    expect(screen.getByRole('button', { name: /结束/ }).getAttribute('aria-disabled')).toBe('true');
     fireEvent.click(screen.getByRole('button', { name: /HTTP 请求/ }));
     expect(onAdd).toHaveBeenCalledWith('http-request');
   });

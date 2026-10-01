@@ -1,0 +1,12 @@
+/* 拖拽中的节点抬升并允许超出 viewport 裁切区，避免边缘「半节点 + 叠影」 */
+.react-flow__node.dragging {
+  z-index: 1000 !important;
+}
+
+.react-flow__node.dragging > div {
+  box-shadow: var(--shadow-lg, 0 10px 15px -3px rgb(0 0 0 / 0.15));
+}
+
+.react-flow:has(.react-flow__node.dragging) .react-flow__viewport {
+  overflow: visible;
+}
