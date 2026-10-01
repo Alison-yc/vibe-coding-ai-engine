@@ -22,6 +22,8 @@ import { abortOnClientClose } from '../http/abort-on-client-close';
 import { ZodValidationPipe } from '../http/zod-validation.pipe';
 import { AgentService } from './agent.service';
 import { RequirePermissions } from '../auth/access-policy';
+import type { AuthPrincipal } from '../auth/auth.service';
+import { CurrentPrincipal } from '../auth/current-principal';
 
 const flushResponse = (response: Response): void => {
   (response as Response & { flush?: () => void }).flush?.();
@@ -33,15 +35,21 @@ export class AgentController {
 
   @RequirePermissions('mcp:read')
   @Get('tools')
-  listTools(@Query('sessionId') sessionId?: string) {
+  async listTools(
+    @CurrentPrincipal() principal: AuthPrincipal,
+    @Query('sessionId') sessionId?: string,
+  ) {
     const parsed = sessionId ? UuidSchema.safeParse(sessionId) : undefined;
     if (parsed && !parsed.success) throw new NotFoundException('会话不存在');
-    return this.agent.listExposedTools(parsed?.data);
+    const tools = await this.agent.listExposedTools(principal.userId, parsed?.data);
+    if (!tools) throw new NotFoundException('会话不存在');
+    return tools;
   }
 
   @RequirePermissions('chat:file-access')
   @Post(':sessionId/stream')
   async stream(
+    @CurrentPrincipal() principal: AuthPrincipal,
     @Param('sessionId', new ZodValidationPipe(UuidSchema)) sessionId: string,
     @Body(new ZodValidationPipe(AgentStreamRequestSchema)) body: AgentStreamRequest,
     @Req() request: Request,
@@ -60,9 +68,15 @@ export class AgentController {
       flushResponse(response);
     };
     try {
-      await this.agent.stream(sessionId, body, abortOnClientClose(request), (event) => {
-        writeEvent(event.event, event.data);
-      });
+      await this.agent.stream(
+        principal.userId,
+        sessionId,
+        body,
+        abortOnClientClose(request),
+        (event) => {
+          writeEvent(event.event, event.data);
+        },
+      );
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Agent 执行失败';
       writeEvent('error', { message });
@@ -73,13 +87,16 @@ export class AgentController {
 
   @RequirePermissions('chat:file-access')
   @Post(':sessionId/permissions/:approvalId')
-  respondPermission(
+  async respondPermission(
+    @CurrentPrincipal() principal: AuthPrincipal,
     @Param('sessionId', new ZodValidationPipe(UuidSchema)) sessionId: string,
     @Param('approvalId', new ZodValidationPipe(UuidSchema)) approvalId: string,
     @Body(new ZodValidationPipe(PermissionResponseRequestSchema))
     body: PermissionResponseRequest,
   ) {
-    if (!this.agent.respondPermission(sessionId, approvalId, body.decision)) {
+    if (
+      !(await this.agent.respondPermission(principal.userId, sessionId, approvalId, body.decision))
+    ) {
       throw new NotFoundException('审批不存在、已过期或不属于当前会话');
     }
     return { accepted: true };

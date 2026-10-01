@@ -8,7 +8,7 @@ import {
   type ChatSession,
   type MessagePart,
 } from '@ai-engine/contracts';
-import { desc, eq } from 'drizzle-orm';
+import { and, desc, eq } from 'drizzle-orm';
 import { chatMessages, chatSessions } from '../database/schema';
 import type { AppDatabase } from '../database/pg-vector-store';
 
@@ -64,15 +64,22 @@ export type NewSessionInput = {
   agentType?: ChatSession['agentType'];
 };
 
+export type SessionPatch = Partial<{ title: string; datasetIds: string[]; modelId: string }>;
+
+/**
+ * 会话读写一律带 `ownerId`：不属于该用户的会话与不存在的会话同样返回 null。
+ * 消息是子表，调用方必须先经 `getSession` 确认父会话归属。
+ */
 export interface ChatRepository {
-  createSession(input: NewSessionInput): Promise<ChatSession>;
-  listSessions(): Promise<ChatSession[]>;
-  getSession(id: string): Promise<ChatSession | null>;
-  updateSession(
-    id: string,
-    patch: Partial<{ title: string; datasetIds: string[]; modelId: string }>,
-  ): Promise<ChatSession | null>;
-  deleteSession(id: string): Promise<void>;
+  createSession(ownerId: string, input: NewSessionInput): Promise<ChatSession>;
+  listSessions(ownerId: string): Promise<ChatSession[]>;
+  getSession(ownerId: string, id: string): Promise<ChatSession | null>;
+  updateSession(ownerId: string, id: string, patch: SessionPatch): Promise<ChatSession | null>;
+  deleteSession(ownerId: string, id: string): Promise<boolean>;
+  /** 仅供没有请求身份的系统任务（重启恢复、排队输入续跑），不得在请求路径上调用。 */
+  getSessionForSystem(id: string): Promise<ChatSession | null>;
+  /** 仅供重启恢复扫描。 */
+  listSessionIdsForSystem(): Promise<string[]>;
   listMessages(sessionId: string): Promise<ChatMessage[]>;
   appendMessage(input: {
     id?: string;
@@ -90,8 +97,14 @@ export interface ChatRepository {
 export class InMemoryChatRepository implements ChatRepository {
   private readonly sessions = new Map<string, ChatSession>();
   private readonly messages = new Map<string, ChatMessage[]>();
+  private readonly owners = new Map<string, string>();
 
-  async createSession(input: NewSessionInput): Promise<ChatSession> {
+  private owned(ownerId: string, id: string): ChatSession | null {
+    if (this.owners.get(id) !== ownerId) return null;
+    return this.sessions.get(id) ?? null;
+  }
+
+  async createSession(ownerId: string, input: NewSessionInput): Promise<ChatSession> {
     await Promise.resolve();
     const now = new Date().toISOString();
     const session = ChatSessionSchema.parse({
@@ -105,27 +118,39 @@ export class InMemoryChatRepository implements ChatRepository {
     });
     this.sessions.set(session.id, session);
     this.messages.set(session.id, []);
+    this.owners.set(session.id, ownerId);
     return session;
   }
 
-  async listSessions(): Promise<ChatSession[]> {
+  async listSessions(ownerId: string): Promise<ChatSession[]> {
     await Promise.resolve();
-    return [...this.sessions.values()].sort((left, right) =>
-      right.updatedAt.localeCompare(left.updatedAt),
-    );
+    return [...this.sessions.values()]
+      .filter((session) => this.owners.get(session.id) === ownerId)
+      .sort((left, right) => right.updatedAt.localeCompare(left.updatedAt));
   }
 
-  async getSession(id: string): Promise<ChatSession | null> {
+  async getSession(ownerId: string, id: string): Promise<ChatSession | null> {
+    await Promise.resolve();
+    return this.owned(ownerId, id);
+  }
+
+  async getSessionForSystem(id: string): Promise<ChatSession | null> {
     await Promise.resolve();
     return this.sessions.get(id) ?? null;
   }
 
+  async listSessionIdsForSystem(): Promise<string[]> {
+    await Promise.resolve();
+    return [...this.sessions.keys()];
+  }
+
   async updateSession(
+    ownerId: string,
     id: string,
-    patch: Partial<{ title: string; datasetIds: string[]; modelId: string }>,
+    patch: SessionPatch,
   ): Promise<ChatSession | null> {
     await Promise.resolve();
-    const current = this.sessions.get(id);
+    const current = this.owned(ownerId, id);
     if (!current) return null;
     const next = ChatSessionSchema.parse({
       ...current,
@@ -136,10 +161,13 @@ export class InMemoryChatRepository implements ChatRepository {
     return next;
   }
 
-  async deleteSession(id: string): Promise<void> {
+  async deleteSession(ownerId: string, id: string): Promise<boolean> {
     await Promise.resolve();
+    if (!this.owned(ownerId, id)) return false;
     this.sessions.delete(id);
     this.messages.delete(id);
+    this.owners.delete(id);
+    return true;
   }
 
   async listMessages(sessionId: string): Promise<ChatMessage[]> {
@@ -194,13 +222,17 @@ export class InMemoryChatRepository implements ChatRepository {
   }
 }
 
+const ownedSession = (ownerId: string, id: string) =>
+  and(eq(chatSessions.id, id), eq(chatSessions.ownerId, ownerId));
+
 export class DrizzleChatRepository implements ChatRepository {
   constructor(private readonly db: AppDatabase) {}
 
-  async createSession(input: NewSessionInput): Promise<ChatSession> {
+  async createSession(ownerId: string, input: NewSessionInput): Promise<ChatSession> {
     const [row] = await this.db
       .insert(chatSessions)
       .values({
+        ownerId,
         title: input.title,
         agentType: input.agentType ?? 'chat',
         modelId: input.modelId,
@@ -211,19 +243,38 @@ export class DrizzleChatRepository implements ChatRepository {
     return toSession(row);
   }
 
-  async listSessions(): Promise<ChatSession[]> {
-    const rows = await this.db.select().from(chatSessions).orderBy(desc(chatSessions.updatedAt));
+  async listSessions(ownerId: string): Promise<ChatSession[]> {
+    const rows = await this.db
+      .select()
+      .from(chatSessions)
+      .where(eq(chatSessions.ownerId, ownerId))
+      .orderBy(desc(chatSessions.updatedAt));
     return rows.map(toSession);
   }
 
-  async getSession(id: string): Promise<ChatSession | null> {
+  async getSession(ownerId: string, id: string): Promise<ChatSession | null> {
+    const [row] = await this.db
+      .select()
+      .from(chatSessions)
+      .where(ownedSession(ownerId, id))
+      .limit(1);
+    return row ? toSession(row) : null;
+  }
+
+  async getSessionForSystem(id: string): Promise<ChatSession | null> {
     const [row] = await this.db.select().from(chatSessions).where(eq(chatSessions.id, id)).limit(1);
     return row ? toSession(row) : null;
   }
 
+  async listSessionIdsForSystem(): Promise<string[]> {
+    const rows = await this.db.select({ id: chatSessions.id }).from(chatSessions);
+    return rows.map((row) => row.id);
+  }
+
   async updateSession(
+    ownerId: string,
     id: string,
-    patch: Partial<{ title: string; datasetIds: string[]; modelId: string }>,
+    patch: SessionPatch,
   ): Promise<ChatSession | null> {
     const [row] = await this.db
       .update(chatSessions)
@@ -233,13 +284,17 @@ export class DrizzleChatRepository implements ChatRepository {
         ...(patch.modelId === undefined ? {} : { modelId: patch.modelId }),
         updatedAt: new Date(),
       })
-      .where(eq(chatSessions.id, id))
+      .where(ownedSession(ownerId, id))
       .returning();
     return row ? toSession(row) : null;
   }
 
-  async deleteSession(id: string): Promise<void> {
-    await this.db.delete(chatSessions).where(eq(chatSessions.id, id));
+  async deleteSession(ownerId: string, id: string): Promise<boolean> {
+    const rows = await this.db
+      .delete(chatSessions)
+      .where(ownedSession(ownerId, id))
+      .returning({ id: chatSessions.id });
+    return rows.length > 0;
   }
 
   async listMessages(sessionId: string): Promise<ChatMessage[]> {

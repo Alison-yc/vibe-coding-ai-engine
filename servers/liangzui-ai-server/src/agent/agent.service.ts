@@ -187,9 +187,8 @@ export class AgentService implements OnModuleInit {
 
   async onModuleInit(): Promise<void> {
     await this.agentRepository.recoverInterruptedInputs();
-    const sessions = await this.chatRepository.listSessions();
-    for (const session of sessions) {
-      const messages = await this.chatRepository.listMessages(session.id);
+    for (const sessionId of await this.chatRepository.listSessionIdsForSystem()) {
+      const messages = await this.chatRepository.listMessages(sessionId);
       for (const message of messages) {
         const parts = message.parts.map((part) =>
           part.type === 'tool' && (part.state === 'pending' || part.state === 'running')
@@ -206,12 +205,13 @@ export class AgentService implements OnModuleInit {
   }
 
   async stream(
+    ownerId: string,
     sessionId: string,
     request: AgentStreamRequest,
     signal: AbortSignal,
     emitRaw: (event: AgentStreamEvent) => void,
   ): Promise<void> {
-    const session = await this.chatRepository.getSession(sessionId);
+    const session = await this.chatRepository.getSession(ownerId, sessionId);
     if (!session || session.agentType !== 'agent') throw new Error('文件助手会话不存在');
     this.assertToolsSupported(session.modelId);
     const workspaceRoot = await assertAllowedWorkspaceRoot(
@@ -232,6 +232,7 @@ export class AgentService implements OnModuleInit {
   }
 
   async streamConversation(
+    ownerId: string,
     sessionId: string,
     request: {
       content: string;
@@ -242,12 +243,12 @@ export class AgentService implements OnModuleInit {
     signal: AbortSignal,
     emitRaw: (event: AgentStreamEvent) => void,
   ): Promise<void> {
-    const session = await this.chatRepository.getSession(sessionId);
+    const session = await this.chatRepository.getSession(ownerId, sessionId);
     if (!session) throw new Error('对话会话不存在');
     this.assertToolsSupported(session.modelId);
     if (session.title === '新对话') {
       const title = [...request.content.trim()].slice(0, 20).join('') || '新对话';
-      await this.chatRepository.updateSession(sessionId, { title });
+      await this.chatRepository.updateSession(ownerId, sessionId, { title });
     }
     const workspaceRoot = request.fileAccess
       ? await assertAllowedWorkspaceRoot(request.workspaceRoot ?? '', this.allowedWorkspaceRoots())
@@ -266,16 +267,22 @@ export class AgentService implements OnModuleInit {
     );
   }
 
-  respondPermission(
+  async respondPermission(
+    ownerId: string,
     sessionId: string,
     approvalId: string,
     decision: 'allow-once' | 'allow-session' | 'deny',
-  ): boolean {
+  ): Promise<boolean> {
+    if (!(await this.chatRepository.getSession(ownerId, sessionId))) return false;
     return this.approvals.respond(sessionId, approvalId, decision);
   }
 
-  async listExposedTools(sessionId?: string): Promise<AgentExposedToolsResponse> {
-    const session = sessionId ? await this.chatRepository.getSession(sessionId) : null;
+  async listExposedTools(
+    ownerId: string,
+    sessionId?: string,
+  ): Promise<AgentExposedToolsResponse | null> {
+    const session = sessionId ? await this.chatRepository.getSession(ownerId, sessionId) : null;
+    if (sessionId && !session) return null;
     const configuredModel = this.config.get('OLLAMA_MODEL', { infer: true });
     const modelId = session?.modelId ?? configuredModel;
     if (!modelId) throw new Error('未配置对话模型');
@@ -587,7 +594,7 @@ export class AgentService implements OnModuleInit {
 
   private async resumeQueuedInput(input: AgentInput): Promise<void> {
     try {
-      const session = await this.chatRepository.getSession(input.sessionId);
+      const session = await this.chatRepository.getSessionForSystem(input.sessionId);
       if (!session) {
         await this.agentRepository.completeInput(input.id, 'error');
         return;

@@ -52,9 +52,9 @@ export class ChatService {
     @Inject(forwardRef(() => AgentService)) private readonly agent: AgentService,
   ) {}
 
-  async createSession(request: CreateChatSessionRequest): Promise<ChatSession> {
+  async createSession(ownerId: string, request: CreateChatSessionRequest): Promise<ChatSession> {
     if (request.modelId) await this.assertModelInstalled(request.modelId);
-    return this.repository.createSession({
+    return this.repository.createSession(ownerId, {
       title: request.title ?? '新对话',
       modelId: request.modelId ?? this.config.get('OLLAMA_MODEL', { infer: true }),
       datasetIds: request.datasetIds ?? [],
@@ -62,20 +62,24 @@ export class ChatService {
     });
   }
 
-  listSessions(): Promise<ChatSession[]> {
-    return this.repository.listSessions();
+  listSessions(ownerId: string): Promise<ChatSession[]> {
+    return this.repository.listSessions(ownerId);
   }
 
-  async getSession(id: string): Promise<ChatSession> {
-    const session = await this.repository.getSession(id);
+  async getSession(ownerId: string, id: string): Promise<ChatSession> {
+    const session = await this.repository.getSession(ownerId, id);
     if (!session) throw new Error(`NOT_FOUND:会话不存在`);
     return session;
   }
 
-  async updateSession(id: string, request: UpdateChatSessionRequest): Promise<ChatSession> {
-    await this.getSession(id);
+  async updateSession(
+    ownerId: string,
+    id: string,
+    request: UpdateChatSessionRequest,
+  ): Promise<ChatSession> {
+    await this.getSession(ownerId, id);
     if (request.modelId) await this.assertModelInstalled(request.modelId);
-    const updated = await this.repository.updateSession(id, request);
+    const updated = await this.repository.updateSession(ownerId, id, request);
     if (!updated) throw new Error(`NOT_FOUND:会话不存在`);
     return updated;
   }
@@ -118,18 +122,20 @@ export class ChatService {
     }).models;
   }
 
-  async deleteSession(id: string): Promise<{ ok: true }> {
-    await this.getSession(id);
-    await this.repository.deleteSession(id);
+  async deleteSession(ownerId: string, id: string): Promise<{ ok: true }> {
+    if (!(await this.repository.deleteSession(ownerId, id))) {
+      throw new Error(`NOT_FOUND:会话不存在`);
+    }
     return { ok: true };
   }
 
-  async listMessages(sessionId: string): Promise<ChatMessage[]> {
-    await this.getSession(sessionId);
+  async listMessages(ownerId: string, sessionId: string): Promise<ChatMessage[]> {
+    await this.getSession(ownerId, sessionId);
     return this.repository.listMessages(sessionId);
   }
 
   async stream(
+    ownerId: string,
     sessionId: string,
     request: ChatStreamRequest,
     signal: AbortSignal,
@@ -138,10 +144,10 @@ export class ChatService {
     const send = (event: ChatStreamEvent): void => {
       emit(ChatStreamEventSchema.parse(event));
     };
-    const session = await this.getSession(sessionId);
+    const session = await this.getSession(ownerId, sessionId);
     const datasetIds = request.datasetIds ?? session.datasetIds;
     if (request.datasetIds) {
-      await this.repository.updateSession(sessionId, { datasetIds: request.datasetIds });
+      await this.repository.updateSession(ownerId, sessionId, { datasetIds: request.datasetIds });
     }
 
     const toolIntent = request.fileAccess || hasUtilityToolIntent(request.content);
@@ -157,6 +163,7 @@ export class ChatService {
         });
       }
       await this.agent.streamConversation(
+        ownerId,
         sessionId,
         {
           content: request.content,
@@ -188,7 +195,7 @@ export class ChatService {
     let citations = await this.collectCitations(datasetIds, request.content);
     if (datasetIds.length > 0 && citations.length === 0) {
       await this.emitStaticAssistant(sessionId, KNOWLEDGE_EMPTY_ANSWER, send);
-      await this.maybeTitle(sessionId, request.content);
+      await this.maybeTitle(ownerId, sessionId, request.content);
       return;
     }
 
@@ -298,7 +305,7 @@ export class ChatService {
       event: 'done',
       data: { messageId: assistantId, status: interrupted ? 'interrupted' : 'complete' },
     });
-    if (!interrupted) await this.maybeTitle(sessionId, request.content);
+    if (!interrupted) await this.maybeTitle(ownerId, sessionId, request.content);
   }
 
   private async emitStaticAssistant(
@@ -339,8 +346,8 @@ export class ChatService {
     return hits;
   }
 
-  private async maybeTitle(sessionId: string, userText: string): Promise<void> {
-    const session = await this.getSession(sessionId);
+  private async maybeTitle(ownerId: string, sessionId: string, userText: string): Promise<void> {
+    const session = await this.getSession(ownerId, sessionId);
     if (session.title !== '新对话') return;
     const fallback = [...userText].slice(0, 20).join('') || '新对话';
     try {
@@ -358,9 +365,9 @@ export class ChatService {
           .split('\n')[0]
           ?.trim() ?? '';
       const title = [...(cleaned || fallback)].slice(0, 20).join('') || fallback;
-      await this.repository.updateSession(sessionId, { title });
+      await this.repository.updateSession(ownerId, sessionId, { title });
     } catch {
-      await this.repository.updateSession(sessionId, { title: fallback });
+      await this.repository.updateSession(ownerId, sessionId, { title: fallback });
     }
   }
 

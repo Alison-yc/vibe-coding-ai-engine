@@ -15,6 +15,9 @@ import type { AgentService } from '../agent/agent.service';
 import { InMemoryChatRepository } from './chat.repository';
 import { ChatService } from './chat.service';
 
+const OWNER = '00000000-0000-4000-8000-0000000000a1';
+const INTRUDER = '00000000-0000-4000-8000-0000000000b2';
+
 const config = new ConfigService<AppConfig, true>({
   NODE_ENV: 'test',
   LOG_LEVEL: 'silent',
@@ -38,6 +41,7 @@ const collect = async (
 ): Promise<ChatStreamEvent[]> => {
   const events: ChatStreamEvent[] = [];
   await service.stream(
+    OWNER,
     sessionId,
     { content, fileAccess: false, mode: 'edit' },
     signal ?? new AbortController().signal,
@@ -69,13 +73,13 @@ describe('ChatService', () => {
       { event: 'done', data: { finishReason: 'stop' } },
     ]);
     gateway.enqueueText('问候');
-    const session = await service.createSession({});
+    const session = await service.createSession(OWNER, {});
     const events = await collect(service, session.id, '嗨');
     expect(events.map((event) => event.event)).toContain('message.part.delta');
     expect(events.at(-1)).toMatchObject({ event: 'done', data: { status: 'complete' } });
-    const messages = await service.listMessages(session.id);
+    const messages = await service.listMessages(OWNER, session.id);
     expect(messages.map((item) => item.role)).toEqual(['user', 'assistant']);
-    expect((await service.getSession(session.id)).title).toBe('问候');
+    expect((await service.getSession(OWNER, session.id)).title).toBe('问候');
   });
 
   it('列出已测评与未知对话模型，并过滤 embedding 模型', async () => {
@@ -101,7 +105,7 @@ describe('ChatService', () => {
       { event: 'done', data: { finishReason: 'stop' } },
     ]);
     gateway.enqueueText('Gemma 标题');
-    const session = await service.createSession({ modelId: 'gemma4:e2b' });
+    const session = await service.createSession(OWNER, { modelId: 'gemma4:e2b' });
     await collect(service, session.id, '你好');
     const calls = gateway.calls.filter(
       (call) => call.method === 'stream' || call.method === 'chat',
@@ -114,7 +118,7 @@ describe('ChatService', () => {
     gateway.setInstalledModels(['qwen3.5:2b', 'gemma4:e2b', 'other-chat:latest']);
     gateway.enqueueStream([{ event: 'done', data: { finishReason: 'stop' } }]);
     gateway.enqueueText('普通标题');
-    const session = await service.createSession({ modelId: 'other-chat:latest' });
+    const session = await service.createSession(OWNER, { modelId: 'other-chat:latest' });
     await expect(collect(service, session.id, '普通问候')).resolves.toBeDefined();
     await expect(collect(service, session.id, '计算 2+3')).rejects.toThrow('仅支持普通对话');
     expect(streamConversation).not.toHaveBeenCalled();
@@ -123,17 +127,19 @@ describe('ChatService', () => {
   it('拒绝未安装模型和 embedding 模型作为会话模型', async () => {
     const { gateway, service } = setup();
     gateway.setInstalledModels(['qwen3.5:2b', 'nomic-embed-text:latest']);
-    await expect(service.createSession({ modelId: 'missing:latest' })).rejects.toThrow('未安装');
-    await expect(service.createSession({ modelId: 'nomic-embed-text:latest' })).rejects.toThrow(
-      '不能用于对话',
+    await expect(service.createSession(OWNER, { modelId: 'missing:latest' })).rejects.toThrow(
+      '未安装',
     );
+    await expect(
+      service.createSession(OWNER, { modelId: 'nomic-embed-text:latest' }),
+    ).rejects.toThrow('不能用于对话');
   });
 
   it('旧文件助手会话可从统一对话入口继续使用', async () => {
     const { gateway, repository, service } = setup();
     gateway.enqueueStream([{ event: 'done', data: { finishReason: 'stop' } }]);
     gateway.enqueueText('兼容会话');
-    const session = await repository.createSession({
+    const session = await repository.createSession(OWNER, {
       title: '文件助手',
       modelId: 'qwen3.5:2b',
       datasetIds: [],
@@ -148,15 +154,17 @@ describe('ChatService', () => {
 
   it('实用工具意图与文件访问轮次委托统一工具编排', async () => {
     const { service, streamConversation } = setup();
-    const session = await service.createSession({});
+    const session = await service.createSession(OWNER, {});
     await collect(service, session.id, '计算 2+3');
     expect(streamConversation).toHaveBeenLastCalledWith(
+      OWNER,
       session.id,
       expect.objectContaining({ content: '计算 2+3', fileAccess: false }),
       expect.any(AbortSignal),
       expect.any(Function),
     );
     await service.stream(
+      OWNER,
       session.id,
       {
         content: '读取 README.md',
@@ -168,6 +176,7 @@ describe('ChatService', () => {
       () => undefined,
     );
     expect(streamConversation).toHaveBeenLastCalledWith(
+      OWNER,
       session.id,
       expect.objectContaining({
         content: '读取 README.md',
@@ -188,10 +197,10 @@ describe('ChatService', () => {
       { event: 'done', data: { finishReason: 'stop' } },
     ]);
     controller.abort(new Error('client closed'));
-    const session = await service.createSession({ title: '已有标题' });
+    const session = await service.createSession(OWNER, { title: '已有标题' });
     const events = await collect(service, session.id, '继续', controller.signal);
     expect(events.at(-1)).toMatchObject({ event: 'done', data: { status: 'interrupted' } });
-    const assistant = (await service.listMessages(session.id)).find(
+    const assistant = (await service.listMessages(OWNER, session.id)).find(
       (item) => item.role === 'assistant',
     );
     expect(assistant?.status).toBe('interrupted');
@@ -204,7 +213,7 @@ describe('ChatService', () => {
     gateway.enqueueEmbeddings([
       Array.from({ length: EMBEDDING_DIMENSION }, (_, index) => (index === 0 ? 1 : 0)),
     ]);
-    const session = await service.createSession({ datasetIds: [dataset.id] });
+    const session = await service.createSession(OWNER, { datasetIds: [dataset.id] });
     const events = await collect(service, session.id, '巴黎人口');
     expect(gateway.calls.some((call) => call.method === 'stream')).toBe(false);
     expect(JSON.stringify(events)).toContain(KNOWLEDGE_EMPTY_ANSWER);
@@ -213,11 +222,11 @@ describe('ChatService', () => {
   it('生成失败时用户消息已落库，并返回可操作错误', async () => {
     const { gateway, service } = setup();
     gateway.enqueueStreamError(new Error('fetch failed'));
-    const session = await service.createSession({ title: '已有标题' });
+    const session = await service.createSession(OWNER, { title: '已有标题' });
     const events = await collect(service, session.id, '还在吗');
     expect(events.some((event) => event.event === 'error')).toBe(true);
     expect(JSON.stringify(events)).toContain('Ollama');
-    const messages = await service.listMessages(session.id);
+    const messages = await service.listMessages(OWNER, session.id);
     expect(messages.map((item) => item.role)).toEqual(['user']);
   });
 
@@ -236,8 +245,38 @@ describe('ChatService', () => {
       { event: 'chunk', data: { text: '住在北京' } },
       { event: 'done', data: { finishReason: 'stop' } },
     ]);
-    const session = await service.createSession({ datasetIds: [dataset.id] });
+    const session = await service.createSession(OWNER, { datasetIds: [dataset.id] });
     const events = await collect(service, session.id, '我住哪');
     expect(events.some((event) => event.event === 'message.citations')).toBe(true);
+  });
+
+  it('其他用户读、改、删、续聊、列消息一律当作不存在', async () => {
+    const { gateway, service, repository } = setup();
+    const session = await service.createSession(OWNER, { title: '甲的会话' });
+    const notFound = /^NOT_FOUND:/;
+
+    await expect(service.listSessions(INTRUDER)).resolves.toEqual([]);
+    await expect(service.getSession(INTRUDER, session.id)).rejects.toThrow(notFound);
+    await expect(service.updateSession(INTRUDER, session.id, { title: '乙改的' })).rejects.toThrow(
+      notFound,
+    );
+    await expect(service.listMessages(INTRUDER, session.id)).rejects.toThrow(notFound);
+    await expect(
+      service.stream(
+        INTRUDER,
+        session.id,
+        { content: '偷看', fileAccess: false, mode: 'edit' },
+        new AbortController().signal,
+        () => undefined,
+      ),
+    ).rejects.toThrow(notFound);
+    await expect(service.deleteSession(INTRUDER, session.id)).rejects.toThrow(notFound);
+
+    expect(gateway.calls).toEqual([]);
+    await expect(repository.listMessages(session.id)).resolves.toEqual([]);
+    await expect(service.getSession(OWNER, session.id)).resolves.toMatchObject({
+      title: '甲的会话',
+    });
+    await expect(service.listSessions(OWNER)).resolves.toHaveLength(1);
   });
 });

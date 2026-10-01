@@ -4,7 +4,8 @@ import { AgentController } from './agent.controller';
 import type { AgentService } from './agent.service';
 
 const sessionId = '11111111-1111-4111-8111-111111111111';
-type EmitAgentEvent = Parameters<AgentService['stream']>[3];
+type EmitAgentEvent = Parameters<AgentService['stream']>[4];
+const principal = { userId: 'user-a' } as never;
 
 const responseStub = () => {
   const writes: string[] = [];
@@ -29,7 +30,13 @@ describe('AgentController', () => {
   it('把 Agent 事件编码为 SSE 并结束响应', async () => {
     const agent = {
       stream: vi.fn(
-        async (_sessionId: string, _body: unknown, _signal: AbortSignal, emit: EmitAgentEvent) => {
+        async (
+          _ownerId: string,
+          _sessionId: string,
+          _body: unknown,
+          _signal: AbortSignal,
+          emit: EmitAgentEvent,
+        ) => {
           emit({ event: 'done', data: { messageId: sessionId, status: 'complete' } });
         },
       ),
@@ -39,6 +46,7 @@ describe('AgentController', () => {
     const controller = new AgentController(agent as never);
     const { response, writes } = responseStub();
     await controller.stream(
+      principal,
       sessionId,
       { content: '读取', workspaceRoot: '/workspace', mode: 'edit' },
       { on: vi.fn() } as never,
@@ -57,6 +65,7 @@ describe('AgentController', () => {
     const controller = new AgentController(agent as never);
     const { response, writes } = responseStub();
     await controller.stream(
+      principal,
       sessionId,
       { content: '读取', workspaceRoot: '/workspace', mode: 'edit' },
       { on: vi.fn() } as never,
@@ -70,7 +79,13 @@ describe('AgentController', () => {
     const { response, writes } = responseStub();
     const agent = {
       stream: vi.fn(
-        async (_sessionId: string, _body: unknown, _signal: AbortSignal, emit: EmitAgentEvent) => {
+        async (
+          _ownerId: string,
+          _sessionId: string,
+          _body: unknown,
+          _signal: AbortSignal,
+          emit: EmitAgentEvent,
+        ) => {
           response.destroyed = true;
           emit({ event: 'done', data: { messageId: sessionId, status: 'complete' } });
         },
@@ -79,6 +94,7 @@ describe('AgentController', () => {
     };
     const controller = new AgentController(agent as never);
     await controller.stream(
+      principal,
       sessionId,
       { content: '读取', workspaceRoot: '/workspace', mode: 'edit' },
       { on: vi.fn() } as never,
@@ -99,30 +115,36 @@ describe('AgentController', () => {
       }),
     };
     const controller = new AgentController(agent as never);
-    await expect(controller.listTools()).resolves.toEqual(
+    await expect(controller.listTools(principal)).resolves.toEqual(
       expect.objectContaining({ maxToolCount: 6 }),
     );
-    expect(agent.listExposedTools).toHaveBeenCalledWith(undefined);
-    expect(() => controller.listTools('not-a-uuid')).toThrow(NotFoundException);
+    expect(agent.listExposedTools).toHaveBeenCalledWith('user-a', undefined);
+    await expect(controller.listTools(principal, 'not-a-uuid')).rejects.toThrow(NotFoundException);
   });
 
-  it('只接受当前仍在等待的审批', () => {
-    const accepted = new AgentController({
-      stream: vi.fn(),
-      respondPermission: vi.fn().mockReturnValue(true),
+  it('工具列表指定了不属于当前用户的会话时返回 404', async () => {
+    const controller = new AgentController({
+      listExposedTools: vi.fn().mockResolvedValue(null),
     } as never);
-    expect(
-      accepted.respondPermission(sessionId, crypto.randomUUID(), {
+    await expect(controller.listTools(principal, sessionId)).rejects.toThrow(NotFoundException);
+  });
+
+  it('只接受当前仍在等待的审批', async () => {
+    const respond = vi.fn().mockResolvedValue(true);
+    const accepted = new AgentController({ stream: vi.fn(), respondPermission: respond } as never);
+    await expect(
+      accepted.respondPermission(principal, sessionId, crypto.randomUUID(), {
         decision: 'allow-once',
       }),
-    ).toEqual({ accepted: true });
+    ).resolves.toEqual({ accepted: true });
+    expect(respond.mock.calls[0]?.[0]).toBe('user-a');
 
     const missing = new AgentController({
       stream: vi.fn(),
-      respondPermission: vi.fn().mockReturnValue(false),
+      respondPermission: vi.fn().mockResolvedValue(false),
     } as never);
-    expect(() =>
-      missing.respondPermission(sessionId, crypto.randomUUID(), { decision: 'deny' }),
-    ).toThrow(NotFoundException);
+    await expect(
+      missing.respondPermission(principal, sessionId, crypto.randomUUID(), { decision: 'deny' }),
+    ).rejects.toThrow(NotFoundException);
   });
 });

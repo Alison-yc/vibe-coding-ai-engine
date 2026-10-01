@@ -4,6 +4,7 @@ import { ChatController } from './chat.controller';
 import { ModelsController } from './models.controller';
 
 const SESSION = '00000000-0000-4000-8000-000000000001';
+const principal = { userId: 'user-a' } as never;
 
 describe('ChatController', () => {
   it('把 NOT_FOUND 映射为 404', async () => {
@@ -11,7 +12,9 @@ describe('ChatController', () => {
       getSession: vi.fn().mockRejectedValue(new Error('NOT_FOUND:会话不存在')),
     };
     const controller = new ChatController(chat as never);
-    await expect(controller.getSession(SESSION)).rejects.toBeInstanceOf(NotFoundException);
+    await expect(controller.getSession(principal, SESSION)).rejects.toBeInstanceOf(
+      NotFoundException,
+    );
   });
 
   it('转发 CRUD 成功路径', async () => {
@@ -26,16 +29,21 @@ describe('ChatController', () => {
     };
     const controller = new ChatController(chat as never);
     const modelsController = new ModelsController(chat as never);
-    await expect(controller.createSession({})).resolves.toEqual({ id: SESSION });
+    await expect(controller.createSession(principal, {})).resolves.toEqual({ id: SESSION });
     await expect(modelsController.listModels()).resolves.toEqual({ models: [] });
-    await expect(controller.listSessions()).resolves.toEqual({ sessions: [] });
-    await expect(controller.getSession(SESSION)).resolves.toEqual({ id: SESSION });
-    await expect(controller.updateSession(SESSION, { title: '改名' })).resolves.toEqual({
+    await expect(controller.listSessions(principal)).resolves.toEqual({ sessions: [] });
+    await expect(controller.getSession(principal, SESSION)).resolves.toEqual({ id: SESSION });
+    await expect(controller.updateSession(principal, SESSION, { title: '改名' })).resolves.toEqual({
       id: SESSION,
       title: '改名',
     });
-    await expect(controller.deleteSession(SESSION)).resolves.toEqual({ ok: true });
-    await expect(controller.listMessages(SESSION)).resolves.toEqual({ messages: [] });
+    await expect(controller.deleteSession(principal, SESSION)).resolves.toEqual({ ok: true });
+    await expect(controller.listMessages(principal, SESSION)).resolves.toEqual({ messages: [] });
+    const ownedMethods = Object.entries(chat).filter(([name]) => name !== 'listModels');
+    for (const [, method] of ownedMethods) {
+      expect(method).toHaveBeenCalled();
+      for (const call of method.mock.calls) expect(call[0]).toBe('user-a');
+    }
   });
 
   it('stream 设置 SSE 头，失败时写 error 事件并结束响应', async () => {
@@ -56,6 +64,7 @@ describe('ChatController', () => {
     };
     const request = { on: vi.fn() };
     await controller.stream(
+      principal,
       SESSION,
       { content: '你好', fileAccess: false, mode: 'edit' },
       request as never,

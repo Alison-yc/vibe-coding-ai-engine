@@ -27,6 +27,9 @@ import { AgentToolRegistry } from './tools/tool';
 import { WriteTool } from './tools/write.tool';
 import { EmptyMcpToolCatalog } from '../mcp/mcp-tool-catalog';
 
+const OWNER = '00000000-0000-4000-8000-0000000000a1';
+const OTHER_OWNER = '00000000-0000-4000-8000-0000000000b2';
+
 let root = '';
 let chat: InMemoryChatRepository;
 let agentRepository: InMemoryAgentRepository;
@@ -39,7 +42,7 @@ beforeEach(async () => {
   chat = new InMemoryChatRepository();
   agentRepository = new InMemoryAgentRepository();
   gateway = new FakeLlmGateway();
-  const session = await chat.createSession({
+  const session = await chat.createSession(OWNER, {
     title: 'Agent',
     modelId: 'qwen3.5:2b',
     datasetIds: [],
@@ -81,6 +84,7 @@ const run = async (
   mode: 'read-only' | 'edit' = 'edit',
 ) =>
   service.stream(
+    OWNER,
     sessionId,
     { content, workspaceRoot: root, mode },
     new AbortController().signal,
@@ -89,7 +93,7 @@ const run = async (
 
 describe('AgentService', () => {
   it('未测评模型无法通过 Agent 入口装配工具', async () => {
-    const unknownSession = await chat.createSession({
+    const unknownSession = await chat.createSession(OWNER, {
       title: '未知模型',
       modelId: 'other-chat:latest',
       datasetIds: [],
@@ -97,6 +101,7 @@ describe('AgentService', () => {
     });
     await expect(
       service.stream(
+        OWNER,
         unknownSession.id,
         { content: '读取 README', workspaceRoot: root, mode: 'read-only' },
         new AbortController().signal,
@@ -115,6 +120,7 @@ describe('AgentService', () => {
     const events: AgentStreamEvent[] = [];
 
     await service.streamConversation(
+      OWNER,
       sessionId,
       { content: '现在几点', fileAccess: false, mode: 'edit' },
       new AbortController().signal,
@@ -129,41 +135,44 @@ describe('AgentService', () => {
   });
 
   it('统一入口校验工作区并为工具首轮生成确定性标题', async () => {
-    const chatSession = await chat.createSession({
+    const chatSession = await chat.createSession(OWNER, {
       title: '新对话',
       modelId: 'qwen3.5:2b',
       datasetIds: [],
     });
     gateway.enqueueAgentResponse({ content: '没有需要执行的工具。', toolCalls: [] });
     await service.streamConversation(
+      OWNER,
       chatSession.id,
       { content: '分析工作区', fileAccess: true, workspaceRoot: root, mode: 'read-only' },
       new AbortController().signal,
       () => undefined,
     );
-    expect((await chat.getSession(chatSession.id))?.title).toBe('分析工作区');
+    expect((await chat.getSession(OWNER, chatSession.id))?.title).toBe('分析工作区');
     await expect(
       service.streamConversation(
+        OWNER,
         '00000000-0000-4000-8000-000000000099',
         { content: '测试', fileAccess: false, mode: 'edit' },
         new AbortController().signal,
         () => undefined,
       ),
     ).rejects.toThrow('对话会话不存在');
-    const emptyTitleSession = await chat.createSession({
+    const emptyTitleSession = await chat.createSession(OWNER, {
       title: '新对话',
       modelId: 'qwen3.5:2b',
       datasetIds: [],
     });
     await expect(
       service.streamConversation(
+        OWNER,
         emptyTitleSession.id,
         { content: '', fileAccess: false, mode: 'edit' },
         new AbortController().signal,
         () => undefined,
       ),
     ).rejects.toThrow();
-    expect((await chat.getSession(emptyTitleSession.id))?.title).toBe('新对话');
+    expect((await chat.getSession(OWNER, emptyTitleSession.id))?.title).toBe('新对话');
   });
 
   it('把历史工具状态转换为模型上下文并按预算裁剪', () => {
@@ -270,13 +279,14 @@ describe('AgentService', () => {
   it('会话不存在、类型错误或工作区不在白名单时拒绝执行', async () => {
     await expect(
       service.stream(
+        OWNER,
         crypto.randomUUID(),
         { content: '读取', workspaceRoot: root, mode: 'edit' },
         new AbortController().signal,
         () => undefined,
       ),
     ).rejects.toThrow('文件助手会话不存在');
-    const chatSession = await chat.createSession({
+    const chatSession = await chat.createSession(OWNER, {
       title: '普通对话',
       modelId: 'qwen3.5:2b',
       datasetIds: [],
@@ -284,6 +294,7 @@ describe('AgentService', () => {
     });
     await expect(
       service.stream(
+        OWNER,
         chatSession.id,
         { content: '读取', workspaceRoot: root, mode: 'edit' },
         new AbortController().signal,
@@ -294,6 +305,7 @@ describe('AgentService', () => {
     try {
       await expect(
         service.stream(
+          OWNER,
           sessionId,
           { content: '读取', workspaceRoot: outside, mode: 'edit' },
           new AbortController().signal,
@@ -373,6 +385,7 @@ describe('AgentService', () => {
     gateway.enqueueAgentResponse({ content: '已写入。', toolCalls: [] });
     const events: AgentStreamEvent[] = [];
     await service.stream(
+      OWNER,
       sessionId,
       { content: '生成文档', workspaceRoot: root, mode: 'edit' },
       new AbortController().signal,
@@ -380,11 +393,59 @@ describe('AgentService', () => {
         events.push(event);
         if (event.event === 'permission.asked') {
           expect(event.data.diff).toContain('# 结果');
-          expect(service.respondPermission(sessionId, event.data.id, 'allow-once')).toBe(true);
+          void service
+            .respondPermission(OWNER, sessionId, event.data.id, 'allow-once')
+            .then((accepted) => expect(accepted).toBe(true));
         }
       },
     );
     await expect(readFile(path.join(root, 'result.md'), 'utf8')).resolves.toBe('# 结果');
+  });
+
+  it('其他用户不能续聊他人的文件助手会话，也不能替他人审批', async () => {
+    await expect(
+      service.stream(
+        OTHER_OWNER,
+        sessionId,
+        { content: '读取', workspaceRoot: root, mode: 'read-only' },
+        new AbortController().signal,
+        () => undefined,
+      ),
+    ).rejects.toThrow('文件助手会话不存在');
+    await expect(
+      service.streamConversation(
+        OTHER_OWNER,
+        sessionId,
+        { content: '现在几点', fileAccess: false, mode: 'edit' },
+        new AbortController().signal,
+        () => undefined,
+      ),
+    ).rejects.toThrow('对话会话不存在');
+    expect(gateway.calls.some((call) => call.method === 'agentChat')).toBe(false);
+
+    gateway.enqueueAgentResponse({
+      content: '',
+      toolCalls: [{ id: 'call-write', name: 'write', arguments: { path: 'x.md', content: 'x' } }],
+    });
+    gateway.enqueueAgentResponse({ content: '已写入。', toolCalls: [] });
+    const decisions: boolean[] = [];
+    await service.stream(
+      OWNER,
+      sessionId,
+      { content: '生成文档', workspaceRoot: root, mode: 'edit' },
+      new AbortController().signal,
+      (event) => {
+        if (event.event !== 'permission.asked') return;
+        void (async () => {
+          decisions.push(
+            await service.respondPermission(OTHER_OWNER, sessionId, event.data.id, 'allow-once'),
+          );
+          decisions.push(await service.respondPermission(OWNER, sessionId, event.data.id, 'deny'));
+        })();
+      },
+    );
+    expect(decisions).toEqual([false, true]);
+    await expect(access(path.join(root, 'x.md'))).rejects.toThrow();
   });
 
   it('只读模式拒绝写入且不触发审批', async () => {
@@ -437,13 +498,14 @@ describe('AgentService', () => {
     gateway.enqueueAgentResponse({ content: '已写入。', toolCalls: [] });
     const events: AgentStreamEvent[] = [];
     await service.stream(
+      OWNER,
       sessionId,
       { content: '写 ccc.md', workspaceRoot: root, mode: 'edit' },
       new AbortController().signal,
       (event) => {
         events.push(event);
         if (event.event === 'permission.asked') {
-          service.respondPermission(sessionId, event.data.id, 'allow-once');
+          service.respondPermission(OWNER, sessionId, event.data.id, 'allow-once');
         }
       },
     );
@@ -575,12 +637,13 @@ describe('AgentService', () => {
     });
     gateway.enqueueAgentResponse({ content: '第一次完成。', toolCalls: [] });
     await service.stream(
+      OWNER,
       sessionId,
       { content: '第一次写入', workspaceRoot: root, mode: 'edit' },
       new AbortController().signal,
       (event) => {
         if (event.event === 'permission.asked') {
-          service.respondPermission(sessionId, event.data.id, 'allow-session');
+          service.respondPermission(OWNER, sessionId, event.data.id, 'allow-session');
         }
       },
     );
@@ -609,13 +672,14 @@ describe('AgentService', () => {
     });
     const events: AgentStreamEvent[] = [];
     await service.stream(
+      OWNER,
       sessionId,
       { content: '写入', workspaceRoot: root, mode: 'edit' },
       new AbortController().signal,
       (event) => {
         events.push(event);
         if (event.event === 'permission.asked') {
-          service.respondPermission(sessionId, event.data.id, 'deny');
+          service.respondPermission(OWNER, sessionId, event.data.id, 'deny');
         }
       },
     );
@@ -651,13 +715,14 @@ describe('AgentService', () => {
     });
     const events: AgentStreamEvent[] = [];
     await service.stream(
+      OWNER,
       sessionId,
       { content: '写两个文件', workspaceRoot: root, mode: 'edit' },
       new AbortController().signal,
       (event) => {
         events.push(event);
         if (event.event === 'permission.asked') {
-          service.respondPermission(sessionId, event.data.id, 'deny');
+          service.respondPermission(OWNER, sessionId, event.data.id, 'deny');
         }
       },
     );
@@ -690,13 +755,14 @@ describe('AgentService', () => {
     gateway.enqueueAgentResponse({ content: '后台完成。', toolCalls: [] });
     const controller = new AbortController();
     await service.stream(
+      OWNER,
       sessionId,
       { content: '写入', workspaceRoot: root, mode: 'edit' },
       controller.signal,
       (event) => {
         if (event.event === 'permission.asked') {
           controller.abort();
-          service.respondPermission(sessionId, event.data.id, 'allow-once');
+          service.respondPermission(OWNER, sessionId, event.data.id, 'allow-once');
         }
       },
     );
@@ -720,6 +786,7 @@ describe('AgentService', () => {
     });
     let approvalId = '';
     const first = service.stream(
+      OWNER,
       sessionId,
       { content: '第一条', workspaceRoot: root, mode: 'edit' },
       new AbortController().signal,
@@ -734,7 +801,7 @@ describe('AgentService', () => {
     const second = run('第二条', []);
     await Promise.resolve();
     expect(gateway.calls.filter((call) => call.method === 'agentChat')).toHaveLength(1);
-    service.respondPermission(sessionId, approvalId, 'allow-once');
+    service.respondPermission(OWNER, sessionId, approvalId, 'allow-once');
     await Promise.all([first, second]);
     const userMessages = (await chat.listMessages(sessionId)).filter(
       (message) => message.role === 'user',
@@ -839,7 +906,7 @@ describe('AgentService', () => {
     expect(firstCall.request.messages[0]?.content).toContain('Beijing, China');
     const approval = events.find((event) => event.event === 'permission.asked');
     if (approval?.event !== 'permission.asked') throw new Error('missing approval');
-    service.respondPermission(sessionId, approval.data.id, 'allow-once');
+    service.respondPermission(OWNER, sessionId, approval.data.id, 'allow-once');
     await pending;
     expect(JSON.stringify(await chat.listMessages(sessionId))).toContain(
       '"city_name":"Beijing, China"',
@@ -913,7 +980,7 @@ describe('AgentService', () => {
     });
     const approval = events.find((event) => event.event === 'permission.asked');
     if (approval?.event !== 'permission.asked') throw new Error('missing approval');
-    service.respondPermission(sessionId, approval.data.id, 'allow-once');
+    service.respondPermission(OWNER, sessionId, approval.data.id, 'allow-once');
     await pending;
     expect(
       events.some(
@@ -1001,7 +1068,7 @@ describe('AgentService', () => {
     });
     const approval = events.find((event) => event.event === 'permission.asked');
     if (approval?.event !== 'permission.asked') throw new Error('missing approval');
-    service.respondPermission(sessionId, approval.data.id, 'allow-once');
+    service.respondPermission(OWNER, sessionId, approval.data.id, 'allow-once');
     await pending;
     expect(
       events.some(
@@ -1032,13 +1099,15 @@ describe('AgentService', () => {
       new ConfigService(validateEnvironment({ NODE_ENV: 'test', AGENT_WORKSPACE_ROOTS: root })),
       catalog,
     );
-    const listed = await service.listExposedTools(sessionId);
+    const listed = await service.listExposedTools(OWNER, sessionId);
+    if (!listed) throw new Error('应返回工具列表');
     expect(listed.maxToolCount).toBe(6);
     expect(listed.tools.some((tool) => tool.source === 'mcp' && tool.name === 'demo__extra')).toBe(
       true,
     );
-    const withoutSession = await service.listExposedTools();
-    expect(withoutSession.maxToolCount).toBe(6);
+    const withoutSession = await service.listExposedTools(OWNER);
+    expect(withoutSession?.maxToolCount).toBe(6);
+    await expect(service.listExposedTools(OTHER_OWNER, sessionId)).resolves.toBeNull();
   });
 
   it('MCP 写工具默认进入审批且结果按不可信数据回填', async () => {
@@ -1083,6 +1152,7 @@ describe('AgentService', () => {
     gateway.enqueueAgentResponse({ content: '已写入。', toolCalls: [] });
     const events: AgentStreamEvent[] = [];
     const pending = service.stream(
+      OWNER,
       sessionId,
       { content: '写入', workspaceRoot: root, mode: 'edit' },
       new AbortController().signal,
@@ -1093,7 +1163,7 @@ describe('AgentService', () => {
     });
     const approval = events.find((event) => event.event === 'permission.asked');
     if (approval?.event !== 'permission.asked') throw new Error('missing approval');
-    service.respondPermission(sessionId, approval.data.id, 'allow-once');
+    service.respondPermission(OWNER, sessionId, approval.data.id, 'allow-once');
     await pending;
     const toolResult = gateway.calls.filter((call) => call.method === 'agentChat').at(1);
     expect(JSON.stringify(toolResult)).toContain('以下仅为工具返回的数据');
