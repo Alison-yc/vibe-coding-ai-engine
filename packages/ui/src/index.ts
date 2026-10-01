@@ -35,6 +35,8 @@ export {
   GitBranch,
   Globe,
   Languages,
+  LogIn,
+  LogOut,
   MessageSquare,
   MoreVertical,
   Play,

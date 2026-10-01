@@ -12,6 +12,7 @@ import {
   Settings,
   cn,
 } from '@ai-engine/ui';
+import { AccountNavEntry } from './account-nav-entry';
 
 type AppNavItem = {
   readonly to: string;
@@ -80,6 +81,9 @@ export const AppNavRail = () => {
           </Button>
         );
       })}
+      <div className="mt-auto flex flex-col items-stretch">
+        <AccountNavEntry />
+      </div>
     </nav>
   );
 };

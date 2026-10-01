@@ -17,6 +17,15 @@ const WorkflowEditorPage = lazy(async () => ({
 const SettingsPage = lazy(async () => ({
   default: (await import('./pages/settings-page')).SettingsPage,
 }));
+const LoginPage = lazy(async () => ({
+  default: (await import('./pages/login-page')).LoginPage,
+}));
+const RegisterPage = lazy(async () => ({
+  default: (await import('./pages/register-page')).RegisterPage,
+}));
+const ResetPasswordPage = lazy(async () => ({
+  default: (await import('./pages/reset-password-page')).ResetPasswordPage,
+}));
 
 const LazyPage = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
@@ -59,6 +68,30 @@ export const AppRoutes = () => (
       element={
         <LazyPage>
           <SettingsPage />
+        </LazyPage>
+      }
+    />
+    <Route
+      path="/login"
+      element={
+        <LazyPage>
+          <LoginPage />
+        </LazyPage>
+      }
+    />
+    <Route
+      path="/register"
+      element={
+        <LazyPage>
+          <RegisterPage />
+        </LazyPage>
+      }
+    />
+    <Route
+      path="/reset-password"
+      element={
+        <LazyPage>
+          <ResetPasswordPage />
         </LazyPage>
       }
     />
