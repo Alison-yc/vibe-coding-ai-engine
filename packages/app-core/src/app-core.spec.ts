@@ -13,6 +13,7 @@ import { MemoryRouter } from 'react-router';
 import { beforeAll, describe, expect, it, vi } from 'vitest';
 import { App } from './app';
 import { AppRoutes } from './app-routes';
+import { TestAuthProvider } from './auth/test-auth';
 import { createApiClient, createExampleChatRequest } from './api/client';
 import { ThemeProvider } from './theme-provider';
 import { applyThemeToDocument } from './theme-sync';
@@ -223,7 +224,15 @@ describe('AppRoutes', () => {
         createElement(
           QueryClientProvider,
           { client: new QueryClient({ defaultOptions: { queries: { retry: false } } }) },
-          createElement(MemoryRouter, { initialEntries: ['/knowledge'] }, createElement(AppRoutes)),
+          createElement(
+            TestAuthProvider,
+            { role: 'user' },
+            createElement(
+              MemoryRouter,
+              { initialEntries: ['/knowledge'] },
+              createElement(AppRoutes),
+            ),
+          ),
         ),
       ),
     );

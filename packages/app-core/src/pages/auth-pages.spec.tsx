@@ -325,6 +325,8 @@ describe('导航账号入口', () => {
     submit('登录');
     // 登录→写 token→重置并重取 me 是多段异步链，全量并行跑时默认 1s 偶发不够。
     const sessionChain = { timeout: 5000 };
+    // 登录页自身也带导航栏；必须等跳回原页面后再点退出，否则点到的是即将卸载的旧按钮。
+    expect(await screen.findByText('content', {}, sessionChain)).toBeTruthy();
     fireEvent.click(await screen.findByRole('button', { name: '退出登录' }, sessionChain));
 
     expect(await screen.findByRole('link', { name: '登录' }, sessionChain)).toBeTruthy();

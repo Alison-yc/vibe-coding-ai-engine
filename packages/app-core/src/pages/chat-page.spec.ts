@@ -15,6 +15,7 @@ import { createI18nOptions } from '../i18n/resources';
 import { ThemeProvider } from '../theme-provider';
 import { useChatStreamStore } from '../chat/chat-stream-store';
 import { ChatBubble, ChatPage, SessionList } from './chat-page';
+import { TestAuthProvider } from '../auth/test-auth';
 
 const stubPlatform: Platform = {
   capabilities: {
@@ -66,7 +67,11 @@ describe('ChatPage', () => {
           createElement(
             MemoryRouter,
             { initialEntries: ['/chat'] },
-            createElement(ThemeProvider, null, createElement(ChatPage)),
+            createElement(
+              TestAuthProvider,
+              { role: 'user' },
+              createElement(ThemeProvider, null, createElement(ChatPage)),
+            ),
           ),
         ),
       ),
@@ -107,7 +112,11 @@ describe('ChatPage', () => {
           createElement(
             MemoryRouter,
             { initialEntries: ['/chat'] },
-            createElement(ThemeProvider, null, createElement(ChatPage)),
+            createElement(
+              TestAuthProvider,
+              { role: 'user' },
+              createElement(ThemeProvider, null, createElement(ChatPage)),
+            ),
           ),
         ),
       ),
@@ -136,7 +145,11 @@ describe('ChatPage', () => {
           createElement(
             MemoryRouter,
             { initialEntries: ['/chat'] },
-            createElement(ThemeProvider, null, createElement(ChatPage)),
+            createElement(
+              TestAuthProvider,
+              { role: 'user' },
+              createElement(ThemeProvider, null, createElement(ChatPage)),
+            ),
           ),
         ),
       ),

@@ -9,6 +9,7 @@ export {
   GitBranch,
   Globe,
   Languages,
+  Lock,
   LogIn,
   LogOut,
   MessageSquare,

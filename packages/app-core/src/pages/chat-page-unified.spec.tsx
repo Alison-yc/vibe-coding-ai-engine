@@ -17,6 +17,7 @@ import { useChatStreamStore } from '../chat/chat-stream-store';
 import { createI18nOptions } from '../i18n/resources';
 import { ThemeProvider } from '../theme-provider';
 import { ChatPage } from './chat-page';
+import { TestAuthProvider } from '../auth/test-auth';
 
 const i18n = createInstance();
 beforeAll(async () => {
@@ -138,6 +139,47 @@ afterEach(() => {
   });
 });
 
+describe('对话页访客态', () => {
+  it('访客隐藏文件访问与知识库挂载，保留模型选择并提示登录', async () => {
+    mocks.listSessions.mockResolvedValue([{ ...session, datasetIds: [session.id] }]);
+    mocks.listMessages.mockResolvedValue([]);
+    mocks.streamChat.mockResolvedValue(undefined);
+    const user = userEvent.setup();
+    render(
+      <EnglishI18n>
+        <PlatformProvider value={platform}>
+          <ThemeProvider>
+            <QueryClientProvider
+              client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+            >
+              <TestAuthProvider role="guest">
+                <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
+                  <Routes>
+                    <Route path="/chat/:sessionId" element={<ChatPage />} />
+                  </Routes>
+                </MemoryRouter>
+              </TestAuthProvider>
+            </QueryClientProvider>
+          </ThemeProvider>
+        </PlatformProvider>
+      </EnglishI18n>,
+    );
+
+    const modelSelect = await screen.findByLabelText('Chat model');
+    await waitFor(() => expect((modelSelect as HTMLSelectElement).disabled).toBe(false));
+    expect(screen.getByTestId('chat-guest-hint').textContent).toContain('Sign in to unlock');
+    expect(screen.queryByRole('switch', { name: 'File access' })).toBeNull();
+    expect(document.querySelector('#chat-dataset')).toBeNull();
+    expect(mocks.listDatasets).not.toHaveBeenCalled();
+
+    await user.type(screen.getByRole('textbox'), 'hello{Enter}');
+    await waitFor(() => expect(mocks.streamChat).toHaveBeenCalled());
+    const [, , request] = mocks.streamChat.mock.calls[0]!;
+    expect(request).toMatchObject({ fileAccess: false });
+    expect(request.datasetIds).toBeUndefined();
+  });
+});
+
 describe('统一对话文件能力', () => {
   it('切换未知模型后关闭并禁用文件访问', async () => {
     const unknownSession = { ...session, modelId: 'other-chat:latest' };
@@ -153,11 +195,13 @@ describe('统一对话文件能力', () => {
             <QueryClientProvider
               client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
             >
-              <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
-                <Routes>
-                  <Route path="/chat/:sessionId" element={<ChatPage />} />
-                </Routes>
-              </MemoryRouter>
+              <TestAuthProvider role="user">
+                <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
+                  <Routes>
+                    <Route path="/chat/:sessionId" element={<ChatPage />} />
+                  </Routes>
+                </MemoryRouter>
+              </TestAuthProvider>
             </QueryClientProvider>
           </ThemeProvider>
         </PlatformProvider>
@@ -191,11 +235,13 @@ describe('统一对话文件能力', () => {
             <QueryClientProvider
               client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
             >
-              <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
-                <Routes>
-                  <Route path="/chat/:sessionId" element={<ChatPage />} />
-                </Routes>
-              </MemoryRouter>
+              <TestAuthProvider role="user">
+                <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
+                  <Routes>
+                    <Route path="/chat/:sessionId" element={<ChatPage />} />
+                  </Routes>
+                </MemoryRouter>
+              </TestAuthProvider>
             </QueryClientProvider>
           </ThemeProvider>
         </PlatformProvider>
@@ -242,11 +288,13 @@ describe('统一对话文件能力', () => {
             <QueryClientProvider
               client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
             >
-              <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
-                <Routes>
-                  <Route path="/chat/:sessionId" element={<ChatPage />} />
-                </Routes>
-              </MemoryRouter>
+              <TestAuthProvider role="user">
+                <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
+                  <Routes>
+                    <Route path="/chat/:sessionId" element={<ChatPage />} />
+                  </Routes>
+                </MemoryRouter>
+              </TestAuthProvider>
             </QueryClientProvider>
           </ThemeProvider>
         </PlatformProvider>
@@ -300,11 +348,13 @@ describe('统一对话文件能力', () => {
             <QueryClientProvider
               client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
             >
-              <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
-                <Routes>
-                  <Route path="/chat/:sessionId" element={<ChatPage />} />
-                </Routes>
-              </MemoryRouter>
+              <TestAuthProvider role="user">
+                <MemoryRouter initialEntries={[`/chat/${session.id}`]}>
+                  <Routes>
+                    <Route path="/chat/:sessionId" element={<ChatPage />} />
+                  </Routes>
+                </MemoryRouter>
+              </TestAuthProvider>
             </QueryClientProvider>
           </ThemeProvider>
         </PlatformProvider>

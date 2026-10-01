@@ -13,6 +13,9 @@ import {
 import { MemoryRouter, Route, Routes } from 'react-router';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { SettingsPage } from './settings-page';
+import { TestAuthProvider } from '../auth/test-auth';
+
+const role = 'admin' as const;
 import { AppI18nProvider } from '../i18n/i18n-provider';
 
 const mocks = vi.hoisted(() => ({
@@ -117,11 +120,13 @@ describe('SettingsPage', () => {
           <QueryClientProvider
             client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
           >
-            <MemoryRouter initialEntries={['/settings']}>
-              <Routes>
-                <Route path="/settings" element={<SettingsPage />} />
-              </Routes>
-            </MemoryRouter>
+            <TestAuthProvider role={role}>
+              <MemoryRouter initialEntries={['/settings']}>
+                <Routes>
+                  <Route path="/settings" element={<SettingsPage />} />
+                </Routes>
+              </MemoryRouter>
+            </TestAuthProvider>
           </QueryClientProvider>
         </AppI18nProvider>
       </PlatformProvider>,
@@ -142,9 +147,11 @@ describe('SettingsPage', () => {
       <PlatformProvider value={platform}>
         <AppI18nProvider>
           <QueryClientProvider client={new QueryClient()}>
-            <MemoryRouter>
-              <SettingsPage />
-            </MemoryRouter>
+            <TestAuthProvider role={role}>
+              <MemoryRouter>
+                <SettingsPage />
+              </MemoryRouter>
+            </TestAuthProvider>
           </QueryClientProvider>
         </AppI18nProvider>
       </PlatformProvider>,
@@ -172,9 +179,11 @@ describe('SettingsPage', () => {
           <QueryClientProvider
             client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
           >
-            <MemoryRouter>
-              <SettingsPage />
-            </MemoryRouter>
+            <TestAuthProvider role={role}>
+              <MemoryRouter>
+                <SettingsPage />
+              </MemoryRouter>
+            </TestAuthProvider>
           </QueryClientProvider>
         </AppI18nProvider>
       </PlatformProvider>,
@@ -205,9 +214,11 @@ describe('SettingsPage', () => {
           <QueryClientProvider
             client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
           >
-            <MemoryRouter>
-              <SettingsPage />
-            </MemoryRouter>
+            <TestAuthProvider role={role}>
+              <MemoryRouter>
+                <SettingsPage />
+              </MemoryRouter>
+            </TestAuthProvider>
           </QueryClientProvider>
         </AppI18nProvider>
       </PlatformProvider>,
@@ -216,5 +227,68 @@ describe('SettingsPage', () => {
     expect(
       await screen.findByText('The service is temporarily unavailable. Try again later.'),
     ).toBeTruthy();
+  });
+});
+
+describe('SettingsPage 按角色门控', () => {
+  const renderAs = (as: 'guest' | 'user') =>
+    render(
+      <PlatformProvider value={platform}>
+        <AppI18nProvider>
+          <QueryClientProvider
+            client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
+          >
+            <TestAuthProvider role={as}>
+              <MemoryRouter>
+                <SettingsPage />
+              </MemoryRouter>
+            </TestAuthProvider>
+          </QueryClientProvider>
+        </AppI18nProvider>
+      </PlatformProvider>,
+    );
+
+  it('访客只看到本地设置与登录引导，不请求 MCP 与工具接口', async () => {
+    renderAs('guest');
+    expect(await screen.findByTestId('settings-login-guide')).toBeTruthy();
+    expect(screen.getByTestId('language-card')).toBeTruthy();
+    expect(screen.getByRole('link', { name: '去登录' }).getAttribute('href')).toBe(
+      `/login?redirect=${encodeURIComponent('/settings')}`,
+    );
+    expect(mocks.listServers).not.toHaveBeenCalled();
+    expect(mocks.listExposed).not.toHaveBeenCalled();
+    expect(mocks.listTools).not.toHaveBeenCalled();
+  });
+
+  it('普通用户只读 MCP：能看到状态，不能勾选或重连', async () => {
+    mocks.listServers.mockResolvedValue([
+      {
+        name: 'filesystem',
+        type: 'stdio',
+        enabled: true,
+        status: 'connected',
+        toolCount: 1,
+        selectedToolCount: 0,
+      },
+    ]);
+    mocks.listTools.mockResolvedValue([
+      {
+        name: 'write_file',
+        description: '写入',
+        exposedName: 'write_file',
+        selected: false,
+        permissionKind: 'write',
+      },
+    ]);
+    mocks.listExposed.mockResolvedValue({ tools: [], dropped: [], maxToolCount: 6 });
+    renderAs('user');
+
+    const checkbox = await screen.findByRole('checkbox', { name: 'write_file' });
+    expect((checkbox as HTMLInputElement).disabled).toBe(true);
+    expect(screen.getByTestId('mcp-read-only')).toBeTruthy();
+    expect(screen.queryByRole('button', { name: '重新连接' })).toBeNull();
+    expect(screen.queryByTestId('settings-login-guide')).toBeNull();
+    fireEvent.click(checkbox);
+    expect(mocks.patch).not.toHaveBeenCalled();
   });
 });

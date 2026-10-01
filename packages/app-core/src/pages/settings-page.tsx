@@ -20,6 +20,7 @@ import {
   Label,
   Globe,
   Languages,
+  Lock,
   Select,
   Server,
   Sparkles,
@@ -29,7 +30,10 @@ import {
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
+import { loginPathFor } from '../auth/require-permission';
+import { useCan } from '../auth/use-auth';
 import {
   checkBackendConnection,
   localizeBackendConnectionError,
@@ -225,7 +229,7 @@ const BackendAddressCard = () => {
   );
 };
 
-const ServerCard = ({ server }: { server: McpServerStatus }) => {
+const ServerCard = ({ server, manageable }: { server: McpServerStatus; manageable: boolean }) => {
   const platform = usePlatform();
   const queryClient = useQueryClient();
   const { t } = useFeatureTranslation('settings');
@@ -298,7 +302,7 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
           <input
             type="checkbox"
             checked={server.enabled}
-            disabled={patch.isPending}
+            disabled={!manageable || patch.isPending}
             onChange={(event) => patch.mutate({ enabled: event.target.checked })}
           />
           {t('mcp.enabled')}
@@ -315,7 +319,7 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
                   className="mt-1"
                   aria-label={tool.name}
                   checked={tool.selected}
-                  disabled={patch.isPending || !server.enabled}
+                  disabled={!manageable || patch.isPending || !server.enabled}
                   onChange={(event) => toggleTool(tool, event.target.checked)}
                 />
                 <span className="min-w-0">
@@ -329,26 +333,49 @@ const ServerCard = ({ server }: { server: McpServerStatus }) => {
             ))
           )}
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="min-w-0"
-          disabled={reconnect.isPending}
-          onClick={() => reconnect.mutate()}
-        >
-          <span className="truncate">{t('mcp.reconnect')}</span>
+        {manageable ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-w-0"
+            disabled={reconnect.isPending}
+            onClick={() => reconnect.mutate()}
+          >
+            <span className="truncate">{t('mcp.reconnect')}</span>
+          </Button>
+        ) : null}
+      </CardContent>
+    </Card>
+  );
+};
+
+const LoginGuideCard = () => {
+  const { t } = useFeatureTranslation('auth');
+  return (
+    <Card data-testid="settings-login-guide" className="w-full min-w-0 overflow-hidden">
+      <CardHeader>
+        <CardTitle className="flex min-w-0 items-center gap-2">
+          <Lock className="text-primary size-5 shrink-0" aria-hidden />
+          <span className="line-clamp-2 min-w-0">{t('gate.settingsTitle')}</span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="flex min-w-0 flex-col items-start gap-3 text-sm">
+        <p className="text-muted-foreground line-clamp-3">{t('gate.settingsHint')}</p>
+        <Button size="sm" asChild>
+          <Link to={loginPathFor('/settings')}>{t('gate.loginCta')}</Link>
         </Button>
       </CardContent>
     </Card>
   );
 };
 
-export const SettingsPage = () => {
+const McpSection = () => {
   const platform = usePlatform();
-  const { t: commonT } = useTranslation();
   const { t } = useFeatureTranslation('settings');
+  const { t: authT } = useFeatureTranslation('auth');
   const { t: errorT } = useFeatureTranslation('errors');
+  const manageable = useCan('mcp:manage');
   const servers = useQuery({
     queryKey: ['mcp-servers'],
     queryFn: () => listMcpServers(platform),
@@ -359,10 +386,12 @@ export const SettingsPage = () => {
   });
 
   return (
-    <PageShell title={commonT('settings.title')} description={commonT('settings.description')}>
-      <EffectsCard />
-      <LanguageCard />
-      {platform.capabilities.backendConnectionSetup ? <BackendAddressCard /> : null}
+    <>
+      {manageable ? null : (
+        <p data-testid="mcp-read-only" className="text-muted-foreground text-sm">
+          {authT('gate.mcpReadOnly')}
+        </p>
+      )}
       {servers.error || exposed.error ? (
         <p className="text-destructive text-sm">
           {localizeApiError(servers.error ?? exposed.error, errorT, t('mcp.loadError'))}
@@ -377,7 +406,7 @@ export const SettingsPage = () => {
       ) : (
         <section className="flex min-w-0 flex-col gap-4">
           {(servers.data ?? []).map((server) => (
-            <ServerCard key={server.name} server={server} />
+            <ServerCard key={server.name} server={server} manageable={manageable} />
           ))}
         </section>
       )}
@@ -410,6 +439,21 @@ export const SettingsPage = () => {
           ) : null}
         </CardContent>
       </Card>
+    </>
+  );
+};
+
+export const SettingsPage = () => {
+  const platform = usePlatform();
+  const { t: commonT } = useTranslation();
+  const canReadMcp = useCan('mcp:read');
+
+  return (
+    <PageShell title={commonT('settings.title')} description={commonT('settings.description')}>
+      <EffectsCard />
+      <LanguageCard />
+      {platform.capabilities.backendConnectionSetup ? <BackendAddressCard /> : null}
+      {canReadMcp ? <McpSection /> : <LoginGuideCard />}
     </PageShell>
   );
 };

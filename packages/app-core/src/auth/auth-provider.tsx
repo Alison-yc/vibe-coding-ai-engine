@@ -8,6 +8,9 @@ import { AUTH_ME_QUERY_KEY, AuthContext, type AuthContextValue } from './use-aut
 
 const pendingGuestIssue = new WeakMap<Platform, Promise<void>>();
 
+/** 后端启动晚于前端时 `me` 会失败；按固定间隔重取，而不是等用户刷新。 */
+export const AUTH_RECOVERY_INTERVAL_MS = 5_000;
+
 /** `me` 被取消重取时旧的 queryFn 不会中止；单飞避免并发签发出多个孤儿访客。 */
 const ensureSessionToken = (platform: Platform): Promise<void> => {
   const inflight = pendingGuestIssue.get(platform);
@@ -21,7 +24,13 @@ const ensureSessionToken = (platform: Platform): Promise<void> => {
   return task;
 };
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+export const AuthProvider = ({
+  children,
+  recoveryIntervalMs = AUTH_RECOVERY_INTERVAL_MS,
+}: {
+  children: ReactNode;
+  recoveryIntervalMs?: number;
+}) => {
   const platform = usePlatform();
   const queryClient = useQueryClient();
   const me = useQuery({
@@ -31,6 +40,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return fetchMe(platform);
     },
     staleTime: Infinity,
+    refetchInterval: (query) => (query.state.status === 'error' ? recoveryIntervalMs : false),
   });
 
   /** 身份切换后其它查询的缓存属于旧身份，全部作废；`me` 重置为加载态，避免短暂显示旧用户。 */
@@ -72,14 +82,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const value = useMemo<AuthContextValue>(() => {
     const data = me.data ?? null;
     return {
-      status: data ? 'ready' : me.isError && !me.isFetching ? 'unavailable' : 'pending',
+      status: data ? 'ready' : me.isError ? 'unavailable' : 'pending',
       me: data,
       user: data?.user ?? null,
       isRegistered: data?.user.kind === 'registered',
       applySession,
       logout,
     };
-  }, [me.data, me.isError, me.isFetching, applySession, logout]);
+  }, [me.data, me.isError, applySession, logout]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 };

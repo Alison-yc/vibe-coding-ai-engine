@@ -44,6 +44,9 @@ import { useChatTranslation } from '../i18n/use-chat-translation';
 import { localizeApiError } from '../i18n/localize-api-error';
 import { listDatasets } from '../knowledge/knowledge-api';
 import { AppNavRail } from '../components/page-shell';
+import { loginPathFor } from '../auth/require-permission';
+import { useCan, useOptionalAuth } from '../auth/use-auth';
+import { useFeatureTranslation } from '../i18n/feature-resources';
 
 export const ChatPage = () => {
   const { t } = useChatTranslation();
@@ -51,6 +54,12 @@ export const ChatPage = () => {
   const platform = usePlatform();
   const { sessionId } = useParams();
   const navigate = useNavigate();
+  const { t: authT } = useFeatureTranslation('auth');
+  const auth = useOptionalAuth();
+  const canRag = useCan('chat:rag');
+  const canTools = useCan('chat:tools');
+  const canFileAccess = useCan('chat:file-access') && canTools;
+  const showGuestHint = auth?.status === 'ready' && !auth.isRegistered;
   const queryClient = useQueryClient();
   const [input, setInput] = useState('');
   const [renameId, setRenameId] = useState<string | null>(null);
@@ -60,7 +69,8 @@ export const ChatPage = () => {
     sessionId: string | undefined;
     enabled: boolean;
   }>({ sessionId, enabled: false });
-  const fileAccess = fileAccessState.sessionId === sessionId && fileAccessState.enabled;
+  const fileAccess =
+    canFileAccess && fileAccessState.sessionId === sessionId && fileAccessState.enabled;
   const setFileAccess = (enabled: boolean) => setFileAccessState({ sessionId, enabled });
   const [workspaceRoot, setWorkspaceRoot] = useState('');
   const [mode, setMode] = useState<AgentMode>('edit');
@@ -92,6 +102,7 @@ export const ChatPage = () => {
   const datasetsQuery = useQuery({
     queryKey: ['knowledge-datasets'],
     queryFn: () => listDatasets(platform),
+    enabled: canRag,
   });
   const modelsQuery = useQuery({
     queryKey: ['chat-models'],
@@ -105,7 +116,7 @@ export const ChatPage = () => {
 
   const chatSessions = sessionsQuery.data ?? [];
   const session = chatSessions.find((item) => item.id === sessionId);
-  const datasetId = session?.datasetIds[0] ?? '';
+  const datasetId = canRag ? (session?.datasetIds[0] ?? '') : '';
   const selectedModel = (modelsQuery.data ?? []).find((model) => model.id === session?.modelId);
   const supportsTools = selectedModel?.capability?.supportsTools === true;
 
@@ -303,7 +314,14 @@ export const ChatPage = () => {
           </div>
         ) : null}
         <header className="border-border bg-background/95 flex min-w-0 flex-col gap-3 border-b px-4 py-3 md:px-6">
-          <div className="grid w-full min-w-0 items-end gap-3 sm:grid-cols-2 xl:grid-cols-[minmax(0,1fr)_14rem_18rem]">
+          <div
+            className={cn(
+              'grid w-full min-w-0 items-end gap-3 sm:grid-cols-2',
+              canRag
+                ? 'xl:grid-cols-[minmax(0,1fr)_14rem_18rem]'
+                : 'xl:grid-cols-[minmax(0,1fr)_14rem]',
+            )}
+          >
             <div className="min-w-0 sm:col-span-2 xl:col-span-1">
               <p className="truncate text-sm font-medium">
                 {session?.title ?? t('header.noSession')}
@@ -335,27 +353,43 @@ export const ChatPage = () => {
                 ))}
               </Select>
             </div>
-            <div className="flex min-w-0 flex-col gap-1.5">
-              <Label htmlFor="chat-dataset" className="truncate" title={t('knowledge.label')}>
-                {t('knowledge.label')}
-              </Label>
-              <Select
-                id="chat-dataset"
-                value={datasetId}
-                disabled={!sessionId || busy}
-                onChange={(event) => {
-                  void mountKnowledge(event.target.value);
-                }}
-              >
-                <option value="">{t('knowledge.none')}</option>
-                {(datasetsQuery.data ?? []).map((dataset: Dataset) => (
-                  <option key={dataset.id} value={dataset.id}>
-                    {dataset.name}
-                  </option>
-                ))}
-              </Select>
-            </div>
+            {canRag ? (
+              <div className="flex min-w-0 flex-col gap-1.5">
+                <Label htmlFor="chat-dataset" className="truncate" title={t('knowledge.label')}>
+                  {t('knowledge.label')}
+                </Label>
+                <Select
+                  id="chat-dataset"
+                  value={datasetId}
+                  disabled={!sessionId || busy}
+                  onChange={(event) => {
+                    void mountKnowledge(event.target.value);
+                  }}
+                >
+                  <option value="">{t('knowledge.none')}</option>
+                  {(datasetsQuery.data ?? []).map((dataset: Dataset) => (
+                    <option key={dataset.id} value={dataset.id}>
+                      {dataset.name}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
           </div>
+          {showGuestHint ? (
+            <p
+              data-testid="chat-guest-hint"
+              className="text-muted-foreground line-clamp-2 w-full text-xs"
+            >
+              {authT('gate.chatHint')}{' '}
+              <Link
+                className="text-primary underline-offset-4 hover:underline"
+                to={loginPathFor(sessionId ? `/chat/${sessionId}` : '/chat')}
+              >
+                {authT('gate.loginCta')}
+              </Link>
+            </p>
+          ) : null}
           {session && selectedModel?.kind === 'untested' ? (
             <p className="text-muted-foreground line-clamp-2 w-full text-xs">
               {t('model.untestedNotice')}
@@ -431,20 +465,22 @@ export const ChatPage = () => {
             data-testid="chat-composer"
             className="border-border bg-card flex w-full min-w-0 flex-col overflow-hidden rounded-xl border shadow-sm"
           >
-            <div className="border-border/70 flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
-              <div className="flex min-w-0 items-center gap-2">
-                <Switch
-                  id="chat-file-access"
-                  checked={fileAccess}
-                  disabled={!sessionId || busy || !supportsTools}
-                  onCheckedChange={setFileAccess}
-                  aria-label={t('fileAccess.label')}
-                />
-                <Label htmlFor="chat-file-access" className="truncate text-sm font-normal">
-                  {t('fileAccess.label')}
-                </Label>
+            {canFileAccess ? (
+              <div className="border-border/70 flex flex-wrap items-center justify-between gap-2 border-b px-3 py-2">
+                <div className="flex min-w-0 items-center gap-2">
+                  <Switch
+                    id="chat-file-access"
+                    checked={fileAccess}
+                    disabled={!sessionId || busy || !supportsTools}
+                    onCheckedChange={setFileAccess}
+                    aria-label={t('fileAccess.label')}
+                  />
+                  <Label htmlFor="chat-file-access" className="truncate text-sm font-normal">
+                    {t('fileAccess.label')}
+                  </Label>
+                </div>
               </div>
-            </div>
+            ) : null}
             {fileAccess ? (
               <div
                 data-testid="chat-file-access-toolbar"

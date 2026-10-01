@@ -2,6 +2,7 @@ import { lazy, Suspense, type ReactNode } from 'react';
 import { Navigate, Route, Routes, useParams } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import { usePlatform } from '@ai-engine/platform';
+import { RequirePermission } from './auth/require-permission';
 import { ChatPage } from './pages/chat-page';
 import { KnowledgeDetailPage } from './pages/knowledge-detail-page';
 import { KnowledgeListPage } from './pages/knowledge-list-page';
@@ -43,22 +44,40 @@ export const AppRoutes = () => (
     <Route path="/" element={<Navigate to="/chat" replace />} />
     <Route path="/chat" element={<ChatPage />} />
     <Route path="/chat/:sessionId" element={<ChatPage />} />
-    <Route path="/knowledge" element={<KnowledgeListPage />} />
-    <Route path="/knowledge/:id" element={<KnowledgeDetailPage />} />
+    <Route
+      path="/knowledge"
+      element={
+        <RequirePermission permission="knowledge:read">
+          <KnowledgeListPage />
+        </RequirePermission>
+      }
+    />
+    <Route
+      path="/knowledge/:id"
+      element={
+        <RequirePermission permission="knowledge:read">
+          <KnowledgeDetailPage />
+        </RequirePermission>
+      }
+    />
     <Route
       path="/workflow"
       element={
-        <LazyPage>
-          <WorkflowListPage />
-        </LazyPage>
+        <RequirePermission permission="workflow:read">
+          <LazyPage>
+            <WorkflowListPage />
+          </LazyPage>
+        </RequirePermission>
       }
     />
     <Route
       path="/workflow/:id"
       element={
-        <LazyPage>
-          <WorkflowEditorPage />
-        </LazyPage>
+        <RequirePermission permission="workflow:read">
+          <LazyPage>
+            <WorkflowEditorPage />
+          </LazyPage>
+        </RequirePermission>
       }
     />
     <Route path="/agent" element={<Navigate to="/chat" replace />} />

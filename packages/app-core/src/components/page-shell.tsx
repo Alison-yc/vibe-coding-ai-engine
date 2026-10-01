@@ -1,3 +1,4 @@
+import type { Permission } from '@ai-engine/contracts';
 import type { ComponentType, ReactNode, SVGProps } from 'react';
 import { Link, useLocation } from 'react-router';
 import { useTranslation } from 'react-i18next';
@@ -7,23 +8,28 @@ import {
   Button,
   CardTitle,
   GitBranch,
+  Lock,
   MessageSquare,
   Separator,
   Settings,
   cn,
 } from '@ai-engine/ui';
+import { loginPathFor } from '../auth/require-permission';
+import { useOptionalAuth } from '../auth/use-auth';
+import { useFeatureTranslation } from '../i18n/feature-resources';
 import { AccountNavEntry } from './account-nav-entry';
 
 type AppNavItem = {
   readonly to: string;
   readonly icon: ComponentType<SVGProps<SVGSVGElement>>;
   readonly labelKey: 'nav.chat' | 'nav.knowledge' | 'nav.workflow' | 'nav.settings';
+  readonly permission?: Permission;
 };
 
 export const APP_NAV_ITEMS: readonly AppNavItem[] = [
   { to: '/chat', icon: MessageSquare, labelKey: 'nav.chat' },
-  { to: '/knowledge', icon: BookOpen, labelKey: 'nav.knowledge' },
-  { to: '/workflow', icon: GitBranch, labelKey: 'nav.workflow' },
+  { to: '/knowledge', icon: BookOpen, labelKey: 'nav.knowledge', permission: 'knowledge:read' },
+  { to: '/workflow', icon: GitBranch, labelKey: 'nav.workflow', permission: 'workflow:read' },
   { to: '/settings', icon: Settings, labelKey: 'nav.settings' },
 ];
 
@@ -42,7 +48,12 @@ export const IconCardTitle = ({
 
 export const AppNavRail = () => {
   const { t } = useTranslation();
+  const { t: authT } = useFeatureTranslation('auth');
   const { pathname } = useLocation();
+  const auth = useOptionalAuth();
+  const granted = auth?.user?.permissions ?? [];
+  const isLocked = (permission?: Permission) =>
+    permission !== undefined && auth?.status === 'ready' && !granted.includes(permission);
 
   return (
     <nav
@@ -60,9 +71,10 @@ export const AppNavRail = () => {
           <AppMark size={40} />
         </Link>
       </div>
-      {APP_NAV_ITEMS.map(({ to, icon: Icon, labelKey }) => {
+      {APP_NAV_ITEMS.map(({ to, icon: Icon, labelKey, permission }) => {
         const active = pathname === to || pathname.startsWith(`${to}/`);
         const label = t(labelKey);
+        const locked = isLocked(permission);
         return (
           <Button
             key={to}
@@ -74,8 +86,28 @@ export const AppNavRail = () => {
             )}
             asChild
           >
-            <Link to={to} title={label} aria-current={active ? 'page' : undefined}>
-              <Icon className={cn('size-5 shrink-0', active && 'text-primary')} aria-hidden />
+            <Link
+              to={locked ? loginPathFor(to) : to}
+              title={locked ? authT('gate.lockedNav', { label }) : label}
+              aria-current={active ? 'page' : undefined}
+              data-locked={locked || undefined}
+            >
+              <span className="relative">
+                <Icon
+                  className={cn(
+                    'size-5 shrink-0',
+                    active && 'text-primary',
+                    locked && 'text-muted-foreground',
+                  )}
+                  aria-hidden
+                />
+                {locked ? (
+                  <Lock
+                    className="bg-sidebar text-muted-foreground absolute -right-1.5 -bottom-1 size-3 rounded-full"
+                    aria-hidden
+                  />
+                ) : null}
+              </span>
               <span className="max-w-full truncate text-[10px] leading-tight">{label}</span>
             </Link>
           </Button>

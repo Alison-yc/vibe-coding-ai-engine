@@ -104,13 +104,13 @@ const Probe = () => {
   );
 };
 
-const renderProvider = (platform: Platform) =>
+const renderProvider = (platform: Platform, recoveryIntervalMs?: number) =>
   render(
     <QueryClientProvider
       client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}
     >
       <PlatformProvider value={platform}>
-        <AuthProvider>
+        <AuthProvider recoveryIntervalMs={recoveryIntervalMs}>
           <Probe />
         </AuthProvider>
       </PlatformProvider>
@@ -249,6 +249,22 @@ describe('AuthProvider', () => {
     renderProvider(createPlatform());
 
     await waitFor(() => expect(probeText()).toBe('unavailable:none:no-tools'));
+  });
+
+  it('后端恢复后自动重取 me，无需刷新或保存设置', async () => {
+    const backend = createFakeBackend();
+    const healthy = vi.mocked(fetch).getMockImplementation()!;
+    let reachable = false;
+    vi.mocked(fetch).mockImplementation(async (...args) => {
+      if (!reachable) throw new TypeError('Failed to fetch');
+      return healthy(...args);
+    });
+    renderProvider(createPlatform(), 20);
+
+    await waitFor(() => expect(probeText()).toBe('unavailable:none:no-tools'));
+    reachable = true;
+    await waitFor(() => expect(probeText()).toBe('ready:guest:no-tools'));
+    expect(backend.calls.filter((call) => call.path === '/auth/guest')).toHaveLength(1);
   });
 });
 
