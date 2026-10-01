@@ -3,6 +3,10 @@ import { z } from 'zod';
 export const ErrorCodeSchema = z.enum([
   'BAD_REQUEST',
   'UNAUTHORIZED',
+  'FORBIDDEN',
+  'INVALID_CREDENTIALS',
+  'VERIFICATION_CODE_INVALID',
+  'IDENTIFIER_TAKEN',
   'NOT_FOUND',
   'CONFLICT',
   'PAYLOAD_TOO_LARGE',

@@ -2,6 +2,10 @@
   "api": {
     "BAD_REQUEST": "请求无效，请检查输入后重试。",
     "UNAUTHORIZED": "当前操作未获授权。",
+    "FORBIDDEN": "没有执行该操作的权限。",
+    "INVALID_CREDENTIALS": "账号或密码错误。",
+    "VERIFICATION_CODE_INVALID": "验证码无效或已过期。",
+    "IDENTIFIER_TAKEN": "该邮箱或手机号已被注册。",
     "NOT_FOUND": "请求的资源不存在。",
     "CONFLICT": "当前状态与请求冲突，请刷新后重试。",
     "PAYLOAD_TOO_LARGE": "提交的内容过大。",

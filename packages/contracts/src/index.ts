@@ -1,4 +1,5 @@
 export * from './agent/index.js';
+export * from './auth/index.js';
 export * from './mcp/index.js';
 export * from './chat/index.js';
 export * from './common/index.js';
