@@ -11,24 +11,7 @@ import {
   type McpServerStatus,
 } from '@ai-engine/contracts';
 import type { Platform } from '@ai-engine/platform';
-import { createApiRequestError } from '../api/api-error';
-
-const jsonRequest = async (
-  platform: Platform,
-  path: string,
-  init?: RequestInit,
-): Promise<unknown> => {
-  const baseUrl = platform.getApiBaseUrl().replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}${path}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-  });
-  const body: unknown = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw createApiRequestError(body, response.status);
-  }
-  return body;
-};
+import { apiJson as jsonRequest } from '../api/http';
 
 export const listMcpServers = async (platform: Platform): Promise<McpServerStatus[]> =>
   McpServerListResponseSchema.parse(await jsonRequest(platform, '/mcp/servers')).servers;

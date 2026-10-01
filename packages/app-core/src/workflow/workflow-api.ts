@@ -24,22 +24,7 @@ import {
 } from '@ai-engine/contracts';
 import type { Platform } from '@ai-engine/platform';
 import { createApiRequestError } from '../api/api-error';
-
-const requestJson = async (
-  platform: Platform,
-  path: string,
-  init?: RequestInit,
-): Promise<unknown> => {
-  const response = await fetch(`${platform.getApiBaseUrl().replace(/\/$/, '')}${path}`, {
-    ...init,
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
-  });
-  const data: unknown = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw createApiRequestError(data, response.status);
-  }
-  return data;
-};
+import { apiFetch, apiJson as requestJson, readJsonBody } from '../api/http';
 
 export const listWorkflows = async (platform: Platform): Promise<Workflow[]> =>
   WorkflowListResponseSchema.parse(await requestJson(platform, '/workflows')).workflows;
@@ -143,18 +128,13 @@ export const streamWorkflow = async (
   signal: AbortSignal,
   onEvent: (event: WorkflowRunEvent) => void,
 ): Promise<void> => {
-  const response = await fetch(
-    `${platform.getApiBaseUrl().replace(/\/$/, '')}/workflows/${workflowId}/run`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(RunWorkflowRequestSchema.parse(input)),
-      signal,
-    },
-  );
+  const response = await apiFetch(platform, `/workflows/${workflowId}/run`, {
+    method: 'POST',
+    body: JSON.stringify(RunWorkflowRequestSchema.parse(input)),
+    signal,
+  });
   if (!response.ok) {
-    const data: unknown = await response.json().catch(() => ({}));
-    throw createApiRequestError(data, response.status);
+    throw createApiRequestError(await readJsonBody(response), response.status);
   }
   if (!response.body) throw new Error('workflow-error:missing-body');
   const reader = response.body.pipeThrough(new TextDecoderStream()).getReader();

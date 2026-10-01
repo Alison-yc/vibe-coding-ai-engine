@@ -7,7 +7,7 @@ import {
   type TranslateResponse,
 } from '@ai-engine/contracts';
 import type { Platform } from '@ai-engine/platform';
-import { createApiRequestError } from './api-error';
+import { apiJson } from './http';
 
 export const createExampleChatRequest = (): ChatRequest => {
   const request = {
@@ -17,32 +17,14 @@ export const createExampleChatRequest = (): ChatRequest => {
   return ChatRequestSchema.parse(request);
 };
 
-export const createApiClient = (platform: Platform) => {
-  const request = async (path: string, init?: RequestInit): Promise<Response> => {
-    const baseUrl = platform.getApiBaseUrl().replace(/\/$/, '');
-    return fetch(`${baseUrl}${path}`, {
-      ...init,
-      headers: {
-        'Content-Type': 'application/json',
-        ...init?.headers,
-      },
+export const createApiClient = (platform: Platform) => ({
+  translate: async (body: TranslateRequest): Promise<TranslateResponse> => {
+    const payload = TranslateRequestSchema.parse(body);
+    const data = await apiJson(platform, '/llm/translate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
     });
-  };
-
-  return {
-    translate: async (body: TranslateRequest): Promise<TranslateResponse> => {
-      const payload = TranslateRequestSchema.parse(body);
-      const response = await request('/llm/translate', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      });
-      const data: unknown = await response.json();
-      if (!response.ok) {
-        throw createApiRequestError(data, response.status);
-      }
-      return TranslateResponseSchema.parse(data);
-    },
-    chat: (body: ChatRequest): Promise<ChatRequest> =>
-      Promise.resolve(ChatRequestSchema.parse(body)),
-  };
-};
+    return TranslateResponseSchema.parse(data);
+  },
+  chat: (body: ChatRequest): Promise<ChatRequest> => Promise.resolve(ChatRequestSchema.parse(body)),
+});

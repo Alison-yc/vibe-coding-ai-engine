@@ -5,6 +5,7 @@ import {
 import { Activity, Badge, Button, Card, CardContent, CardHeader, CardTitle } from '@ai-engine/ui';
 import { useCallback, useState } from 'react';
 import { usePlatform, type Platform } from '@ai-engine/platform';
+import { apiFetch } from '../api/http';
 import { AppLayout } from '../components/page-shell';
 
 export const formatMs = (value: number | null | undefined): string =>
@@ -88,8 +89,7 @@ export const toLoadErrorMessage = (error: unknown): string =>
 export const fetchObservabilityMetrics = async (
   platform: Platform,
 ): Promise<ObservabilityMetricsResponse> => {
-  const baseUrl = platform.getApiBaseUrl().replace(/\/$/, '');
-  const response = await fetch(`${baseUrl}/dev/observability/metrics`);
+  const response = await apiFetch(platform, '/dev/observability/metrics');
   const data: unknown = await response.json();
   if (!response.ok) {
     throw new Error(`加载失败: ${response.status}`);

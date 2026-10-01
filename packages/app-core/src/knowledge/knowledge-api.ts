@@ -18,25 +18,7 @@ import {
   type SplitPreviewResponse,
 } from '@ai-engine/contracts';
 import type { Platform } from '@ai-engine/platform';
-import { createApiRequestError } from '../api/api-error';
-
-const requestJson = async (
-  platform: Platform,
-  path: string,
-  init?: RequestInit,
-): Promise<unknown> => {
-  const baseUrl = platform.getApiBaseUrl().replace(/\/$/, '');
-  const headers = new Headers(init?.headers);
-  if (init?.body && !(init.body instanceof FormData) && !headers.has('Content-Type')) {
-    headers.set('Content-Type', 'application/json');
-  }
-  const response = await fetch(`${baseUrl}${path}`, { ...init, headers });
-  const data: unknown = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    throw createApiRequestError(data, response.status);
-  }
-  return data;
-};
+import { apiJson as requestJson } from '../api/http';
 
 export const listDatasets = async (platform: Platform): Promise<Dataset[]> => {
   const data = await requestJson(platform, '/knowledge/datasets');
