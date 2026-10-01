@@ -54,6 +54,7 @@ export class ChatService {
 
   async createSession(ownerId: string, request: CreateChatSessionRequest): Promise<ChatSession> {
     if (request.modelId) await this.assertModelInstalled(request.modelId);
+    await this.assertDatasetsOwned(ownerId, request.datasetIds);
     return this.repository.createSession(ownerId, {
       title: request.title ?? '新对话',
       modelId: request.modelId ?? this.config.get('OLLAMA_MODEL', { infer: true }),
@@ -79,6 +80,7 @@ export class ChatService {
   ): Promise<ChatSession> {
     await this.getSession(ownerId, id);
     if (request.modelId) await this.assertModelInstalled(request.modelId);
+    await this.assertDatasetsOwned(ownerId, request.datasetIds);
     const updated = await this.repository.updateSession(ownerId, id, request);
     if (!updated) throw new Error(`NOT_FOUND:会话不存在`);
     return updated;
@@ -147,6 +149,7 @@ export class ChatService {
     const session = await this.getSession(ownerId, sessionId);
     const datasetIds = request.datasetIds ?? session.datasetIds;
     if (request.datasetIds) {
+      await this.assertDatasetsOwned(ownerId, request.datasetIds);
       await this.repository.updateSession(ownerId, sessionId, { datasetIds: request.datasetIds });
     }
 
@@ -192,7 +195,7 @@ export class ChatService {
       parts: [{ type: 'text', id: randomUUID(), text: request.content }],
     });
 
-    let citations = await this.collectCitations(datasetIds, request.content);
+    let citations = await this.collectCitations(ownerId, datasetIds, request.content);
     if (datasetIds.length > 0 && citations.length === 0) {
       await this.emitStaticAssistant(sessionId, KNOWLEDGE_EMPTY_ANSWER, send);
       await this.maybeTitle(ownerId, sessionId, request.content);
@@ -332,11 +335,21 @@ export class ChatService {
     send({ event: 'done', data: { messageId: assistantId, status: 'complete' } });
   }
 
-  private async collectCitations(datasetIds: string[], query: string): Promise<RetrieveHit[]> {
+  private async assertDatasetsOwned(ownerId: string, datasetIds: string[] = []): Promise<void> {
+    for (const datasetId of new Set(datasetIds)) {
+      await this.knowledge.getDataset(ownerId, datasetId);
+    }
+  }
+
+  private async collectCitations(
+    ownerId: string,
+    datasetIds: string[],
+    query: string,
+  ): Promise<RetrieveHit[]> {
     if (datasetIds.length === 0) return [];
     const hits: RetrieveHit[] = [];
     for (const datasetId of datasetIds) {
-      const retrieved = await this.knowledge.retrieve(datasetId, {
+      const retrieved = await this.knowledge.retrieve(ownerId, datasetId, {
         query,
         topK: 5,
         scoreThreshold: 0.3,

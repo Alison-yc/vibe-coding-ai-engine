@@ -6,6 +6,9 @@ import {
   InMemoryKnowledgeRepository,
 } from './knowledge.repository';
 
+const OWNER = '00000000-0000-4000-8000-0000000000a1';
+const INTRUDER = '00000000-0000-4000-8000-0000000000b2';
+
 const datasetRow = {
   id: '00000000-0000-4000-8000-000000000001',
   name: '库',
@@ -51,7 +54,7 @@ const mockDb = (selectQueue: unknown[][]): AppDatabase => {
     insert: () => createChain([datasetRow]),
     select: () => createChain(queue.shift() ?? []),
     update: () => createChain(undefined),
-    delete: () => createChain(undefined),
+    delete: () => createChain([{ id: datasetRow.id }]),
   } as never;
 };
 
@@ -74,7 +77,7 @@ describe('createKnowledgeRepository', () => {
 describe('InMemoryKnowledgeRepository', () => {
   it('创建后可列出、更新并删除文档', async () => {
     const repository = new InMemoryKnowledgeRepository();
-    const dataset = await repository.createDataset('个人', 'nomic-embed-text:latest', {
+    const dataset = await repository.createDataset(OWNER, '个人', 'nomic-embed-text:latest', {
       strategy: 'recursive',
       chunkSize: 500,
       overlap: 50,
@@ -89,22 +92,46 @@ describe('InMemoryKnowledgeRepository', () => {
     expect(await repository.listPendingDocumentIds()).toEqual([document.id]);
     await repository.updateDocument(document.id, { status: 'embedding' });
     expect(await repository.listPendingDocumentIds()).toEqual([document.id]);
-    expect((await repository.getDocument(document.id))?.sourceBytes).toEqual(
+    expect((await repository.getDocument(OWNER, document.id))?.sourceBytes).toEqual(
       new Uint8Array([1, 2, 3]),
     );
     await repository.updateDocument(document.id, { status: 'completed' });
     expect(await repository.listPendingDocumentIds()).toEqual([]);
-    expect((await repository.listDatasets())[0]?.documentCount).toBe(1);
-    await repository.deleteDataset(dataset.id);
-    expect(await repository.getDataset(dataset.id)).toBeNull();
+    expect((await repository.listDatasets(OWNER))[0]?.documentCount).toBe(1);
+    await repository.deleteDataset(OWNER, dataset.id);
+    expect(await repository.getDataset(OWNER, dataset.id)).toBeNull();
     expect(await repository.countChunks(document.id)).toBe(0);
+  });
+
+  it('他人的知识库与文档当作不存在，系统流程仍能读到', async () => {
+    const repository = new InMemoryKnowledgeRepository();
+    const dataset = await repository.createDataset(OWNER, '甲', 'nomic-embed-text:latest', {
+      strategy: 'recursive',
+      chunkSize: 500,
+      overlap: 50,
+    });
+    const document = await repository.createDocument({
+      datasetId: dataset.id,
+      name: 'a.md',
+      sourceType: 'paste',
+    });
+
+    await expect(repository.listDatasets(INTRUDER)).resolves.toEqual([]);
+    await expect(repository.getDataset(INTRUDER, dataset.id)).resolves.toBeNull();
+    await expect(repository.getDocument(INTRUDER, document.id)).resolves.toBeNull();
+    await expect(repository.deleteDataset(INTRUDER, dataset.id)).resolves.toBe(false);
+    await expect(repository.getDatasetForSystem(dataset.id)).resolves.toMatchObject({ name: '甲' });
+    await expect(repository.getDocumentForSystem(document.id)).resolves.toMatchObject({
+      name: 'a.md',
+    });
+    await expect(repository.listDatasets(OWNER)).resolves.toHaveLength(1);
   });
 });
 
 describe('DrizzleKnowledgeRepository', () => {
   it('createDataset 解析返回行', async () => {
     const repository = new DrizzleKnowledgeRepository(mockDb([[{ value: 0 }], [{ value: 0 }]]));
-    const created = await repository.createDataset('库', 'nomic-embed-text:latest', {
+    const created = await repository.createDataset(OWNER, '库', 'nomic-embed-text:latest', {
       strategy: 'recursive',
       chunkSize: 500,
       overlap: 50,
@@ -122,7 +149,7 @@ describe('DrizzleKnowledgeRepository', () => {
     } as never;
     const repository = new DrizzleKnowledgeRepository(db);
     await expect(
-      repository.createDataset('库', 'nomic-embed-text:latest', {
+      repository.createDataset(OWNER, '库', 'nomic-embed-text:latest', {
         strategy: 'recursive',
         chunkSize: 500,
         overlap: 50,
@@ -138,9 +165,11 @@ describe('DrizzleKnowledgeRepository', () => {
   });
 
   it('getDataset 无行时返回 null', async () => {
-    const repository = new DrizzleKnowledgeRepository(mockDb([[]]));
-    await expect(repository.getDataset(datasetRow.id)).resolves.toBeNull();
-    await expect(repository.getDocument(documentRow.id)).resolves.toBeNull();
+    const repository = new DrizzleKnowledgeRepository(mockDb([[], [], [], []]));
+    await expect(repository.getDataset(OWNER, datasetRow.id)).resolves.toBeNull();
+    await expect(repository.getDocument(OWNER, documentRow.id)).resolves.toBeNull();
+    await expect(repository.getDatasetForSystem(datasetRow.id)).resolves.toBeNull();
+    await expect(repository.getDocumentForSystem(documentRow.id)).resolves.toBeNull();
   });
 
   it('list/get/delete 走查询链', async () => {
@@ -153,19 +182,23 @@ describe('DrizzleKnowledgeRepository', () => {
         [{ value: 1 }],
         [{ value: 2 }],
         [documentRow],
-        [documentRow],
+        [{ document: documentRow }],
         [{ id: documentRow.id }],
         [{ value: 3 }],
       ]),
     );
-    const listed = await repository.listDatasets();
+    const listed = await repository.listDatasets(OWNER);
     expect(listed[0]?.chunkCount).toBe(2);
-    await expect(repository.getDataset(datasetRow.id)).resolves.toMatchObject({ name: '库' });
+    await expect(repository.getDataset(OWNER, datasetRow.id)).resolves.toMatchObject({
+      name: '库',
+    });
     await expect(repository.listDocuments(datasetRow.id)).resolves.toHaveLength(1);
-    await expect(repository.getDocument(documentRow.id)).resolves.toMatchObject({ name: 'a.md' });
+    await expect(repository.getDocument(OWNER, documentRow.id)).resolves.toMatchObject({
+      name: 'a.md',
+    });
     await expect(repository.listPendingDocumentIds()).resolves.toEqual([documentRow.id]);
     await expect(repository.countChunks(documentRow.id)).resolves.toBe(3);
-    await repository.deleteDataset(datasetRow.id);
+    await expect(repository.deleteDataset(OWNER, datasetRow.id)).resolves.toBe(true);
     await repository.deleteDocument(documentRow.id);
     await repository.updateDocument(documentRow.id, { status: 'completed', cleanedText: '北京' });
     await repository.updateDocument(documentRow.id, {});

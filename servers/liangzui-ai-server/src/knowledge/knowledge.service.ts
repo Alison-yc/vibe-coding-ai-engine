@@ -46,38 +46,42 @@ export class KnowledgeService {
     @Inject(ConfigService) private readonly config: ConfigService<AppConfig, true>,
   ) {}
 
-  async createDataset(request: CreateDatasetRequest): Promise<Dataset> {
+  async createDataset(ownerId: string, request: CreateDatasetRequest): Promise<Dataset> {
     return this.repository.createDataset(
+      ownerId,
       request.name,
       this.config.get('OLLAMA_EMBED_MODEL', { infer: true }),
       request.chunkConfig ?? DEFAULT_CHUNK_CONFIG,
     );
   }
 
-  listDatasets(): Promise<Dataset[]> {
-    return this.repository.listDatasets();
+  listDatasets(ownerId: string): Promise<Dataset[]> {
+    return this.repository.listDatasets(ownerId);
   }
 
-  async getDataset(id: string): Promise<Dataset> {
-    const dataset = await this.repository.getDataset(id);
+  async getDataset(ownerId: string, id: string): Promise<Dataset> {
+    const dataset = await this.repository.getDataset(ownerId, id);
     if (!dataset) throw new Error('NOT_FOUND:知识库不存在');
     return dataset;
   }
 
-  async deleteDataset(id: string): Promise<void> {
-    await this.getDataset(id);
+  async deleteDataset(ownerId: string, id: string): Promise<void> {
+    await this.getDataset(ownerId, id);
     const documents = await this.repository.listDocuments(id);
     for (const document of documents) {
       await this.vectorStore.deleteByDocumentId(document.id);
     }
-    await this.repository.deleteDataset(id);
+    if (!(await this.repository.deleteDataset(ownerId, id))) {
+      throw new Error('NOT_FOUND:知识库不存在');
+    }
   }
 
   async createPasteDocument(
+    ownerId: string,
     datasetId: string,
     request: CreatePasteDocumentRequest,
   ): Promise<KnowledgeDocument> {
-    await this.getDataset(datasetId);
+    await this.getDataset(ownerId, datasetId);
     const document = await this.repository.createDocument({
       datasetId,
       name: request.name,
@@ -89,11 +93,12 @@ export class KnowledgeService {
   }
 
   async createUploadDocument(
+    ownerId: string,
     datasetId: string,
     filename: string,
     bytes: Uint8Array,
   ): Promise<KnowledgeDocument> {
-    await this.getDataset(datasetId);
+    await this.getDataset(ownerId, datasetId);
     const name = safeDocumentName(filename);
     const document = await this.repository.createDocument({
       datasetId,
@@ -105,12 +110,13 @@ export class KnowledgeService {
     return KnowledgeDocumentSchema.parse(document);
   }
 
-  listDocuments(datasetId: string): Promise<KnowledgeDocument[]> {
+  async listDocuments(ownerId: string, datasetId: string): Promise<KnowledgeDocument[]> {
+    await this.getDataset(ownerId, datasetId);
     return this.repository.listDocuments(datasetId);
   }
 
-  async getDocument(id: string): Promise<KnowledgeDocument> {
-    const record = await this.repository.getDocument(id);
+  async getDocument(ownerId: string, id: string): Promise<KnowledgeDocument> {
+    const record = await this.repository.getDocument(ownerId, id);
     if (!record) throw new Error('NOT_FOUND:文档不存在');
     return KnowledgeDocumentSchema.parse({
       id: record.id,
@@ -126,15 +132,15 @@ export class KnowledgeService {
     });
   }
 
-  async deleteDocument(id: string): Promise<void> {
-    const record = await this.repository.getDocument(id);
+  async deleteDocument(ownerId: string, id: string): Promise<void> {
+    const record = await this.repository.getDocument(ownerId, id);
     if (!record) throw new Error('NOT_FOUND:文档不存在');
     await this.vectorStore.deleteByDocumentId(id);
     await this.repository.deleteDocument(id);
   }
 
-  async reindex(id: string): Promise<KnowledgeDocument> {
-    const record = await this.repository.getDocument(id);
+  async reindex(ownerId: string, id: string): Promise<KnowledgeDocument> {
+    const record = await this.repository.getDocument(ownerId, id);
     if (!record) throw new Error('NOT_FOUND:文档不存在');
     await this.repository.updateDocument(id, {
       status: 'pending',
@@ -149,7 +155,7 @@ export class KnowledgeService {
         : {}),
     });
     void this.indexing.run(id, {}, this.embedBatchSize());
-    return this.getDocument(id);
+    return this.getDocument(ownerId, id);
   }
 
   previewSplit(request: SplitPreviewRequest): SplitPreviewResponse {
@@ -157,8 +163,12 @@ export class KnowledgeService {
     return SplitPreviewResponseSchema.parse({ chunks });
   }
 
-  async retrieve(datasetId: string, request: RetrieveRequest): Promise<RetrieveResponse> {
-    await this.getDataset(datasetId);
+  async retrieve(
+    ownerId: string,
+    datasetId: string,
+    request: RetrieveRequest,
+  ): Promise<RetrieveResponse> {
+    await this.getDataset(ownerId, datasetId);
     const queryVectors = await this.gateway.embed([request.query]);
     const queryVector = queryVectors[0];
     if (!queryVector) throw new Error('查询向量为空');
@@ -171,10 +181,11 @@ export class KnowledgeService {
   }
 
   async answer(
+    ownerId: string,
     datasetId: string,
     request: KnowledgeAnswerRequest,
   ): Promise<KnowledgeAnswerResponse> {
-    const retrieved = await this.retrieve(datasetId, request);
+    const retrieved = await this.retrieve(ownerId, datasetId, request);
     if (retrieved.hits.length === 0) {
       return KnowledgeAnswerResponseSchema.parse({
         answer: KNOWLEDGE_EMPTY_ANSWER,

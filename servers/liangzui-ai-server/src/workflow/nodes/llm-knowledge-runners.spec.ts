@@ -67,7 +67,7 @@ describe('KnowledgeRetrievalNodeRunner', () => {
         context,
       ),
     ).resolves.toEqual({ outputs: { chunks: [] } });
-    expect(retrieve).toHaveBeenCalledWith('00000000-0000-4000-8000-000000000002', {
+    expect(retrieve).toHaveBeenCalledWith(context.ownerId, '00000000-0000-4000-8000-000000000002', {
       query: 'Dify',
       topK: 3,
       scoreThreshold: 0.5,

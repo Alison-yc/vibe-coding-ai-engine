@@ -209,7 +209,7 @@ describe('ChatService', () => {
 
   it('挂载知识库但没有命中时直接拒答，不调用生成', async () => {
     const { gateway, service, knowledge } = setup();
-    const dataset = await knowledge.createDataset({ name: '空库' });
+    const dataset = await knowledge.createDataset(OWNER, { name: '空库' });
     gateway.enqueueEmbeddings([
       Array.from({ length: EMBEDDING_DIMENSION }, (_, index) => (index === 0 ? 1 : 0)),
     ]);
@@ -232,10 +232,10 @@ describe('ChatService', () => {
 
   it('挂载知识库命中后回答带 citations', async () => {
     const { gateway, service, knowledge, indexing } = setup();
-    const dataset = await knowledge.createDataset({ name: '个人' });
+    const dataset = await knowledge.createDataset(OWNER, { name: '个人' });
     const unit = Array.from({ length: EMBEDDING_DIMENSION }, (_, index) => (index === 0 ? 1 : 0));
     gateway.enqueueEmbeddings([unit]);
-    const document = await knowledge.createPasteDocument(dataset.id, {
+    const document = await knowledge.createPasteDocument(OWNER, dataset.id, {
       name: 'bio.md',
       text: '我住在北京。',
     });
@@ -248,6 +248,35 @@ describe('ChatService', () => {
     const session = await service.createSession(OWNER, { datasetIds: [dataset.id] });
     const events = await collect(service, session.id, '我住哪');
     expect(events.some((event) => event.event === 'message.citations')).toBe(true);
+  });
+
+  it('不能把其他用户的知识库挂到自己的会话上', async () => {
+    const { gateway, service, knowledge, repository } = setup();
+    const foreign = await knowledge.createDataset(INTRUDER, { name: '乙的库' });
+    const notFound = /^NOT_FOUND:/;
+
+    await expect(service.createSession(OWNER, { datasetIds: [foreign.id] })).rejects.toThrow(
+      notFound,
+    );
+    const session = await service.createSession(OWNER, { title: '甲的会话' });
+    await expect(
+      service.updateSession(OWNER, session.id, { datasetIds: [foreign.id] }),
+    ).rejects.toThrow(notFound);
+    await expect(
+      service.stream(
+        OWNER,
+        session.id,
+        { content: '查乙的库', fileAccess: false, mode: 'edit', datasetIds: [foreign.id] },
+        new AbortController().signal,
+        () => undefined,
+      ),
+    ).rejects.toThrow(notFound);
+
+    await expect(repository.getSession(OWNER, session.id)).resolves.toMatchObject({
+      datasetIds: [],
+    });
+    await expect(repository.listMessages(session.id)).resolves.toEqual([]);
+    expect(gateway.calls.some((call) => call.method === 'embed')).toBe(false);
   });
 
   it('其他用户读、改、删、续聊、列消息一律当作不存在', async () => {

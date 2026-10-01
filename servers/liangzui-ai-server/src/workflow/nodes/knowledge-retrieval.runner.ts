@@ -10,7 +10,7 @@ import type { NodeRunContext, NodeRunner, VariablePoolReader } from '../engine/t
 import { templateSelectors } from './template-selectors';
 
 export interface KnowledgeRetriever {
-  retrieve(datasetId: string, request: RetrieveRequest): Promise<RetrieveResponse>;
+  retrieve(ownerId: string, datasetId: string, request: RetrieveRequest): Promise<RetrieveResponse>;
 }
 
 export class KnowledgeRetrievalNodeRunner implements NodeRunner<KnowledgeRetrievalNodeConfig> {
@@ -32,7 +32,7 @@ export class KnowledgeRetrievalNodeRunner implements NodeRunner<KnowledgeRetriev
     // nosemgrep: javascript.express.security.audit.res-render-injection.res-render-injection -- VariablePool.render 只做内存字符串插值，不调用 Express response.render 或文件系统。
     const query = pool.render(config.query).trim();
     if (!query) throw new Error('知识检索 query 不能为空');
-    const result = await this.knowledge.retrieve(config.datasetId, {
+    const result = await this.knowledge.retrieve(context.ownerId, config.datasetId, {
       query,
       topK: config.topK,
       scoreThreshold: config.scoreThreshold,

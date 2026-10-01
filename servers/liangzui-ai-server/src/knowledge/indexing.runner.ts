@@ -48,14 +48,14 @@ export class IndexingRunner {
   ): Promise<void> {
     let activeStage: DocumentRecord['failedStage'] = 'extract';
     try {
-      const document = await this.repository.getDocument(documentId);
+      const document = await this.repository.getDocumentForSystem(documentId);
       if (!document) return;
-      const dataset = await this.repository.getDataset(document.datasetId);
+      const dataset = await this.repository.getDatasetForSystem(document.datasetId);
       const chunkConfig = dataset?.chunkConfig ?? DEFAULT_CHUNK_CONFIG;
       await this.extractAndClean(document, source, (stage) => {
         activeStage = stage;
       });
-      const refreshed = await this.repository.getDocument(documentId);
+      const refreshed = await this.repository.getDocumentForSystem(documentId);
       if (!refreshed?.cleanedText) return;
       await this.splitEmbedIndex(refreshed, chunkConfig, batchSize, (stage) => {
         activeStage = stage;
