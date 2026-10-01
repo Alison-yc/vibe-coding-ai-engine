@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, isNull, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
 import type { AppDatabase } from '../database/pg-vector-store';
 import {
   authEvents,
@@ -71,8 +71,10 @@ export interface AuthRepository {
     purpose: VerificationPurpose,
   ): Promise<VerificationCodeRecord | null>;
   countCodesSince(type: AuthIdentityType, identifier: string, since: Date): Promise<number>;
-  incrementCodeAttempt(id: string): Promise<VerificationCodeRecord | null>;
-  consumeCode(id: string): Promise<void>;
+  /** 原子自增；已消费或已达上限时返回 null，并发请求不能越过次数上限。 */
+  incrementCodeAttempt(id: string, maxAttempts: number): Promise<VerificationCodeRecord | null>;
+  /** 只有第一次消费返回 true。 */
+  consumeCode(id: string): Promise<boolean>;
   insertSession(input: {
     userId: string;
     tokenHash: string;
@@ -308,26 +310,31 @@ export class DrizzleAuthRepository implements AuthRepository {
     return Number(row?.value ?? 0);
   }
 
-  async incrementCodeAttempt(id: string): Promise<VerificationCodeRecord | null> {
-    const [current] = await this.db
-      .select()
-      .from(verificationCodes)
-      .where(eq(verificationCodes.id, id))
-      .limit(1);
-    if (!current) return null;
+  async incrementCodeAttempt(
+    id: string,
+    maxAttempts: number,
+  ): Promise<VerificationCodeRecord | null> {
     const [row] = await this.db
       .update(verificationCodes)
-      .set({ attemptCount: current.attemptCount + 1 })
-      .where(eq(verificationCodes.id, id))
+      .set({ attemptCount: sql`${verificationCodes.attemptCount} + 1` })
+      .where(
+        and(
+          eq(verificationCodes.id, id),
+          isNull(verificationCodes.consumedAt),
+          lt(verificationCodes.attemptCount, maxAttempts),
+        ),
+      )
       .returning();
     return row ?? null;
   }
 
-  async consumeCode(id: string): Promise<void> {
-    await this.db
+  async consumeCode(id: string): Promise<boolean> {
+    const rows = await this.db
       .update(verificationCodes)
       .set({ consumedAt: new Date() })
-      .where(eq(verificationCodes.id, id));
+      .where(and(eq(verificationCodes.id, id), isNull(verificationCodes.consumedAt)))
+      .returning({ id: verificationCodes.id });
+    return rows.length > 0;
   }
 
   async findSessionByTokenHash(tokenHash: string): Promise<AuthSessionRecord | null> {

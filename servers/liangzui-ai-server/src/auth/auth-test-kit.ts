@@ -1,6 +1,5 @@
 import { createHash } from 'node:crypto';
-import { HttpException, ServiceUnavailableException } from '@nestjs/common';
-import { expect } from 'vitest';
+import { HttpException } from '@nestjs/common';
 import type { AuthRuntimeConfig } from './auth.config';
 import type { AuthRequestMeta } from './auth-http';
 import { AuthService } from './auth.service';
@@ -77,16 +76,20 @@ export const expectAuthError = async (
   status: number,
   code: string,
 ): Promise<void> => {
+  let caught: unknown;
   try {
     await run;
-    expect.fail('应该抛出认证错误');
   } catch (error) {
-    expect(error).toBeInstanceOf(HttpException);
-    if (error instanceof ServiceUnavailableException) {
-      expect.fail('不应是 503');
-    }
-    if (!(error instanceof HttpException)) return;
-    expect(error.getStatus()).toBe(status);
-    expect(error.getResponse()).toMatchObject({ code });
+    caught = error;
+  }
+  if (!(caught instanceof HttpException)) {
+    throw new Error(`应该抛出 HTTP ${status} ${code}，实际: ${String(caught)}`);
+  }
+  const body = caught.getResponse();
+  const actual = typeof body === 'object' && body !== null && 'code' in body ? body.code : body;
+  if (caught.getStatus() !== status || actual !== code) {
+    throw new Error(
+      `应该抛出 HTTP ${status} ${code}，实际: ${caught.getStatus()} ${String(actual)}`,
+    );
   }
 };

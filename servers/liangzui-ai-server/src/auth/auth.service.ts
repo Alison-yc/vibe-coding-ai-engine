@@ -108,7 +108,7 @@ export class AuthService {
       throwAuthError(HttpStatus.CONFLICT, 'IDENTIFIER_TAKEN', '该邮箱或手机号已注册');
     }
     const passwordHash = await this.passwords.hash(input.password);
-    const guest = meta.token ? await this.readSession(meta.token, 'throw') : null;
+    const guest = meta.token ? await this.readSession(meta.token, 'ignore') : null;
     if (guest && guest.user.kind !== 'guest') {
       throwAuthError(HttpStatus.BAD_REQUEST, 'BAD_REQUEST', '当前账号已注册');
     }

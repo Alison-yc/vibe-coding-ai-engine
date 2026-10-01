@@ -92,7 +92,7 @@ describe('认证 HTTP 集成', () => {
       providers: [{ provide: AuthService, useValue: auth }, AuthGuard],
     }).compile();
     app = module.createNestApplication();
-    await app.init();
+    await app.listen(0, '127.0.0.1');
   }, 30_000);
 
   afterEach(async () => {
@@ -255,6 +255,34 @@ describe('认证 HTTP 集成', () => {
     expect(text).not.toContain(token);
     expect(text).not.toContain(guest.body.token);
   }, 60_000);
+
+  it('并发猜码不会越过 5 次上限，用尽后正确验证码也失效', async () => {
+    const email = `burst-${randomUUID()}@example.com`;
+    identifiers.add(email);
+    await http()
+      .post('/auth/verification-codes')
+      .send({ type: 'email', identifier: email, purpose: 'login' })
+      .expect(200);
+    const [issued] = await db
+      .select()
+      .from(verificationCodes)
+      .where(eq(verificationCodes.identifier, email));
+    if (!issued) throw new Error('缺少验证码记录');
+    const repo = new DrizzleAuthRepository(db);
+    const results = await Promise.all(
+      Array.from({ length: 12 }, () => repo.incrementCodeAttempt(issued.id, 5)),
+    );
+    expect(results.filter(Boolean)).toHaveLength(5);
+    const [row] = await db
+      .select()
+      .from(verificationCodes)
+      .where(eq(verificationCodes.id, issued.id));
+    expect(row?.attemptCount).toBe(5);
+    await http()
+      .post('/auth/login/code')
+      .send({ type: 'email', identifier: email, code })
+      .expect(400);
+  }, 30_000);
 
   it('并发注册只产生一个管理员，并只由该管理员认领无主数据', async () => {
     const before = await countAdmins();

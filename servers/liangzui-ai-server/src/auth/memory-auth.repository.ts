@@ -185,16 +185,21 @@ export class MemoryAuthRepository implements AuthRepository {
     ).length;
   }
 
-  async incrementCodeAttempt(id: string): Promise<VerificationCodeRecord | null> {
+  async incrementCodeAttempt(
+    id: string,
+    maxAttempts: number,
+  ): Promise<VerificationCodeRecord | null> {
     const row = this.codes.find((code) => code.id === id);
-    if (!row) return null;
+    if (!row || row.consumedAt || row.attemptCount >= maxAttempts) return null;
     row.attemptCount += 1;
     return row;
   }
 
-  async consumeCode(id: string): Promise<void> {
+  async consumeCode(id: string): Promise<boolean> {
     const row = this.codes.find((code) => code.id === id);
-    if (row) row.consumedAt = new Date();
+    if (!row || row.consumedAt) return false;
+    row.consumedAt = new Date();
+    return true;
   }
 
   async insertSession(input: {

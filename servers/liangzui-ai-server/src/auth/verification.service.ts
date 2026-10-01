@@ -87,12 +87,11 @@ export class VerificationService {
     ) {
       throwAuthError(HttpStatus.BAD_REQUEST, 'VERIFICATION_CODE_INVALID', '验证码无效或已过期');
     }
-    const updated = await repo.incrementCodeAttempt(row.id);
+    const updated = await repo.incrementCodeAttempt(row.id, VERIFICATION_MAX_ATTEMPTS);
     const expected = hashVerificationCode(purpose, input.identifier, input.code);
-    if (!updated || !digestEqual(updated.codeHash, expected)) {
+    if (!updated || !digestEqual(updated.codeHash, expected) || !(await repo.consumeCode(row.id))) {
       throwAuthError(HttpStatus.BAD_REQUEST, 'VERIFICATION_CODE_INVALID', '验证码无效或已过期');
     }
-    await repo.consumeCode(row.id);
     if (this.config.nodeEnv === 'production') {
       this.logger.warn(
         {},

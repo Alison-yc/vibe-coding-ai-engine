@@ -171,6 +171,19 @@ describe('AuthService', () => {
     await expectAuthError(auth.authenticate(disabled.token), 403, 'FORBIDDEN');
   });
 
+  it('注册时携带已注销的访客 token，按新用户注册且不浪费验证码', async () => {
+    const { auth } = createAuthHarness();
+    const guest = await auth.issueGuest(testMeta());
+    await auth.logout(await auth.authenticate(guest.token));
+    await auth.sendCode({ type: 'email', identifier: email, purpose: 'register' });
+    const registered = await auth.register(
+      { type: 'email', identifier: email, password, code },
+      { ...testMeta(), token: guest.token },
+    );
+    expect(registered.user.id).not.toBe(guest.user.id);
+    expect(registered.user.kind).toBe('registered');
+  });
+
   it('注册用户超过 5 分钟后续期，标识冲突映射为 IDENTIFIER_TAKEN', async () => {
     const { auth, repo, tokens } = createAuthHarness();
     await auth.sendCode({ type: 'email', identifier: email, purpose: 'register' });
