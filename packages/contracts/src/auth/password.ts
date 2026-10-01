@@ -1,6 +1,6 @@
 import { z } from 'zod';
 
-/** scrypt 输入上限 72 字节按字符计；更长的密码在部分实现里会被静默截断。 */
+/** 上限用于约束哈希输入长度，避免超长密码被用来放大 scrypt 计算开销。 */
 export const PasswordSchema = z.string().min(8).max(72);
 export type Password = z.infer<typeof PasswordSchema>;
 

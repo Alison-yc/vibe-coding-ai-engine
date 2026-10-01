@@ -37,6 +37,7 @@ describe('ApiErrorFilter', () => {
   it.each([
     [HttpStatus.BAD_REQUEST, 'BAD_REQUEST'],
     [HttpStatus.UNAUTHORIZED, 'UNAUTHORIZED'],
+    [HttpStatus.FORBIDDEN, 'FORBIDDEN'],
     [HttpStatus.CONFLICT, 'CONFLICT'],
     [HttpStatus.PAYLOAD_TOO_LARGE, 'PAYLOAD_TOO_LARGE'],
     [HttpStatus.TOO_MANY_REQUESTS, 'RATE_LIMITED'],

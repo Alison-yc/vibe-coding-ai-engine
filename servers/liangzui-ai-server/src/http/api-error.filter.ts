@@ -17,6 +17,7 @@ import {
 const statusToCode = (status: number): ErrorCode => {
   if (status === 400) return 'BAD_REQUEST';
   if (status === 401) return 'UNAUTHORIZED';
+  if (status === 403) return 'FORBIDDEN';
   if (status === 404) return 'NOT_FOUND';
   if (status === 409) return 'CONFLICT';
   if (status === 413) return 'PAYLOAD_TOO_LARGE';
