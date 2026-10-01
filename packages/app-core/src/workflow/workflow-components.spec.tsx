@@ -219,9 +219,23 @@ describe('工作流组件', () => {
       y: 0,
       toJSON: () => ({}),
     } as DOMRect);
-    fireEvent.pointerDown(llmButton, { pointerId: 1, button: 0, clientX: 40, clientY: 40 });
-    fireEvent.pointerMove(window, { pointerId: 1, buttons: 1, clientX: 320, clientY: 240 });
-    fireEvent.pointerUp(window, { pointerId: 1, button: 0, clientX: 320, clientY: 240 });
+    // jsdom 未实现 Pointer Capture 与 elementFromPoint；真实浏览器里 pointerup 会先经过 document 捕获阶段。
+    Object.assign(llmButton, {
+      setPointerCapture: vi.fn(),
+      releasePointerCapture: vi.fn(),
+      hasPointerCapture: () => false,
+    });
+    Object.defineProperty(document, 'elementFromPoint', {
+      configurable: true,
+      value: () => null,
+    });
+    try {
+      fireEvent.pointerDown(llmButton, { pointerId: 1, button: 0, clientX: 40, clientY: 40 });
+      fireEvent.pointerMove(window, { pointerId: 1, buttons: 1, clientX: 320, clientY: 240 });
+      fireEvent.pointerUp(document, { pointerId: 1, button: 0, clientX: 320, clientY: 240 });
+    } finally {
+      Reflect.deleteProperty(document, 'elementFromPoint');
+    }
     expect(useWorkflowStore.getState().nodes.length).toBe(before + 1);
     expect(useWorkflowStore.getState().nodes.some((node) => node.data.type === 'llm')).toBe(true);
   });
