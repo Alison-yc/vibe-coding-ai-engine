@@ -323,9 +323,11 @@ describe('导航账号入口', () => {
     type('邮箱或手机号', ACCOUNT.identifier);
     type('密码', ACCOUNT.password);
     submit('登录');
-    fireEvent.click(await screen.findByRole('button', { name: '退出登录' }));
+    // 登录→写 token→重置并重取 me 是多段异步链，全量并行跑时默认 1s 偶发不够。
+    const sessionChain = { timeout: 5000 };
+    fireEvent.click(await screen.findByRole('button', { name: '退出登录' }, sessionChain));
 
-    expect(await screen.findByRole('link', { name: '登录' })).toBeTruthy();
+    expect(await screen.findByRole('link', { name: '登录' }, sessionChain)).toBeTruthy();
     expect(backend.callsTo('/auth/logout')).toHaveLength(1);
     await waitForGuest(platform);
   });
