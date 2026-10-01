@@ -6,10 +6,19 @@ import { readAuthToken, subscribeUnauthorized } from '../api/http';
 import { fetchMe, issueGuestSession, logoutSession } from './auth-api';
 import { AUTH_ME_QUERY_KEY, AuthContext, type AuthContextValue } from './use-auth';
 
-const ensureSessionToken = async (platform: Platform): Promise<void> => {
-  if (await readAuthToken(platform)) return;
-  const session = await issueGuestSession(platform);
-  await platform.secrets.set(AUTH_TOKEN_STORAGE_KEY, session.token);
+const pendingGuestIssue = new WeakMap<Platform, Promise<void>>();
+
+/** `me` 被取消重取时旧的 queryFn 不会中止；单飞避免并发签发出多个孤儿访客。 */
+const ensureSessionToken = (platform: Platform): Promise<void> => {
+  const inflight = pendingGuestIssue.get(platform);
+  if (inflight) return inflight;
+  const task = (async () => {
+    if (await readAuthToken(platform)) return;
+    const session = await issueGuestSession(platform);
+    await platform.secrets.set(AUTH_TOKEN_STORAGE_KEY, session.token);
+  })().finally(() => pendingGuestIssue.delete(platform));
+  pendingGuestIssue.set(platform, task);
+  return task;
 };
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {

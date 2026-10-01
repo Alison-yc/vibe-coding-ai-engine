@@ -189,6 +189,22 @@ describe('AuthProvider', () => {
     await expect(platform.secrets.get(AUTH_TOKEN_STORAGE_KEY)).resolves.toMatch(/^guest-/);
   });
 
+  it('服务端会话已失效时退出，只签发一个新访客', async () => {
+    const backend = createFakeBackend();
+    const platform = createPlatform();
+    await platform.secrets.set(AUTH_TOKEN_STORAGE_KEY, backend.issueRegistered('reg-1').token);
+    renderProvider(platform);
+    await waitFor(() => expect(probeText()).toBe('ready:registered:tools'));
+
+    backend.sessions.delete('reg-1');
+    await act(() => latest.current!.logout());
+
+    await waitFor(() => expect(probeText()).toBe('ready:guest:no-tools'));
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(backend.calls.filter((call) => call.path === '/auth/guest')).toHaveLength(1);
+    await expect(platform.secrets.get(AUTH_TOKEN_STORAGE_KEY)).resolves.toMatch(/^guest-/);
+  });
+
   it('业务请求收到 401 时清理当前 token 并换回访客', async () => {
     const backend = createFakeBackend();
     const platform = createPlatform();
