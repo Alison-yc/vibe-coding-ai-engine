@@ -21,6 +21,7 @@ import type { Request, Response } from 'express';
 import { abortOnClientClose } from '../http/abort-on-client-close';
 import { ZodValidationPipe } from '../http/zod-validation.pipe';
 import { AgentService } from './agent.service';
+import { RequirePermissions } from '../auth/access-policy';
 
 const flushResponse = (response: Response): void => {
   (response as Response & { flush?: () => void }).flush?.();
@@ -30,6 +31,7 @@ const flushResponse = (response: Response): void => {
 export class AgentController {
   constructor(@Inject(AgentService) private readonly agent: AgentService) {}
 
+  @RequirePermissions('mcp:read')
   @Get('tools')
   listTools(@Query('sessionId') sessionId?: string) {
     const parsed = sessionId ? UuidSchema.safeParse(sessionId) : undefined;
@@ -37,6 +39,7 @@ export class AgentController {
     return this.agent.listExposedTools(parsed?.data);
   }
 
+  @RequirePermissions('chat:file-access')
   @Post(':sessionId/stream')
   async stream(
     @Param('sessionId', new ZodValidationPipe(UuidSchema)) sessionId: string,
@@ -68,6 +71,7 @@ export class AgentController {
     }
   }
 
+  @RequirePermissions('chat:file-access')
   @Post(':sessionId/permissions/:approvalId')
   respondPermission(
     @Param('sessionId', new ZodValidationPipe(UuidSchema)) sessionId: string,

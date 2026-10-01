@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import request from 'supertest';
 import { createAuthHarness } from './auth-test-kit';
 import { AuthController } from './auth.controller';
-import { AuthGuard } from './auth.guard';
+import { AUTH_GLOBAL_GUARDS } from './global-guards';
 import { AuthService } from './auth.service';
 
 const password = 'correct-horse';
@@ -25,7 +25,7 @@ describe('AuthController', () => {
     repoClient = () => harness.repo.sessions[0]?.client;
     const module = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{ provide: AuthService, useValue: harness.auth }, AuthGuard],
+      providers: [{ provide: AuthService, useValue: harness.auth }, ...AUTH_GLOBAL_GUARDS],
     }).compile();
     app = module.createNestApplication();
     await app.init();

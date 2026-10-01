@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, HttpCode, Inject, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Headers, HttpCode, Inject, Post } from '@nestjs/common';
 import {
   CodeLoginRequestSchema,
   PasswordLoginRequestSchema,
@@ -12,7 +12,7 @@ import {
   type SendCodeRequest,
 } from '@ai-engine/contracts';
 import { readAuthRequestMeta } from './auth-http';
-import { AuthGuard } from './auth.guard';
+import { Authenticated, Public } from './access-policy';
 import { AuthService, type AuthPrincipal } from './auth.service';
 import { CurrentPrincipal } from './current-principal';
 import { ZodValidationPipe } from '../http/zod-validation.pipe';
@@ -21,6 +21,7 @@ import { ZodValidationPipe } from '../http/zod-validation.pipe';
 export class AuthController {
   constructor(@Inject(AuthService) private readonly auth: AuthService) {}
 
+  @Public()
   @Post('guest')
   @HttpCode(200)
   issueGuest(
@@ -31,12 +32,14 @@ export class AuthController {
     return this.auth.issueGuest(readAuthRequestMeta(authorization, userAgent, client));
   }
 
+  @Public()
   @Post('verification-codes')
   @HttpCode(200)
   sendCode(@Body(new ZodValidationPipe(SendCodeRequestSchema)) body: SendCodeRequest) {
     return this.auth.sendCode(body);
   }
 
+  @Public()
   @Post('register')
   @HttpCode(200)
   register(
@@ -48,6 +51,7 @@ export class AuthController {
     return this.auth.register(body, readAuthRequestMeta(authorization, userAgent, client));
   }
 
+  @Public()
   @Post('login/password')
   @HttpCode(200)
   loginWithPassword(
@@ -58,6 +62,7 @@ export class AuthController {
     return this.auth.loginWithPassword(body, readAuthRequestMeta(undefined, userAgent, client));
   }
 
+  @Public()
   @Post('login/code')
   @HttpCode(200)
   loginWithCode(
@@ -68,6 +73,7 @@ export class AuthController {
     return this.auth.loginWithCode(body, readAuthRequestMeta(undefined, userAgent, client));
   }
 
+  @Public()
   @Post('password-resets')
   @HttpCode(204)
   resetPassword(
@@ -78,13 +84,13 @@ export class AuthController {
 
   @Post('logout')
   @HttpCode(204)
-  @UseGuards(AuthGuard)
+  @Authenticated()
   logout(@CurrentPrincipal() principal: AuthPrincipal) {
     return this.auth.logout(principal);
   }
 
   @Get('me')
-  @UseGuards(AuthGuard)
+  @Authenticated()
   me(@CurrentPrincipal() principal: AuthPrincipal) {
     return this.auth.me(principal);
   }

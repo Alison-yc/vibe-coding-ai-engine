@@ -9,7 +9,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { hashIdentifier } from '../../src/auth/identifier-hash';
 import type { AppDatabase } from '../../src/database/pg-vector-store';
 import { AuthController } from '../../src/auth/auth.controller';
-import { AuthGuard } from '../../src/auth/auth.guard';
+import { AUTH_GLOBAL_GUARDS } from '../../src/auth/global-guards';
 import { AuthService } from '../../src/auth/auth.service';
 import { DrizzleAuthRepository } from '../../src/auth/auth.repository';
 import { PasswordHasher } from '../../src/auth/password-hasher';
@@ -89,7 +89,7 @@ describe('认证 HTTP 集成', () => {
     );
     const module = await Test.createTestingModule({
       controllers: [AuthController],
-      providers: [{ provide: AuthService, useValue: auth }, AuthGuard],
+      providers: [{ provide: AuthService, useValue: auth }, ...AUTH_GLOBAL_GUARDS],
     }).compile();
     app = module.createNestApplication();
     await app.listen(0, '127.0.0.1');

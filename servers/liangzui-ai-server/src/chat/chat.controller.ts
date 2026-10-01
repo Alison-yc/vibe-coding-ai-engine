@@ -26,6 +26,7 @@ import type { Request, Response } from 'express';
 import { abortOnClientClose } from '../http/abort-on-client-close';
 import { ZodValidationPipe } from '../http/zod-validation.pipe';
 import { ChatService } from './chat.service';
+import { RequirePermissions } from '../auth/access-policy';
 
 const flushResponse = (response: Response): void => {
   (response as Response & { flush?: () => void }).flush?.();
@@ -35,6 +36,7 @@ const flushResponse = (response: Response): void => {
 export class ChatController {
   constructor(@Inject(ChatService) private readonly chat: ChatService) {}
 
+  @RequirePermissions('chat:basic')
   @Post('sessions')
   createSession(
     @Body(new ZodValidationPipe(CreateChatSessionRequestSchema)) body: CreateChatSessionRequest,
@@ -42,16 +44,19 @@ export class ChatController {
     return this.chat.createSession(body);
   }
 
+  @RequirePermissions('chat:basic')
   @Get('sessions')
   async listSessions() {
     return ChatSessionListResponseSchema.parse({ sessions: await this.chat.listSessions() });
   }
 
+  @RequirePermissions('chat:basic')
   @Get('sessions/:sessionId')
   getSession(@Param('sessionId', new ZodValidationPipe(UuidSchema)) sessionId: string) {
     return this.wrap(() => this.chat.getSession(sessionId));
   }
 
+  @RequirePermissions('chat:basic')
   @Patch('sessions/:sessionId')
   updateSession(
     @Param('sessionId', new ZodValidationPipe(UuidSchema)) sessionId: string,
@@ -60,11 +65,13 @@ export class ChatController {
     return this.wrap(() => this.chat.updateSession(sessionId, body));
   }
 
+  @RequirePermissions('chat:basic')
   @Delete('sessions/:sessionId')
   deleteSession(@Param('sessionId', new ZodValidationPipe(UuidSchema)) sessionId: string) {
     return this.wrap(() => this.chat.deleteSession(sessionId));
   }
 
+  @RequirePermissions('chat:basic')
   @Get('sessions/:sessionId/messages')
   async listMessages(@Param('sessionId', new ZodValidationPipe(UuidSchema)) sessionId: string) {
     return this.wrap(async () =>
@@ -74,6 +81,7 @@ export class ChatController {
     );
   }
 
+  @RequirePermissions('chat:basic')
   @Post('sessions/:sessionId/stream')
   async stream(
     @Param('sessionId', new ZodValidationPipe(UuidSchema)) sessionId: string,

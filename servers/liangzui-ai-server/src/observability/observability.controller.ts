@@ -8,6 +8,7 @@ import { Controller, Get, NotFoundException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import type { AppConfig } from '../config/ollama.config';
 import { LlmMetricsService } from './llm-metrics.service';
+import { Public, RequirePermissions } from '../auth/access-policy';
 
 @Controller()
 export class ObservabilityController {
@@ -16,6 +17,7 @@ export class ObservabilityController {
     private readonly config: ConfigService<AppConfig, true>,
   ) {}
 
+  @Public()
   @Get('health')
   health(): HealthResponse {
     return HealthResponseSchema.parse({
@@ -29,6 +31,7 @@ export class ObservabilityController {
     });
   }
 
+  @RequirePermissions('observability:read')
   @Get('dev/observability/metrics')
   getMetrics(): ObservabilityMetricsResponse {
     if (this.config.get('NODE_ENV', { infer: true }) === 'production') {

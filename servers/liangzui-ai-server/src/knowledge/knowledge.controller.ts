@@ -28,11 +28,13 @@ import {
 import { ZodValidationPipe } from '../http/zod-validation.pipe';
 import { KnowledgeService } from './knowledge.service';
 import { EmptyPdfTextError, UnsupportedDocumentTypeError } from './pipeline/extract';
+import { RequirePermissions } from '../auth/access-policy';
 
 @Controller('knowledge')
 export class KnowledgeController {
   constructor(@Inject(KnowledgeService) private readonly knowledge: KnowledgeService) {}
 
+  @RequirePermissions('knowledge:write')
   @Post('datasets')
   createDataset(
     @Body(new ZodValidationPipe(CreateDatasetRequestSchema)) body: CreateDatasetRequest,
@@ -40,26 +42,31 @@ export class KnowledgeController {
     return this.knowledge.createDataset(body);
   }
 
+  @RequirePermissions('knowledge:read')
   @Get('datasets')
   listDatasets() {
     return this.knowledge.listDatasets();
   }
 
+  @RequirePermissions('knowledge:read')
   @Get('datasets/:datasetId')
   getDataset(@Param('datasetId', new ZodValidationPipe(UuidSchema)) datasetId: string) {
     return this.wrap(() => this.knowledge.getDataset(datasetId));
   }
 
+  @RequirePermissions('knowledge:write')
   @Delete('datasets/:datasetId')
   deleteDataset(@Param('datasetId', new ZodValidationPipe(UuidSchema)) datasetId: string) {
     return this.wrap(() => this.knowledge.deleteDataset(datasetId));
   }
 
+  @RequirePermissions('knowledge:read')
   @Get('datasets/:datasetId/documents')
   listDocuments(@Param('datasetId', new ZodValidationPipe(UuidSchema)) datasetId: string) {
     return this.knowledge.listDocuments(datasetId);
   }
 
+  @RequirePermissions('knowledge:write')
   @Post('datasets/:datasetId/documents')
   createPasteDocument(
     @Param('datasetId', new ZodValidationPipe(UuidSchema)) datasetId: string,
@@ -69,6 +76,7 @@ export class KnowledgeController {
     return this.wrap(() => this.knowledge.createPasteDocument(datasetId, body));
   }
 
+  @RequirePermissions('knowledge:write')
   @Post('datasets/:datasetId/documents/upload')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 10 * 1024 * 1024 } }))
   uploadDocument(
@@ -85,21 +93,25 @@ export class KnowledgeController {
     );
   }
 
+  @RequirePermissions('knowledge:read')
   @Get('documents/:documentId')
   getDocument(@Param('documentId', new ZodValidationPipe(UuidSchema)) documentId: string) {
     return this.wrap(() => this.knowledge.getDocument(documentId));
   }
 
+  @RequirePermissions('knowledge:write')
   @Delete('documents/:documentId')
   deleteDocument(@Param('documentId', new ZodValidationPipe(UuidSchema)) documentId: string) {
     return this.wrap(() => this.knowledge.deleteDocument(documentId));
   }
 
+  @RequirePermissions('knowledge:write')
   @Post('documents/:documentId/reindex')
   reindex(@Param('documentId', new ZodValidationPipe(UuidSchema)) documentId: string) {
     return this.wrap(() => this.knowledge.reindex(documentId));
   }
 
+  @RequirePermissions('knowledge:read')
   @Post('datasets/:datasetId/split-preview')
   splitPreview(
     @Param('datasetId', new ZodValidationPipe(UuidSchema)) datasetId: string,
@@ -111,6 +123,7 @@ export class KnowledgeController {
     });
   }
 
+  @RequirePermissions('knowledge:read')
   @Post('datasets/:datasetId/retrieve')
   retrieve(
     @Param('datasetId', new ZodValidationPipe(UuidSchema)) datasetId: string,
@@ -119,6 +132,7 @@ export class KnowledgeController {
     return this.wrap(() => this.knowledge.retrieve(datasetId, body));
   }
 
+  @RequirePermissions('knowledge:read')
   @Post('datasets/:datasetId/answer')
   answer(
     @Param('datasetId', new ZodValidationPipe(UuidSchema)) datasetId: string,

@@ -6,13 +6,13 @@ import { DatabaseModule } from '../database/database.module';
 import type { AppDatabase } from '../database/pg-vector-store';
 import { AUTH_CONFIG, readAuthRuntimeConfig } from './auth.config';
 import { AuthController } from './auth.controller';
-import { AuthGuard } from './auth.guard';
 import { AUTH_REPOSITORY, DrizzleAuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
 import { PasswordHasher } from './password-hasher';
 import { SessionTokenService } from './session-token';
 import { StaticVerificationCodeSender, VERIFICATION_CODE_SENDER } from './verification-code-sender';
 import { VerificationService } from './verification.service';
+import { AUTH_GLOBAL_GUARDS } from './global-guards';
 
 @Module({
   imports: [ConfigModule, DatabaseModule],
@@ -37,8 +37,8 @@ import { VerificationService } from './verification.service';
     },
     VerificationService,
     AuthService,
-    AuthGuard,
+    ...AUTH_GLOBAL_GUARDS,
   ],
-  exports: [AuthService, AuthGuard],
+  exports: [AuthService],
 })
 export class AuthModule {}

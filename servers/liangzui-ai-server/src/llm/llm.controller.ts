@@ -9,11 +9,13 @@ import type { Request } from 'express';
 import { AppService } from '../app.service';
 import { abortOnClientClose } from '../http/abort-on-client-close';
 import { ZodValidationPipe } from '../http/zod-validation.pipe';
+import { RequirePermissions } from '../auth/access-policy';
 
 @Controller('llm')
 export class LlmController {
   constructor(@Inject(AppService) private readonly appService: AppService) {}
 
+  @RequirePermissions('chat:tools')
   @Post('translate')
   async translate(
     @Req() request: Request,
