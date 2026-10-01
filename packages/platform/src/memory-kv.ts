@@ -1,4 +1,6 @@
-import type { KeyValueStore } from './types';
+import type { KeyValueStore, SecretStore } from './types';
+
+export const createMemorySecretStore = (): SecretStore => createMemoryKeyValueStore();
 
 export const createMemoryKeyValueStore = (): KeyValueStore => {
   const store = new Map<string, string>();

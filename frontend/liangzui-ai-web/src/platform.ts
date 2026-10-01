@@ -37,10 +37,12 @@ export const createWebPlatform = (): Platform => {
       windowControls: false,
       routerMode: 'history',
       devTools: import.meta.env.DEV,
+      client: 'web',
     },
     pickDirectory: () => Promise.resolve(window.prompt('请输入目录路径')),
     pickFiles: () => Promise.reject(new NotImplementedError('pickFiles')),
     kv,
+    secrets: createWebKeyValueStore(),
     getApiBaseUrl: () =>
       window.localStorage.getItem(API_BASE_URL_STORAGE_KEY) ??
       readViteString(import.meta.env.VITE_API_BASE_URL, 'http://localhost:3000'),

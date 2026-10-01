@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { NotImplementedError } from './errors';
-import { createMemoryKeyValueStore } from './memory-kv';
+import { createMemoryKeyValueStore, createMemorySecretStore } from './memory-kv';
 import { PlatformProvider, usePlatform } from './provider';
 import type { Platform } from './types';
 
@@ -16,6 +16,7 @@ const stubPlatform = {
   pickDirectory: async () => null,
   pickFiles: async () => [],
   kv: createMemoryKeyValueStore(),
+  secrets: createMemorySecretStore(),
   getApiBaseUrl: () => 'http://localhost:3000',
   openExternal: async () => undefined,
   getAppInfo: async () => ({ name: 'test', version: '0.0.0' }),
@@ -46,6 +47,18 @@ describe('createMemoryKeyValueStore', () => {
     await expect(kv.get('k')).resolves.toBe('v');
     await kv.remove('k');
     await expect(kv.get('k')).resolves.toBeNull();
+  });
+});
+
+describe('createMemorySecretStore', () => {
+  it('与普通键值存储互相隔离', async () => {
+    const kv = createMemoryKeyValueStore();
+    const secrets = createMemorySecretStore();
+    await secrets.set('auth.token', 'secret');
+    await expect(secrets.get('auth.token')).resolves.toBe('secret');
+    await expect(kv.get('auth.token')).resolves.toBeNull();
+    await secrets.remove('auth.token');
+    await expect(secrets.get('auth.token')).resolves.toBeNull();
   });
 });
 

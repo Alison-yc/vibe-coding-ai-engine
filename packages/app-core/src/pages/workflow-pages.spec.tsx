@@ -4,7 +4,12 @@ import type { ReactNode } from 'react';
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
+import {
+  createMemoryKeyValueStore,
+  createMemorySecretStore,
+  PlatformProvider,
+  type Platform,
+} from '@ai-engine/platform';
 import { createInstance } from 'i18next';
 import { I18nextProvider } from 'react-i18next';
 import { createI18nOptions } from '../i18n/resources';
@@ -25,6 +30,7 @@ const platform = {
   pickDirectory: async () => null,
   pickFiles: async () => [],
   kv: createMemoryKeyValueStore(),
+  secrets: createMemorySecretStore(),
   getApiBaseUrl: () => 'http://localhost:3000',
   getUiLocale: async () => 'en-US',
   setUiLocale: async () => undefined,

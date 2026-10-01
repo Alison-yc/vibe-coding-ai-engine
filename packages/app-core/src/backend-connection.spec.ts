@@ -1,4 +1,8 @@
-import { createMemoryKeyValueStore, type Platform } from '@ai-engine/platform';
+import {
+  createMemoryKeyValueStore,
+  createMemorySecretStore,
+  type Platform,
+} from '@ai-engine/platform';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   BackendConnectionError,
@@ -10,6 +14,7 @@ import {
 
 const platform = {
   kv: createMemoryKeyValueStore(),
+  secrets: createMemorySecretStore(),
 } as Platform;
 
 afterEach(() => {

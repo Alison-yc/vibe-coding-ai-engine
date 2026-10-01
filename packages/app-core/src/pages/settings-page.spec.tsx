@@ -4,6 +4,7 @@ import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import {
   createMemoryKeyValueStore,
+  createMemorySecretStore,
   PlatformProvider,
   readUiLocale,
   writeUiLocale,
@@ -41,6 +42,7 @@ const platform = {
   pickDirectory: async () => null,
   pickFiles: async () => [],
   kv,
+  secrets: createMemorySecretStore(),
   getApiBaseUrl: () => 'http://localhost:3000',
   getUiLocale: () => readUiLocale(kv),
   setUiLocale: (locale) =>

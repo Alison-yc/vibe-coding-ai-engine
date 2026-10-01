@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { createMemoryKeyValueStore, type Platform } from '@ai-engine/platform';
+import {
+  createMemoryKeyValueStore,
+  createMemorySecretStore,
+  type Platform,
+} from '@ai-engine/platform';
 import {
   createWorkflow,
   deleteWorkflow,
@@ -24,6 +28,7 @@ const platform = {
   pickDirectory: async () => null,
   pickFiles: async () => [],
   kv: createMemoryKeyValueStore(),
+  secrets: createMemorySecretStore(),
   getApiBaseUrl: () => 'http://localhost:3000/',
   openExternal: async () => undefined,
   getAppInfo: async () => ({ name: 'test', version: '0' }),

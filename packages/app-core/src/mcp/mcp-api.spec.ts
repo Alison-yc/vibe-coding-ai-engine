@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from 'vitest';
-import { createMemoryKeyValueStore, type Platform } from '@ai-engine/platform';
+import {
+  createMemoryKeyValueStore,
+  createMemorySecretStore,
+  type Platform,
+} from '@ai-engine/platform';
 import { listMcpServers, patchMcpServer } from './mcp-api';
 
 const platform = {
   getApiBaseUrl: () => 'http://localhost:3000',
   kv: createMemoryKeyValueStore(),
+  secrets: createMemorySecretStore(),
 } as unknown as Platform;
 
 describe('mcp api', () => {

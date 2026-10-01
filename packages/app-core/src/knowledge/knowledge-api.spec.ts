@@ -1,4 +1,8 @@
-import { createMemoryKeyValueStore, type Platform } from '@ai-engine/platform';
+import {
+  createMemoryKeyValueStore,
+  createMemorySecretStore,
+  type Platform,
+} from '@ai-engine/platform';
 import { describe, expect, it, vi } from 'vitest';
 import {
   answerDataset,
@@ -26,6 +30,7 @@ const stubPlatform: Platform = {
   pickDirectory: async () => null,
   pickFiles: async () => [],
   kv: createMemoryKeyValueStore(),
+  secrets: createMemorySecretStore(),
   getApiBaseUrl: () => 'http://localhost:3000/',
   openExternal: async () => undefined,
   getAppInfo: async () => ({ name: 'test', version: '0.0.0' }),

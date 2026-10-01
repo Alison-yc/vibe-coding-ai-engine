@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { API_BASE_URL_STORAGE_KEY } from '@ai-engine/platform';
+import { API_BASE_URL_STORAGE_KEY, AUTH_TOKEN_STORAGE_KEY } from '@ai-engine/platform';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createTauriPlatform } from './platform';
 
@@ -47,5 +47,15 @@ describe('createTauriPlatform', () => {
     await expect(platform.getUiLocale()).resolves.toBe('ja-JP');
     expect(document.documentElement.lang).toBe('ja-JP');
     expect(document.documentElement.dir).toBe('ltr');
+  });
+
+  it('登录凭证重启后仍可读取，并标记为 desktop 客户端', async () => {
+    await createTauriPlatform().secrets.set(AUTH_TOKEN_STORAGE_KEY, 'token-a');
+
+    const reloaded = createTauriPlatform();
+    await expect(reloaded.secrets.get(AUTH_TOKEN_STORAGE_KEY)).resolves.toBe('token-a');
+    expect(reloaded.capabilities.client).toBe('desktop');
+    await reloaded.secrets.remove(AUTH_TOKEN_STORAGE_KEY);
+    await expect(reloaded.secrets.get(AUTH_TOKEN_STORAGE_KEY)).resolves.toBeNull();
   });
 });

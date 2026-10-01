@@ -14,11 +14,21 @@ export type PlatformCapabilities = {
   backendConnectionSetup?: boolean;
   /** 桌面壳默认展示对话侧边栏，不依赖 lg 断点 */
   persistentChatSidebar?: boolean;
+  /** 登录会话记录的客户端类型 */
+  client?: 'web' | 'desktop';
 };
 
 export const API_BASE_URL_STORAGE_KEY = 'api.baseUrl';
+export const AUTH_TOKEN_STORAGE_KEY = 'auth.token';
 
 export type KeyValueStore = {
+  get: (key: string) => Promise<string | null>;
+  set: (key: string, value: string) => Promise<void>;
+  remove: (key: string) => Promise<void>;
+};
+
+/** 凭证单独成接口：将来桌面端可换成系统钥匙串，调用方不变。 */
+export type SecretStore = {
   get: (key: string) => Promise<string | null>;
   set: (key: string, value: string) => Promise<void>;
   remove: (key: string) => Promise<void>;
@@ -43,6 +53,7 @@ export type Platform = {
   pickDirectory: () => Promise<string | null>;
   pickFiles: (opts?: { accept?: string; multiple?: boolean }) => Promise<FileRef[]>;
   kv: KeyValueStore;
+  secrets: SecretStore;
   getApiBaseUrl: () => string;
   getUiLocale: () => Promise<UiLocale>;
   setUiLocale: (locale: UiLocale) => Promise<void>;

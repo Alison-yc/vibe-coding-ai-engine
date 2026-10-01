@@ -3,6 +3,7 @@ import { cleanup, render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import {
   createMemoryKeyValueStore,
+  createMemorySecretStore,
   PlatformProvider,
   readUiLocale,
   writeUiLocale,
@@ -25,6 +26,7 @@ const platform = {
   pickDirectory: async () => null,
   pickFiles: async () => [],
   kv,
+  secrets: createMemorySecretStore(),
   getApiBaseUrl: () => 'http://localhost:3000',
   getUiLocale: () => readUiLocale(kv),
   setUiLocale: (locale) => writeUiLocale(kv, locale, () => undefined),

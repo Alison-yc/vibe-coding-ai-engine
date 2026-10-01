@@ -2,7 +2,12 @@
 import { cleanup, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
+import {
+  createMemoryKeyValueStore,
+  createMemorySecretStore,
+  PlatformProvider,
+  type Platform,
+} from '@ai-engine/platform';
 import { createInstance } from 'i18next';
 import { type ReactNode } from 'react';
 import { I18nextProvider } from 'react-i18next';
@@ -67,6 +72,7 @@ const platform = {
   pickDirectory: async () => null,
   pickFiles: async () => [],
   kv: createMemoryKeyValueStore(),
+  secrets: createMemorySecretStore(),
   getUiLocale: async () => 'en-US',
   setUiLocale: async () => undefined,
   getApiBaseUrl: () => 'http://localhost:3000',

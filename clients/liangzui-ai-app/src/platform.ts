@@ -40,6 +40,7 @@ export const createTauriPlatform = (): Platform => {
       devTools: import.meta.env.DEV,
       backendConnectionSetup: true,
       persistentChatSidebar: true,
+      client: 'desktop',
     },
     pickDirectory: async () => {
       const selected = await open({ directory: true, multiple: false });
@@ -47,6 +48,7 @@ export const createTauriPlatform = (): Platform => {
     },
     pickFiles: () => Promise.reject(new NotImplementedError('pickFiles')),
     kv,
+    secrets: createTauriKeyValueStore(),
     getApiBaseUrl: () =>
       window.localStorage.getItem(API_BASE_URL_STORAGE_KEY) ?? DEFAULT_API_BASE_URL,
     getUiLocale: () => readUiLocale(kv),

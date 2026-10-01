@@ -1,4 +1,9 @@
-import { createMemoryKeyValueStore, PlatformProvider, type Platform } from '@ai-engine/platform';
+import {
+  createMemoryKeyValueStore,
+  createMemorySecretStore,
+  PlatformProvider,
+  type Platform,
+} from '@ai-engine/platform';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { createInstance } from 'i18next';
 import { createElement, type ReactElement } from 'react';
@@ -32,6 +37,7 @@ const stubPlatform = {
   pickDirectory: async () => null,
   pickFiles: async () => [],
   kv: createMemoryKeyValueStore(),
+  secrets: createMemorySecretStore(),
   getApiBaseUrl: () => 'http://localhost:3000',
   openExternal: async () => undefined,
   getAppInfo: async () => ({ name: 'test', version: '0.0.0' }),

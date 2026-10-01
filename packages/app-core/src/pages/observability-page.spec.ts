@@ -1,5 +1,9 @@
 import { ObservabilityMetricsResponseSchema } from '@ai-engine/contracts';
-import { createMemoryKeyValueStore, PlatformProvider } from '@ai-engine/platform';
+import {
+  createMemoryKeyValueStore,
+  createMemorySecretStore,
+  PlatformProvider,
+} from '@ai-engine/platform';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { MemoryRouter } from 'react-router';
@@ -23,6 +27,7 @@ const stubPlatform = {
   pickDirectory: async () => null,
   pickFiles: async () => [],
   kv: createMemoryKeyValueStore(),
+  secrets: createMemorySecretStore(),
   getApiBaseUrl: () => 'http://localhost:3000',
   openExternal: async () => undefined,
   getAppInfo: async () => ({ name: 'test', version: '0.0.0' }),
