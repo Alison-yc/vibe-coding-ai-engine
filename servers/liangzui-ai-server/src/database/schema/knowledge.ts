@@ -1,5 +1,6 @@
 import {
   customType,
+  index,
   integer,
   jsonb,
   pgTable,
@@ -8,19 +9,25 @@ import {
   uuid,
   vector,
 } from 'drizzle-orm/pg-core';
+import { users } from './auth';
 import { SCHEMA_EMBEDDING_DIMENSION } from './embedding-size';
 
 const bytea = customType<{ data: Buffer; driverData: Buffer }>({
   dataType: () => 'bytea',
 });
 
-export const datasets = pgTable('datasets', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name').notNull(),
-  embeddingModel: text('embedding_model').notNull(),
-  chunkConfig: jsonb('chunk_config').notNull().default({}),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const datasets = pgTable(
+  'datasets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id').references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    embeddingModel: text('embedding_model').notNull(),
+    chunkConfig: jsonb('chunk_config').notNull().default({}),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('datasets_owner_id').on(table.ownerId)],
+);
 
 export const documents = pgTable('documents', {
   id: uuid('id').primaryKey().defaultRandom(),

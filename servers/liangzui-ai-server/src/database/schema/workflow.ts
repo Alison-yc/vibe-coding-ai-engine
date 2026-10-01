@@ -1,13 +1,19 @@
-import { integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
+import { index, integer, jsonb, pgTable, text, timestamp, uuid } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
+import { users } from './auth';
 
-export const workflows = pgTable('workflows', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  name: text('name').notNull(),
-  graph: jsonb('graph').notNull(),
-  version: integer('version').notNull().default(1),
-  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
-});
+export const workflows = pgTable(
+  'workflows',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id').references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    graph: jsonb('graph').notNull(),
+    version: integer('version').notNull().default(1),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (table) => [index('workflows_owner_id').on(table.ownerId)],
+);
 
 export const workflowRuns = pgTable('workflow_runs', {
   id: uuid('id').primaryKey().defaultRandom(),
