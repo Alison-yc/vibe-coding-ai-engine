@@ -34,7 +34,7 @@ import { Link } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
 import { listAuthSessions, revokeAuthSession } from '../auth/auth-api';
 import { loginPathFor } from '../auth/require-permission';
-import { useAuth, useCan } from '../auth/use-auth';
+import { useAuth, useCan, useOptionalAuth } from '../auth/use-auth';
 import {
   checkBackendConnection,
   localizeBackendConnectionError,
@@ -508,12 +508,13 @@ export const SettingsPage = () => {
   const platform = usePlatform();
   const { t: commonT } = useTranslation();
   const canReadMcp = useCan('mcp:read');
+  const isRegistered = useOptionalAuth()?.isRegistered ?? false;
 
   return (
     <PageShell title={commonT('settings.title')} description={commonT('settings.description')}>
       <EffectsCard />
       <LanguageCard />
-      <DevicesCard />
+      {isRegistered ? <DevicesCard /> : null}
       {platform.capabilities.backendConnectionSetup ? <BackendAddressCard /> : null}
       {canReadMcp ? <McpSection /> : <LoginGuideCard />}
     </PageShell>

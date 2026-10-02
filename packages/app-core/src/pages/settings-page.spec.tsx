@@ -270,6 +270,8 @@ describe('SettingsPage 按角色门控', () => {
     expect(mocks.listServers).not.toHaveBeenCalled();
     expect(mocks.listExposed).not.toHaveBeenCalled();
     expect(mocks.listTools).not.toHaveBeenCalled();
+    expect(screen.queryByTestId('settings-devices')).toBeNull();
+    expect(mocks.listSessions).not.toHaveBeenCalled();
   });
 
   it('普通用户只读 MCP：能看到状态，不能勾选或重连', async () => {
