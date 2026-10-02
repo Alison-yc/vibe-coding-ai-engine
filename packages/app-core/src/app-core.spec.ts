@@ -206,9 +206,13 @@ describe('AppRoutes', () => {
         PlatformProvider,
         { value: stubPlatform },
         createElement(
-          MemoryRouter,
-          { initialEntries: ['/dev/observability'] },
-          createElement(ThemeProvider, null, createElement(AppRoutes)),
+          TestAuthProvider,
+          { role: 'admin' },
+          createElement(
+            MemoryRouter,
+            { initialEntries: ['/dev/observability'] },
+            createElement(ThemeProvider, null, createElement(AppRoutes)),
+          ),
         ),
       ),
     );

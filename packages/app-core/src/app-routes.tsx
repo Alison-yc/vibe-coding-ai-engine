@@ -136,5 +136,5 @@ const DevObservabilityRoute = ({ children }: { children: ReactNode }) => {
   if (!platform.capabilities.devTools) {
     return <Navigate to="/chat" replace />;
   }
-  return children;
+  return <RequirePermission permission="observability:read">{children}</RequirePermission>;
 };
