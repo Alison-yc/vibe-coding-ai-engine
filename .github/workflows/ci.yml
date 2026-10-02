@@ -173,6 +173,10 @@ jobs:
           --health-retries 12
     env:
       DATABASE_URL: postgresql://ai_engine:ai_engine_dev_only@localhost:5432/ai_engine
+      AUTH_VERIFICATION_MODE: static
+      AUTH_STATIC_VERIFICATION_CODE: "246810"
+      AUTH_SESSION_TTL_DAYS: "7"
+      AUTH_GUEST_TTL_DAYS: "30"
     steps:
       - uses: actions/checkout@v5
       - uses: pnpm/action-setup@v4

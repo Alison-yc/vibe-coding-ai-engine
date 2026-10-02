@@ -41,7 +41,7 @@ M0～M5 已完成，含 Web/桌面双端、会话模型切换与 NestJS sidecar�
 | 模型   | Ollama：qwen3.5:2b / gemma4:e2b / nomic-embed-text                |
 | 构建   | pnpm workspace + Turborepo                                        |
 | 测试   | Vitest 4 + Playwright，覆盖率阈值门禁                             |
-| 安全   | Semgrep（含 11 条自定义规则）+ OSV-Scanner + Gitleaks，SARIF 汇总 |
+| 安全   | Semgrep（含 12 条自定义规则）+ OSV-Scanner + Gitleaks，SARIF 汇总 |
 
 ## 架构
 
@@ -152,6 +152,12 @@ pnpm tauri:build       # 打包 macOS app 与 dmg，自动附加构建版本
 ```
 
 端口占用一览：Ollama `11434`、Postgres `5432`、NestJS `3000`、Web `5173`、Tauri `1420`。
+
+### 账号
+
+第一次打开应用会自动成为访客：可以对话、切换模型，也能改设置页里的本地项。知识库、工作流、文件访问和工具需要注册后使用。
+
+注册用邮箱或手机号，加上 `.env` 里的静态验证码（`AUTH_STATIC_VERIFICATION_CODE`，示例值 `246810`）和 8～72 位密码。第一个注册成功的用户是管理员，并认领迁移前没有主人的数据；之后的用户是普通用户。设置页的「登录设备」可以注销其他设备上的登录。超过 `AUTH_GUEST_TTL_DAYS`（默认 30 天）没有活动的访客，以及已过期或已注销的会话，会由服务端每天清理。
 
 ## 桌面端安装说明
 
