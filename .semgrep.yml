@@ -190,7 +190,7 @@ rules:
       exclude:
         - "**/*.spec.ts"
     pattern-regex: |-
-      \b(logger|console)\.\w+\([\s\S]*?\b(password|token|verificationCode)\s*[:,}]
+      \b(logger|console)\.\w+\([^;]*?\b(password|token|verificationCode)\s*[:,}]
 
   - id: no-full-content-logging
     languages: [typescript, javascript]

@@ -19,3 +19,9 @@ export function okHash(password: string, token: string) {
   // ok: no-sensitive-auth-log-fields
   logger.info({ passwordLength: password.length, tokenHash: token.slice(0, 8) });
 }
+
+export function okLaterStatement(token: string) {
+  // ok: no-sensitive-auth-log-fields
+  logger.info('issued');
+  return { token };
+}
