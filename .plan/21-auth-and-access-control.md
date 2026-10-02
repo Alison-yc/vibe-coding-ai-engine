@@ -16,7 +16,7 @@
 | 21-A   | 契约与数据层（7 张新表 + 归属列）  | CR-AUTH-1 | 已完成 |
 | 21-B   | 认证服务与 `/auth/*` 接口          | CR-AUTH-2 | 已完成 |
 | 21-C   | 前端登录态接入（不门控）           | CR-AUTH-3 | 已完成 |
-| 21-D   | 服务端强制鉴权、资源隔离、前端门控 | CR-AUTH-4 | 待开发 |
+| 21-D   | 服务端强制鉴权、资源隔离、前端门控 | CR-AUTH-4 | 待 CR  |
 | 21-E   | 加固、CI、打包验证                 | CR-AUTH-5 | 未开始 |
 
 ## 目标
@@ -489,6 +489,14 @@ CR-AUTH-3 自检记录：
   - 访客伪造 `fileAccess: true`、非空 `datasetIds` → 403；访客切换到 `gemma4:e2b` 能对话但工具候选为空。
   - **自检**：注释掉全局 Guard 注册，完整性测试与越权测试必须变红。
   - `pnpm ci:local` 全绿。
+
+CR-AUTH-4 自检记录（2026-10-02）：
+
+- 提交：全局 Guard 与路由策略 → CORS 白名单 → 会话归属 → 工作流归属 → 知识库归属 → 对话参数层 → 前端门控 → RAG 评测登录与 E2E 门控。
+- 变异自检：清空 Bearer、把访客 mock 改成 admin 权限，对应用例变红。此前各提交已分别确认去掉 Guard、归属 join、参数层校验和前端门控后变红。
+- `pnpm ci:local`：`format:check`、`lint`、`test:cov`（144 文件 / 785 条）、`sec:sast`、`build`、`rust:check` 通过。`sec:sca` 仍因既有 27 个依赖漏洞失败（3 low / 15 moderate / 9 high），本批次未改 lockfile，与 CR-AUTH-3 记录相同。Semgrep 另有 2 条 `pool.render` 的 audit 误报，不阻断。
+- E2E：新增访客锁定、登录重定向、设置页登录引导，以及已登录进入知识库、设置页 MCP 只读。现有用例补 `/auth/guest` 与 `/auth/me` 模拟。`chat.spec` 两个「新建」按钮、`workflow.spec` 拖入后 27 个节点仍是本批次之前的失败。
+- 未验证：`pnpm rag-eval` 需要本机已注册账号与 Ollama，只做了客户端单测，未对真实后端实跑。Tauri 桌面端登录走查仍挂在 README「并行保留」。
 
 ### CR-AUTH-5 · 加固与交付
 
