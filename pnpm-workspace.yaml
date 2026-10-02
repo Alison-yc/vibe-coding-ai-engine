@@ -23,8 +23,18 @@ overrides:
   "ansi-regex@4": "4.1.1"
   "ansi-regex@5": "5.0.1"
   fast-uri: ">=3.1.6"
-  js-yaml: ">=4.3.2"
+  "js-yaml@4": ">=4.3.2 <5"
+  "js-yaml@5": ">=5.4.1 <6"
   multer: ">=2.3.0"
   qs: ">=6.16.0"
   tmp: ">=0.2.6"
   use-sync-external-store: "^1.6.0"
+  # jsdom 传递的 undici 8.10.0：DoS / 证书校验 / 缓存投毒，修复线 8.10.2。
+  undici: ">=8.10.2"
+  # minimatch 传递的 brace-expansion：嵌套展开递归 DoS。上界停在本主版本，避免 1.x 被解析到 5.x。
+  "brace-expansion@1": ">=1.1.20 <2"
+  "brace-expansion@2": ">=2.1.6 <3"
+  "brace-expansion@5": ">=5.0.11 <6"
+  # MCP SDK 传递：hono JSX 转义、ip-address 子网判断。都停在当前主版本。
+  hono: ">=4.13.7 <5"
+  ip-address: ">=10.7.1 <11"

@@ -84,7 +84,7 @@
 
 如果发现自己想 disable 架构护栏（`no-restricted-imports`），那说明设计需要调整，不是护栏需要绕过。
 
-传递依赖漏洞用根 `pnpm-workspace.yaml` 的 `overrides` 钉到已修复版本，而不是关审计。当前钉住 `ansi-regex@4/5`、`fast-uri` / `js-yaml`（ajv / commitlint / eslint 传递依赖）、`multer` / `qs`（Express 栈传递依赖）与 `tmp`（来自 ESLint / Nest CLI 传递依赖，不在本项目直接调用路径上）。
+传递依赖漏洞用根 `pnpm-workspace.yaml` 的 `overrides` 钉到已修复版本，而不是关审计。当前钉住 `ansi-regex@4/5`、`fast-uri` / `js-yaml@4/5`（ajv / commitlint / eslint / LangChain 传递依赖）、`multer` / `qs`（Express 栈传递依赖）、`tmp`（来自 ESLint / Nest CLI 传递依赖，不在本项目直接调用路径上）、`undici`（jsdom 传递，测试用 HTTP 客户端）、`brace-expansion@1/2/5`（minimatch 传递，只在工具链里做路径匹配），以及 MCP SDK 传递的 `hono` 与 `ip-address`。
 
 Cargo 侧当前命中的是 Tauri 传递的 GTK3 / unic「停止维护」咨询和 glib medium（CVSS 6.9），记录在仓库根目录 `osv-scanner.toml`，复查日期 2026-11-26。新的 critical/high 仍会让 `pnpm sec:sca` 失败。
 
