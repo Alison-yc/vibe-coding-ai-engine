@@ -252,6 +252,66 @@ export class MemoryAuthRepository implements AuthRepository {
     }
   }
 
+  async listActiveSessions(userId: string, now: Date): Promise<AuthSessionRecord[]> {
+    return this.sessions
+      .filter(
+        (row) =>
+          row.userId === userId &&
+          row.revokedAt === null &&
+          row.expiresAt.getTime() >= now.getTime(),
+      )
+      .sort((left, right) => right.lastSeenAt.getTime() - left.lastSeenAt.getTime());
+  }
+
+  async revokeOwnedSession(userId: string, sessionId: string): Promise<boolean> {
+    const row = this.sessions.find(
+      (session) => session.id === sessionId && session.userId === userId,
+    );
+    if (!row || row.revokedAt) return false;
+    row.revokedAt = new Date();
+    return true;
+  }
+
+  async deleteExpiredSessions(now: Date): Promise<number> {
+    const before = this.sessions.length;
+    const kept = this.sessions.filter(
+      (row) => row.revokedAt === null && row.expiresAt.getTime() >= now.getTime(),
+    );
+    this.sessions.splice(0, this.sessions.length, ...kept);
+    return before - this.sessions.length;
+  }
+
+  async deleteStaleGuests(lastSeenBefore: Date): Promise<number> {
+    const activeGuestIds = new Set(
+      this.sessions
+        .filter((row) => row.lastSeenAt.getTime() >= lastSeenBefore.getTime())
+        .map((row) => row.userId),
+    );
+    const staleIds = new Set(
+      this.users
+        .filter((user) => user.kind === 'guest' && !activeGuestIds.has(user.id))
+        .map((user) => user.id),
+    );
+    if (staleIds.size === 0) return 0;
+    this.users.splice(0, this.users.length, ...this.users.filter((user) => !staleIds.has(user.id)));
+    this.sessions.splice(
+      0,
+      this.sessions.length,
+      ...this.sessions.filter((row) => !staleIds.has(row.userId)),
+    );
+    this.identities.splice(
+      0,
+      this.identities.length,
+      ...this.identities.filter((row) => !staleIds.has(row.userId)),
+    );
+    this.roleGrants.splice(
+      0,
+      this.roleGrants.length,
+      ...this.roleGrants.filter((row) => !staleIds.has(row.userId)),
+    );
+    return staleIds.size;
+  }
+
   async insertEvent(input: {
     userId?: string | null;
     type: AuthEventType;
