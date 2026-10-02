@@ -1,4 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { mockAuth } from './auth-mock';
+
+test.beforeEach(async ({ page }) => {
+  await mockAuth(page);
+});
 
 test('令牌页展示固定品牌语义色', async ({ page }) => {
   await page.goto('/dev/tokens');

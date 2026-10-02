@@ -1,5 +1,6 @@
 import * as path from 'node:path';
-import { RagEvalApiClient } from './api-client.js';
+import type { HealthResponse } from '@ai-engine/contracts';
+import { RagEvalApiClient, type RagEvalCredentials } from './api-client.js';
 import {
   loadDocuments,
   loadInjectionCases,
@@ -26,6 +27,7 @@ import type {
 
 export type RunOptions = {
   config: RagEvalConfig;
+  credentials: RagEvalCredentials;
   label: string;
   keepDataset: boolean;
 };
@@ -37,6 +39,19 @@ const progress = (message: string): void => {
 export const runRagEval = async (options: RunOptions): Promise<string> => {
   const client = new RagEvalApiClient(options.config.apiBaseUrl);
   const health = await client.assertReady();
+  await client.login(options.credentials);
+  try {
+    return await runWithSession(client, health, options);
+  } finally {
+    await client.logout().catch(() => undefined);
+  }
+};
+
+const runWithSession = async (
+  client: RagEvalApiClient,
+  health: HealthResponse,
+  options: RunOptions,
+): Promise<string> => {
   const config: RagEvalConfig = {
     ...options.config,
     chatModel: health.chatModel,

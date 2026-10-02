@@ -1,4 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { mockAuth } from './auth-mock';
+
+test.beforeEach(async ({ page }) => {
+  await mockAuth(page);
+});
 
 test('设置页展示 MCP 状态并可以勾选工具', async ({ page }) => {
   await page.route('**/mcp/servers/filesystem/tools', async (route) => {

@@ -44,6 +44,13 @@ if (compareIndex >= 0) {
   if (!apiBaseUrl) {
     throw new Error('缺少 RAG_EVAL_API_BASE_URL；请检查 .env.example/.env');
   }
+  const identifier = process.env.RAG_EVAL_IDENTIFIER;
+  const password = process.env.RAG_EVAL_PASSWORD;
+  if (!identifier || !password) {
+    throw new Error(
+      '缺少 RAG_EVAL_IDENTIFIER / RAG_EVAL_PASSWORD；请在 .env 中填写已注册的评测账号',
+    );
+  }
   const chunkSize = parseNumber(
     '--chunk-size',
     DEFAULT_CHUNK_CONFIG.chunkSize,
@@ -67,6 +74,7 @@ if (compareIndex >= 0) {
   const reportPath = await runRagEval({
     label: readArg('--label') ?? 'baseline',
     keepDataset: process.argv.includes('--keep-dataset'),
+    credentials: { identifier, password },
     config: {
       apiBaseUrl,
       chatModel: 'pending-health',

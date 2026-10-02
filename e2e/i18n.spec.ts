@@ -1,4 +1,9 @@
 import { expect, test, type Page } from '@playwright/test';
+import { mockAuth } from './auth-mock';
+
+test.beforeEach(async ({ page }) => {
+  await mockAuth(page);
+});
 
 const stubSettingsApis = async (page: Page) => {
   await page.route('**/mcp/servers', async (route) => {

@@ -1,4 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { mockAuth } from './auth-mock';
+
+test.beforeEach(async ({ page }) => {
+  await mockAuth(page);
+});
 
 test('对话页渲染侧边栏与输入区', async ({ page }) => {
   await page.goto('/chat');

@@ -1,4 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { mockAuth } from './auth-mock';
+
+test.beforeEach(async ({ page }) => {
+  await mockAuth(page);
+});
 
 test('Web 壳首页能渲染且无控制台错误', async ({ page }) => {
   const pageErrors: string[] = [];

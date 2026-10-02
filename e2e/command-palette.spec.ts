@@ -1,4 +1,9 @@
 import { expect, test } from '@playwright/test';
+import { mockAuth } from './auth-mock';
+
+test.beforeEach(async ({ page }) => {
+  await mockAuth(page);
+});
 
 test('Cmd+K 打开命令面板并可跳转', async ({ page }) => {
   await page.route('**/chat/sessions', async (route) => {
@@ -8,6 +13,7 @@ test('Cmd+K 打开命令面板并可跳转', async ({ page }) => {
     await route.fulfill({ json: { models: [] } });
   });
   await page.goto('/chat');
+  await expect(page.getByRole('heading', { name: '对话' })).toBeVisible();
   await page.keyboard.press('Meta+k');
   await expect(page.getByRole('dialog')).toBeVisible();
   await page.getByRole('button', { name: '设置' }).click();
