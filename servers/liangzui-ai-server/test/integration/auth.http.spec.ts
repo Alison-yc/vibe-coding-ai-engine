@@ -345,6 +345,47 @@ describe('认证 HTTP 集成', () => {
     return Boolean(row);
   };
 
+  it('清理只删过期会话与长期未活动的访客，注册用户与近期访客保留', async () => {
+    const day = 24 * 60 * 60 * 1000;
+    const now = new Date();
+    const old = new Date(now.getTime() - 40 * day);
+    await expect(
+      db.transaction(async (tx) => {
+        const repo = new DrizzleAuthRepository(tx);
+        const stale = await repo.insertUser({ kind: 'guest' });
+        const fresh = await repo.insertUser({ kind: 'guest' });
+        const registered = await repo.insertUser({ kind: 'registered' });
+        await repo.insertSession({
+          userId: stale.id,
+          tokenHash: randomUUID(),
+          client: 'web',
+          expiresAt: old,
+        });
+        await tx
+          .update(authSessions)
+          .set({ lastSeenAt: old })
+          .where(eq(authSessions.userId, stale.id));
+        await repo.insertSession({
+          userId: fresh.id,
+          tokenHash: randomUUID(),
+          client: 'web',
+          expiresAt: new Date(now.getTime() + 30 * day),
+        });
+
+        expect(await repo.deleteExpiredSessions(now)).toBeGreaterThanOrEqual(1);
+        expect(
+          await repo.deleteStaleGuests(new Date(now.getTime() - 30 * day)),
+        ).toBeGreaterThanOrEqual(1);
+        const left = await tx
+          .select({ id: users.id })
+          .from(users)
+          .where(inArray(users.id, [stale.id, fresh.id, registered.id]));
+        expect(left.map((row) => row.id).sort()).toEqual([fresh.id, registered.id].sort());
+        throw new Error('rollback-cleanup-probe');
+      }),
+    ).rejects.toThrow('rollback-cleanup-probe');
+  });
+
   it('列出自己的登录设备，注销他人设备返回 404', async () => {
     const email = `devices-${randomUUID()}@example.com`;
     identifiers.add(email);

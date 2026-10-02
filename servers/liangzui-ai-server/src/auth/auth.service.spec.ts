@@ -220,6 +220,7 @@ describe('AuthService', () => {
       logger,
     );
     await expect(auth.issueGuest(testMeta())).rejects.toBeInstanceOf(ServiceUnavailableException);
+    await expect(auth.cleanupExpired()).resolves.toEqual({ expiredSessions: 0, staleGuests: 0 });
   });
 
   it('列出并注销自己的登录设备，别人的设备返回 404', async () => {

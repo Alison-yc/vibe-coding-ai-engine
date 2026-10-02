@@ -287,7 +287,8 @@ export class AuthService {
 
   /** 每天跑一次：先清过期会话，再删掉长期未活动的访客。 */
   async cleanupExpired(): Promise<{ expiredSessions: number; staleGuests: number }> {
-    const repo = this.requireRepo();
+    const repo = this.repo;
+    if (!repo) return { expiredSessions: 0, staleGuests: 0 };
     const now = new Date();
     const lastSeenBefore = new Date(now.getTime() - this.config.guestTtlDays * DAY_MS);
     const expiredSessions = await repo.deleteExpiredSessions(now);

@@ -1,6 +1,5 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { ScheduleModule } from '@nestjs/schedule';
 import type { AppConfig } from '../config/ollama.config';
 import { DRIZZLE } from '../database/database.providers';
 import { DatabaseModule } from '../database/database.module';
@@ -13,7 +12,7 @@ import { createKnowledgeRepository, KNOWLEDGE_REPOSITORY } from './knowledge.rep
 import { KnowledgeService } from './knowledge.service';
 
 @Module({
-  imports: [ConfigModule, DatabaseModule, ObservabilityModule, ScheduleModule.forRoot()],
+  imports: [ConfigModule, DatabaseModule, ObservabilityModule],
   controllers: [KnowledgeController],
   providers: [
     {
