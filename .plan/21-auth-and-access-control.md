@@ -515,7 +515,8 @@ CR-AUTH-5 自检记录（2026-10-02）：
 - 提交：过期会话与长期未活动访客的每日清理、`GET/DELETE /auth/sessions` → 设置页登录设备 → Semgrep 敏感日志字段规则 → CI 认证环境变量与 README 账号说明。
 - 变异自检：内存仓库的访客清理直接返回 0 时，清理用例变红。
 - 登录设备只返回自己的有效会话，响应里没有 token。注销他人会话返回 404。注销当前设备时响应 `current: true`，前端随之退出。
-- 未验证：dmg 打包后的 sidecar 自动迁移与完整登录走查仍要人工做，挂在 README「并行保留」。`pnpm ci:local` 的 `sec:sca` 仍是既有依赖漏洞。远端 CI 要等推送后才看得到。
+- 验证：`pnpm test:integration` 5 个文件 / 16 条通过，含登录设备列表和注销他人设备 404。`pnpm ci:local` 里 `format:check`、`lint`、`test:cov`（145 文件 / 790 条）、`sec:sast` 通过，随后单独跑了 `build`。`sec:sca` 仍因既有 27 个依赖漏洞失败（3 low / 15 moderate / 9 high），本批次未改 lockfile。Semgrep 的 2 条 `pool.render` audit 不阻断。
+- 未验证：dmg 打包后的 sidecar 自动迁移与完整登录走查仍要人工做，挂在 README「并行保留」。远端 CI 要等推送后才看得到。本批次未改 Rust，没有重跑 `rust:check`。
 
 ## 验收标准（DoD）
 
