@@ -1,0 +1,1 @@
+ALTER TABLE "chat_inputs" ADD COLUMN "file_access" boolean DEFAULT true NOT NULL;

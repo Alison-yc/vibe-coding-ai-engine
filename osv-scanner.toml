@@ -1,0 +1,99 @@
+# OSV-Scanner 豁免。每条必须有理由和复查日期。
+# 策略见 .plan/16：只把 critical/high 且落在实际使用路径上的当作门禁失败。
+# 当前命中的都是 Tauri 传递的 GTK3 / unic 等「unmaintained」或 medium（CVSS 6.9），
+# 默认交付是 macOS，不走 Linux GTK3 绑定。
+
+[[IgnoredVulns]]
+id = "GHSA-67mh-4wv8-2f99"
+reason = "drizzle-kit 传递依赖 esbuild 0.18.20，只用于本地生成迁移 CLI，不进入 Nest 运行时。CVSS 5.3 medium。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0413"
+reason = "gtk-rs GTK3 绑定已停止维护；Tauri Linux 传递依赖，默认 macOS 交付不在该路径。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0416"
+reason = "同上（atk-sys）。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0412"
+reason = "同上（gdk）。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0418"
+reason = "同上（gdk-sys）。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0411"
+reason = "同上（gdkwayland-sys）。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0417"
+reason = "同上（gdkx11）。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0414"
+reason = "同上（gdkx11-sys）。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0429"
+reason = "glib unsound，CVSS 6.9 为 medium，未达 high 门禁；Linux GTK 传递依赖。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "GHSA-wrw7-89jp-8q8g"
+reason = "与 RUSTSEC-2024-0429 同一条 glib 咨询的别名。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0415"
+reason = "同上（gtk）。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0420"
+reason = "同上（gtk-sys）。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0419"
+reason = "同上（gtk3-macros）。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2024-0370"
+reason = "proc-macro-error 停止维护，编译期宏，不在运行时攻击面。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0081"
+reason = "unic-char-property 停止维护，Tauri 传递依赖。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0075"
+reason = "unic-char-range 停止维护，Tauri 传递依赖。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0080"
+reason = "unic-common 停止维护，Tauri 传递依赖。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0100"
+reason = "unic-ucd-ident 停止维护，Tauri 传递依赖。复查 2026-11-26"
+ignoreUntil = 2026-11-26
+
+[[IgnoredVulns]]
+id = "RUSTSEC-2025-0098"
+reason = "unic-ucd-version 停止维护，Tauri 传递依赖。复查 2026-11-26"
+ignoreUntil = 2026-11-26

@@ -1,0 +1,55 @@
+---
+description: 工作流节点开发规范：三层注册表、变量选择器、新增节点 checklist
+globs: "**/workflow/**/*.{ts,tsx}"
+alwaysApply: false
+---
+
+# 工作流节点规范（微内核插件化）
+
+内核只认识"节点有类型、有输入、有输出、有配置"，**内核代码里不允许出现任何具体节点类型的 if/switch 分支**。新增节点只能通过注册表扩展。
+
+## 三层注册表（源自 Dify 的成熟设计）
+
+| 层 | 位置 | 内容 |
+| --- | --- | --- |
+| 类型枚举 | `packages/contracts/src/workflow/node-type.ts` | `NodeType` 枚举，前后端共用 |
+| 前端注册表 | `packages/app-core/src/features/workflow/nodes/registry.ts` | `NodeComponentMap` + `PanelComponentMap` |
+| 节点元数据 | `.../nodes/<type>/default.ts` | 默认值、校验函数、输出变量声明 |
+| 后端注册表 | `servers/.../workflow/nodes/registry.ts` | `NodeType → NodeRunner` |
+
+## 新增一个节点的完整 checklist
+
+1. `contracts`：在 `NodeType` 加枚举值；新建该节点的 config zod schema。
+2. `contracts`：声明该节点的输出变量结构（供变量选择器提示）。
+3. 前端 `nodes/<type>/node.tsx`：画布上的方块（只展示摘要，不放表单）。
+4. 前端 `nodes/<type>/panel.tsx`：右侧配置面板。
+5. 前端 `nodes/<type>/default.ts`：`defaultValue`、`checkValid`、`getOutputVars`。
+6. 前端 `registry.ts`：注册进两张 Map。
+7. 前端 `block-selector` 常量：加入分类，节点才能被添加。
+8. 后端 `nodes/<type>/runner.ts`：实现 `NodeRunner` 接口。
+9. 后端 `registry.ts`：注册 runner。
+10. 单测：runner 的正常路径 + 至少一个失败路径；`checkValid` 的校验分支。
+
+**漏掉任何一步都算未完成。** 优先补齐 1/5/8/10，其余是 UI 装配。
+
+## 节点间变量传递
+
+变量引用统一用 `ValueSelector = string[]`，形如 `['node_abc', 'text']`，模板里写 `{{#node_abc.text#}}`。
+
+```ts
+// ✅ 运行时从变量池取值，节点之间不直接互相引用
+const value = variablePool.get(['node_abc', 'text']);
+
+// ❌ 节点 runner 里硬编码上游节点 id 或直接读另一个节点的结果对象
+const value = ctx.nodes.node_abc.output.text;
+```
+
+变量池是运行期唯一的数据总线。节点 runner 的签名只接受 `(config, variablePool, ctx)`，不接受整张图。
+
+## 图的数据结构
+
+持久化格式固定为 `{ nodes, edges, viewport }`。React Flow 的 `type` 字段一律是 `'custom-node'`，业务类型放在 `data.type`。运行态字段（`_runningStatus` 等）以下划线前缀区分，**不落库**。
+
+## 运行态
+
+执行进度通过 SSE 事件推送：`workflow_started` / `node_started` / `node_finished` / `text_chunk` / `workflow_finished` / `workflow_failed`。事件名与 payload 定义在 contracts 包，前后端不得各写一份。

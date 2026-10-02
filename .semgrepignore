@@ -1,0 +1,2 @@
+# 故意漏洞样本只给 `semgrep --test` 用，不能进日常扫描。
+tests/semgrep/

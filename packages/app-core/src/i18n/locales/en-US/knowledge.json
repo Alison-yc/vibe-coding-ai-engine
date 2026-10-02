@@ -1,0 +1,105 @@
+{
+  "list": {
+    "title": "Knowledge",
+    "description": "Manage document indexes, test retrieval, and generate trial answers from a knowledge base.",
+    "loading": "Loading knowledge bases…",
+    "actions": {
+      "refresh": "Refresh",
+      "load": "Load knowledge bases"
+    },
+    "create": {
+      "title": "Create a knowledge base",
+      "nameLabel": "Name",
+      "defaultName": "Test knowledge base",
+      "submit": "Create"
+    },
+    "empty": {
+      "title": "No knowledge bases yet",
+      "description": "Create a knowledge base, then upload a txt, md, or pdf document to begin indexing."
+    },
+    "dataset": {
+      "documentCount_one": "{{count}} document",
+      "documentCount_other": "{{count}} documents",
+      "chunkCount_one": "{{count}} chunk",
+      "chunkCount_other": "{{count}} chunks",
+      "openDetails": "Open details →",
+      "delete": "Delete",
+      "confirmDelete": "Confirm deletion",
+      "cancelDelete": "Cancel"
+    }
+  },
+  "errors": {
+    "load": "Failed to load knowledge bases",
+    "create": "Failed to create the knowledge base",
+    "delete": "Failed to delete the knowledge base",
+    "index": "Indexing failed",
+    "upload": "Upload failed"
+  },
+  "detail": {
+    "fallbackTitle": "Knowledge base details",
+    "missingId": "Knowledge base ID is missing",
+    "description": "Upload documents, preview chunking, and test retrieval without using an LLM.",
+    "backToList": "Knowledge bases",
+    "refresh": "Refresh",
+    "paste": {
+      "title": "Paste text",
+      "description": "Paste Markdown or plain text to send it directly through the indexing pipeline.",
+      "fileNameLabel": "File name",
+      "contentLabel": "Content",
+      "contentPlaceholder": "Paste text to index…",
+      "submit": "Index pasted text"
+    },
+    "upload": {
+      "title": "Upload a document",
+      "description": "Supports txt, md, and pdf. Uploaded files automatically enter the five-stage indexing pipeline.",
+      "button": "Upload file",
+      "emptyHint": "No file selected"
+    },
+    "documents": {
+      "title": "Documents",
+      "empty": "No documents yet. Upload a file or paste text to begin.",
+      "remove": "Delete",
+      "status": {
+        "pending": "Waiting to index",
+        "extracting": "Extracting",
+        "cleaning": "Cleaning",
+        "splitting": "Chunking",
+        "embedding": "Embedding",
+        "indexing": "Writing index",
+        "completed": "Completed",
+        "failed": "Failed"
+      }
+    },
+    "preview": {
+      "title": "Chunk preview",
+      "description": "Adjust the strategy and parameters to preview chunks before uploading the final document.",
+      "textPlaceholder": "Enter text to preview chunking…",
+      "strategyLabel": "Strategy",
+      "strategy": {
+        "recursive": "Smart recursive",
+        "fixed": "Fixed length",
+        "markdown": "Markdown headings"
+      },
+      "chunkSizeLabel": "Chunk size",
+      "overlapLabel": "Overlap",
+      "submit": "Preview chunks",
+      "chunkCount_one": "{{count}} chunk",
+      "chunkCount_other": "{{count}} chunks",
+      "empty": "Select “Preview chunks” to see the result"
+    },
+    "retrieve": {
+      "title": "Retrieval test",
+      "description": "Runs vector retrieval only, without calling an LLM. Use it to diagnose recall issues.",
+      "queryLabel": "Query",
+      "queryPlaceholder": "Enter a question to retrieve…",
+      "submit": "Retrieve",
+      "answer": "Generate trial answer",
+      "empty": "No retrieval results yet.",
+      "table": {
+        "source": "Source",
+        "score": "Score",
+        "content": "Content"
+      }
+    }
+  }
+}

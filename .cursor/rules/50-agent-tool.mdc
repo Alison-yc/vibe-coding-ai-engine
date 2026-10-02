@@ -1,0 +1,58 @@
+---
+description: Agent 工具开发规范：统一 Tool 接口、小模型适配、路径沙箱与权限审批
+globs: "**/{agent,tool,tools}/**/*.ts"
+alwaysApply: false
+---
+
+# Agent 工具规范
+
+## 统一 Tool 接口
+
+```ts
+export interface AgentTool<I, O> {
+  readonly name: string;               // snake_case，对模型可见
+  readonly description: string;        // 给模型看的说明，必须写清"何时用/何时不用"
+  readonly input: z.ZodType<I>;        // 参数 schema，同时用于生成 JSON Schema
+  readonly permission: PermissionKind; // 'read' | 'write' | 'execute'
+  execute(input: I, ctx: ToolContext): Promise<O>;
+  toModelOutput(output: O): string;    // 回填给模型的文本，需截断
+}
+```
+
+工具的注册、schema 生成、参数校验、结果截断由注册表统一处理，单个工具不重复实现这些。
+
+## 小模型适配（qwen3.5:2b 的硬约束）
+
+1. **同时暴露给模型的工具数量不得超过基线测评得出的上限**（见 `.plan/04`）。宁可按场景动态裁剪工具集，也不要一次全给。
+2. 参数结构保持扁平。`{ path: string, content: string }` 可以；嵌套对象、联合类型、可选参数超过 2 个，2B 模型的成功率会明显下降。
+3. `description` 里写死调用顺序约束，例如"必须先调用 read 确认内容，才能调用 edit"。
+4. 必须实现 tool call 解析失败的兜底：模型没走 function call 而是输出了 ```json 代码块时，尝试解析并执行；解析仍失败则把错误回填给模型让它重试，重试上限 2 次。
+5. 单轮 agent 循环步数设上限，最后一步强制 `toolChoice: 'none'` 收尾，防止死循环烧 CPU。
+
+## 安全三层（顺序不可颠倒）
+
+```
+1. 路径解析与沙箱  →  2. 权限规则评估  →  3. 用户审批
+```
+
+- **沙箱**：所有文件路径先经 `resolveWorkspacePath()` 归一化，越出工作区根目录直接拒绝。必须防 `../` 穿越和符号链接逃逸。
+- **规则**：`allow | deny | ask` 三态，按"最后匹配优先"。默认 `read` 允许、`write`/`execute` 询问。`.env`、`.git/`、密钥文件即使 read 也要 `ask`。
+- **审批**：`ask` 时通过 SSE 推 `permission.asked` 事件，等前端回复再继续。审批结果可选择"本次允许"或"本会话始终允许"。
+
+```ts
+// ❌ BAD —— 直接拼接路径，可被 ../../ 穿越
+await fs.writeFile(path.join(root, input.path), input.content);
+
+// ✅ GOOD
+const safePath = await resolveWorkspacePath(root, input.path); // 越界即抛错
+await permission.assert('write', safePath);                    // 可能阻塞等审批
+await fs.writeFile(safePath, input.content);
+```
+
+## 文件操作放在服务端，不放 Rust 层
+
+Agent 的 `read`/`write`/`edit` 工具全部在 NestJS 进程内用 Node `fs` 实现。理由：工具执行必须与 LLM 循环同进程，跨 IPC 会导致两套工具实现和额外延迟。Tauri 的 Rust 层只负责原生文件选择对话框、UI 偏好存储与 sidecar 进程管理。
+
+## 会话持久化
+
+用户输入必须**先落库再触发执行**（durable inbox），否则进程崩溃就丢消息。消息按 part 建模（`text` / `reasoning` / `tool`），tool part 带状态机字段。

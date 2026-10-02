@@ -1,0 +1,47 @@
+version: 2
+
+updates:
+  # npm 依赖
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    # 按生态分组，避免每周十几个碎片 PR
+    groups:
+      eslint-and-prettier:
+        patterns: ["eslint*", "@eslint/*", "typescript-eslint", "prettier*"]
+      vitest:
+        patterns: ["vitest", "@vitest/*"]
+      react:
+        patterns: ["react", "react-dom", "@types/react", "@types/react-dom"]
+      nestjs:
+        patterns: ["@nestjs/*"]
+      langchain:
+        patterns: ["@langchain/*", "langchain"]
+      tauri:
+        patterns: ["@tauri-apps/*"]
+    ignore:
+      # TypeScript 7 与 typescript-eslint@8 的 peer 范围（<6.1.0）不兼容。
+      # 升级需先确认 typescript-eslint 支持，见 .plan/20 ADR-009。
+      - dependency-name: typescript
+        update-types: ["version-update:semver-major"]
+      # ESLint 10 的生态插件适配尚不整齐，见 .plan/20 ADR-009。
+      - dependency-name: eslint
+        update-types: ["version-update:semver-major"]
+
+  # Rust 依赖（Tauri）
+  - package-ecosystem: cargo
+    directory: "/clients/liangzui-ai-app/src-tauri"
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 3
+
+  # GitHub Actions 自身的版本
+  - package-ecosystem: github-actions
+    directory: "/"
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3

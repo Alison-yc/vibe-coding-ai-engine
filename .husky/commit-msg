@@ -1,0 +1,4 @@
+#!/usr/bin/env sh
+
+# 提交信息格式检查。规则见 commitlint.config.js 与 .cursor/rules/90-git-and-commit.mdc。
+pnpm commitlint --edit "$1"

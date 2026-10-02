@@ -1,0 +1,60 @@
+---
+description: React 19 前端规范：分层、zustand 状态、TanStack Query、流式渲染与 shadcn 用法
+globs: {clients,frontend,packages}/**/*.{tsx,ts}
+alwaysApply: false
+---
+
+# React 前端规范
+
+## 三层职责不可混淆
+
+| 层 | 位置 | 允许做的事 |
+| --- | --- | --- |
+| 壳 | `clients/*`、`frontend/*` | 路由挂载、注入 platform 实现、全局 Provider |
+| 业务 | `packages/app-core` | 页面、特性、store、hooks |
+| 组件 | `packages/ui` | 无状态展示组件、shadcn 原语 |
+
+`packages/ui` 里的组件不允许发请求、不允许 import store。
+
+## 状态管理分工（照抄这张表，别自由发挥）
+
+| 状态类型 | 用什么 | 例子 |
+| --- | --- | --- |
+| 服务端数据（列表、详情） | TanStack Query | 会话列表、知识库文档列表 |
+| 客户端复杂交互态 | zustand（slice 模式） | 工作流画布节点选中、面板开合 |
+| 流式消息累积 | zustand + 事件 reducer | 对话消息的 part 增量拼接 |
+| 表单局部态 | `useState` / react-hook-form | 节点配置面板 |
+| URL 可共享态 | 路由参数 | 当前会话 id、当前工作流 id |
+
+zustand store 按 slice 拆分，一个 slice 一个文件，用 `create<T>()(...)` 组合，禁止一个巨型 store 文件。
+
+## 流式渲染必须用 reducer，不要在组件里 setState 拼字符串
+
+SSE 事件先进 reducer 更新 store 中的 message parts，组件只做订阅渲染。tool call 的展示走 `pending → running → completed | error` 状态机，状态机定义在 `packages/contracts`。
+
+```tsx
+// ❌ BAD —— 每个 chunk 触发整棵消息树重渲染
+onChunk((c) => setText((t) => t + c));
+
+// ✅ GOOD —— 定位到 partId 增量更新，组件按 part 粒度订阅
+onEvent((e) => store.applyEvent(e));
+```
+
+## shadcn 用法
+
+- 新组件用 `pnpm dlx shadcn@latest add <name>` 生成到 `packages/ui/src/components/ui`，生成后可以改，但保留原有 `data-slot` 与 variant 结构。
+- 颜色只用语义令牌（`bg-background`、`text-muted-foreground`），**禁止**写 `bg-neutral-900`、`text-[#333]` 这类硬编码色值，否则多主题会失效。
+- 组件变体用 `cva`，不要用一串三元表达式拼 className。
+
+## 性能
+
+- 长列表（消息、文档、节点日志）必须虚拟化。
+- 工作流画布只注册**一个** `CustomNode`，内部按 `data.type` 查注册表分发；不要给每种节点注册一个 React Flow nodeType。
+- `React.memo` 只加在实测有问题的地方，不要预防性铺满。
+
+## 界面文案（ADR-016）
+
+- 用户可见句子用 `t('namespace:key')`，禁止在 JSX 里新增长段硬编码中文/日文/英文（`data-testid`、模型 id、工具名除外）。
+- `packages/ui` 零文案。locale 与 `document.documentElement.lang` 只通过 `platform.setUiLocale`。
+- 可变长度文案必须有 CSS 上限：`min-w-0`、`truncate` 或 `line-clamp-*`。壳层按英文最长串定宽，见 `.plan/14-C`。
+- 插值用 `t('key', { name })`，禁止字符串拼接句子。
