@@ -31,6 +31,27 @@ export const MeResponseSchema = z.object({
 });
 export type MeResponse = z.infer<typeof MeResponseSchema>;
 
+export const AuthDeviceSessionSchema = z.object({
+  id: UuidSchema,
+  client: z.enum(['web', 'desktop']),
+  userAgent: z.string().nullable(),
+  createdAt: TimestampSchema,
+  lastSeenAt: TimestampSchema,
+  expiresAt: TimestampSchema,
+  current: z.boolean(),
+});
+export type AuthDeviceSession = z.infer<typeof AuthDeviceSessionSchema>;
+
+export const AuthSessionListResponseSchema = z.object({
+  sessions: z.array(AuthDeviceSessionSchema),
+});
+export type AuthSessionListResponse = z.infer<typeof AuthSessionListResponseSchema>;
+
+export const RevokeSessionResponseSchema = z.object({
+  current: z.boolean(),
+});
+export type RevokeSessionResponse = z.infer<typeof RevokeSessionResponseSchema>;
+
 export const SendCodeResponseSchema = z.object({
   expiresInSec: z.number().int().positive(),
   resendAfterSec: z.number().int().nonnegative(),

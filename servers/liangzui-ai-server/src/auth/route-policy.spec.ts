@@ -28,6 +28,8 @@ const EXPECTED: Record<string, ExpectedPolicy> = {
   'POST /auth/password-resets': 'public',
   'GET /auth/me': 'authenticated',
   'POST /auth/logout': 'authenticated',
+  'GET /auth/sessions': 'authenticated',
+  'DELETE /auth/sessions/:sessionId': 'authenticated',
   'GET /models': 'chat:basic',
   'POST /chat/sessions': 'chat:basic',
   'GET /chat/sessions': 'chat:basic',

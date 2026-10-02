@@ -221,4 +221,38 @@ describe('AuthService', () => {
     );
     await expect(auth.issueGuest(testMeta())).rejects.toBeInstanceOf(ServiceUnavailableException);
   });
+
+  it('列出并注销自己的登录设备，别人的设备返回 404', async () => {
+    const { auth, repo } = createAuthHarness();
+    const mine = await auth.issueGuest(testMeta());
+    const other = await auth.issueGuest({ ...testMeta(), client: 'desktop' });
+    const principal = await auth.authenticate(mine.token);
+    const listed = await auth.listSessions(principal);
+    expect(listed.sessions).toHaveLength(1);
+    expect(listed.sessions[0]).toMatchObject({ current: true, client: 'web' });
+    expect(JSON.stringify(listed)).not.toContain(mine.token);
+
+    const otherSession = repo.sessions.find((row) => row.userId !== principal.userId);
+    await expectAuthError(auth.revokeDevice(principal, otherSession?.id ?? ''), 404, 'NOT_FOUND');
+
+    const revoked = await auth.revokeDevice(principal, principal.sessionId);
+    expect(revoked.current).toBe(true);
+    await expectAuthError(auth.authenticate(mine.token), 401, 'UNAUTHORIZED');
+    expect(other.user.id).not.toBe(mine.user.id);
+  });
+
+  it('清理过期会话，并删除长期未活动的访客', async () => {
+    const { auth, repo } = createAuthHarness();
+    const stale = await auth.issueGuest(testMeta());
+    const fresh = await auth.issueGuest(testMeta());
+    const staleSession = repo.sessions.find((row) => row.userId === stale.user.id);
+    if (!staleSession) throw new Error('缺少访客会话');
+    staleSession.lastSeenAt = new Date('2026-08-01T00:00:00.000Z');
+    staleSession.expiresAt = new Date('2026-08-01T00:00:00.000Z');
+
+    const result = await auth.cleanupExpired();
+    expect(result.expiredSessions).toBeGreaterThan(0);
+    expect(repo.users.map((user) => user.id)).toEqual([fresh.user.id]);
+    expect(repo.sessions.every((row) => row.userId === fresh.user.id)).toBe(true);
+  });
 });

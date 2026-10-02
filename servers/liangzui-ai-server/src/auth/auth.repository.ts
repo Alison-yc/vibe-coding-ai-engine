@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, gte, isNull, lt, sql } from 'drizzle-orm';
+import { and, asc, count, desc, eq, gte, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import type { AppDatabase } from '../database/pg-vector-store';
 import {
   authEvents,
@@ -89,6 +89,13 @@ export interface AuthRepository {
   ): Promise<AuthSessionRecord>;
   revokeSession(id: string): Promise<void>;
   revokeSessionsForUser(userId: string): Promise<void>;
+  listActiveSessions(userId: string, now: Date): Promise<AuthSessionRecord[]>;
+  /** 只注销属于该用户且尚未注销的会话；别人的会话返回 false。 */
+  revokeOwnedSession(userId: string, sessionId: string): Promise<boolean>;
+  /** 删掉已过期或已注销的会话行，不删除用户。 */
+  deleteExpiredSessions(now: Date): Promise<number>;
+  /** 删掉没有任何近期活动会话的访客；用户删除会级联掉会话与其资源。 */
+  deleteStaleGuests(lastSeenBefore: Date): Promise<number>;
   insertEvent(input: {
     userId?: string | null;
     type: AuthEventType;
@@ -371,6 +378,60 @@ export class DrizzleAuthRepository implements AuthRepository {
       .update(authSessions)
       .set({ revokedAt: new Date() })
       .where(and(eq(authSessions.userId, userId), isNull(authSessions.revokedAt)));
+  }
+
+  async listActiveSessions(userId: string, now: Date): Promise<AuthSessionRecord[]> {
+    return this.db
+      .select()
+      .from(authSessions)
+      .where(
+        and(
+          eq(authSessions.userId, userId),
+          isNull(authSessions.revokedAt),
+          gte(authSessions.expiresAt, now),
+        ),
+      )
+      .orderBy(desc(authSessions.lastSeenAt));
+  }
+
+  async revokeOwnedSession(userId: string, sessionId: string): Promise<boolean> {
+    const rows = await this.db
+      .update(authSessions)
+      .set({ revokedAt: new Date() })
+      .where(
+        and(
+          eq(authSessions.id, sessionId),
+          eq(authSessions.userId, userId),
+          isNull(authSessions.revokedAt),
+        ),
+      )
+      .returning({ id: authSessions.id });
+    return rows.length > 0;
+  }
+
+  async deleteExpiredSessions(now: Date): Promise<number> {
+    const rows = await this.db
+      .delete(authSessions)
+      .where(or(lt(authSessions.expiresAt, now), isNotNull(authSessions.revokedAt)))
+      .returning({ id: authSessions.id });
+    return rows.length;
+  }
+
+  async deleteStaleGuests(lastSeenBefore: Date): Promise<number> {
+    const rows = await this.db
+      .delete(users)
+      .where(
+        and(
+          eq(users.kind, 'guest'),
+          sql`not exists (
+            select 1 from ${authSessions}
+            where ${authSessions.userId} = ${users.id}
+              and ${authSessions.lastSeenAt} >= ${lastSeenBefore}
+          )`,
+        ),
+      )
+      .returning({ id: users.id });
+    return rows.length;
   }
 
   async countEventsSince(

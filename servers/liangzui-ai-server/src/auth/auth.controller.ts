@@ -1,10 +1,21 @@
-import { Body, Controller, Get, Headers, HttpCode, Inject, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  Headers,
+  HttpCode,
+  Inject,
+  Param,
+  Post,
+} from '@nestjs/common';
 import {
   CodeLoginRequestSchema,
   PasswordLoginRequestSchema,
   RegisterRequestSchema,
   ResetPasswordRequestSchema,
   SendCodeRequestSchema,
+  UuidSchema,
   type CodeLoginRequest,
   type PasswordLoginRequest,
   type RegisterRequest,
@@ -93,5 +104,20 @@ export class AuthController {
   @Authenticated()
   me(@CurrentPrincipal() principal: AuthPrincipal) {
     return this.auth.me(principal);
+  }
+
+  @Get('sessions')
+  @Authenticated()
+  listSessions(@CurrentPrincipal() principal: AuthPrincipal) {
+    return this.auth.listSessions(principal);
+  }
+
+  @Delete('sessions/:sessionId')
+  @Authenticated()
+  revokeSession(
+    @CurrentPrincipal() principal: AuthPrincipal,
+    @Param('sessionId', new ZodValidationPipe(UuidSchema)) sessionId: string,
+  ) {
+    return this.auth.revokeDevice(principal, sessionId);
   }
 }

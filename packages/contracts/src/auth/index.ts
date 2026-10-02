@@ -33,13 +33,19 @@ export {
   type SendCodeRequest,
 } from './requests.js';
 export {
+  AuthDeviceSessionSchema,
   AuthIdentityViewSchema,
+  AuthSessionListResponseSchema,
   AuthSessionResponseSchema,
   AuthUserSchema,
   MeResponseSchema,
+  RevokeSessionResponseSchema,
   SendCodeResponseSchema,
+  type AuthDeviceSession,
+  type AuthSessionListResponse,
   type AuthSessionResponse,
   type AuthUser,
   type MeResponse,
+  type RevokeSessionResponse,
   type SendCodeResponse,
 } from './responses.js';

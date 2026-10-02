@@ -17,7 +17,7 @@
 | 21-B   | 认证服务与 `/auth/*` 接口          | CR-AUTH-2 | 已完成 |
 | 21-C   | 前端登录态接入（不门控）           | CR-AUTH-3 | 已完成 |
 | 21-D   | 服务端强制鉴权、资源隔离、前端门控 | CR-AUTH-4 | 已完成 |
-| 21-E   | 加固、CI、打包验证                 | CR-AUTH-5 | 待开发 |
+| 21-E   | 加固、CI、打包验证                 | CR-AUTH-5 | 待 CR  |
 
 ## 目标
 
@@ -334,7 +334,7 @@
 | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
 | `GET /health`                                                                                                                                                  | Public                                                                        |
 | `POST /auth/guest`、`POST /auth/verification-codes`、`POST /auth/register`、`POST /auth/login/password`、`POST /auth/login/code`、`POST /auth/password-resets` | Public                                                                        |
-| `GET /auth/me`、`POST /auth/logout`                                                                                                                            | 任意有效 token（含访客）                                                      |
+| `GET /auth/me`、`POST /auth/logout`、`GET /auth/sessions`、`DELETE /auth/sessions/:sessionId`                                                                  | 任意有效 token（含访客）；注销只作用于自己的会话，他人会话 404                |
 | `GET /models`                                                                                                                                                  | `chat:basic`                                                                  |
 | `/chat/sessions*`（含 stream）                                                                                                                                 | `chat:basic` + 归属；改 `modelId` 另需 `chat:model-switch`；stream 再走参数层 |
 | `GET /knowledge/**`、`POST .../retrieve`、`POST .../answer`、`POST .../split-preview`                                                                          | `knowledge:read` + 归属                                                       |
@@ -509,6 +509,13 @@ CR-AUTH-4 自检记录（2026-10-02）：
 
 - **包含**：访客与过期会话清理定时任务；`GET/DELETE /auth/sessions` 设备管理与设置页「登录设备」卡片；Semgrep 规则禁止日志字段含 `password` / `token` / `verificationCode`（附规则自测）；CI 环境变量与 Postgres job 跑新集成测试；dmg 打包后验证 sidecar 自动迁移与完整登录流程；README 补账号说明。
 - **通过条件**：`pnpm ci:local` 与远端 CI 全绿；打包版走通访客 → 注册 → 知识库 → 退出；随后执行 M6 集成 Review。
+
+CR-AUTH-5 自检记录（2026-10-02）：
+
+- 提交：过期会话与长期未活动访客的每日清理、`GET/DELETE /auth/sessions` → 设置页登录设备 → Semgrep 敏感日志字段规则 → CI 认证环境变量与 README 账号说明。
+- 变异自检：内存仓库的访客清理直接返回 0 时，清理用例变红。
+- 登录设备只返回自己的有效会话，响应里没有 token。注销他人会话返回 404。注销当前设备时响应 `current: true`，前端随之退出。
+- 未验证：dmg 打包后的 sidecar 自动迁移与完整登录走查仍要人工做，挂在 README「并行保留」。`pnpm ci:local` 的 `sec:sca` 仍是既有依赖漏洞。远端 CI 要等推送后才看得到。
 
 ## 验收标准（DoD）
 

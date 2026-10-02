@@ -344,4 +344,52 @@ describe('认证 HTTP 集成', () => {
       .limit(1);
     return Boolean(row);
   };
+
+  it('列出自己的登录设备，注销他人设备返回 404', async () => {
+    const email = `devices-${randomUUID()}@example.com`;
+    identifiers.add(email);
+    const guest = await http().post('/auth/guest').set('x-client', 'web').expect(200);
+    userIds.add(guest.body.user.id);
+    await db
+      .update(verificationCodes)
+      .set({ createdAt: new Date(Date.now() - 120_000) })
+      .where(eq(verificationCodes.identifier, email));
+    await http()
+      .post('/auth/verification-codes')
+      .send({ type: 'email', identifier: email, purpose: 'register' })
+      .expect(200);
+    const registered = await http()
+      .post('/auth/register')
+      .set('authorization', `Bearer ${guest.body.token}`)
+      .set('x-client', 'web')
+      .send({ type: 'email', identifier: email, password, code })
+      .expect(200);
+    expect(registered.body.token).not.toBe(guest.body.token);
+    const second = await http()
+      .post('/auth/login/password')
+      .set('x-client', 'desktop')
+      .send({ type: 'email', identifier: email, password })
+      .expect(200);
+
+    const listed = await http()
+      .get('/auth/sessions')
+      .set('authorization', `Bearer ${second.body.token}`)
+      .expect(200);
+    expect(listed.body.sessions).toHaveLength(2);
+    expect(JSON.stringify(listed.body)).not.toContain(second.body.token);
+    const current = listed.body.sessions.find((row: { current: boolean }) => row.current);
+    const other = listed.body.sessions.find((row: { current: boolean }) => !row.current);
+    expect(current.client).toBe('desktop');
+
+    await http()
+      .delete(`/auth/sessions/${other.id}`)
+      .set('authorization', `Bearer ${second.body.token}`)
+      .expect(200);
+    const intruder = await http().post('/auth/guest').set('x-client', 'web').expect(200);
+    userIds.add(intruder.body.user.id);
+    await http()
+      .delete(`/auth/sessions/${current.id}`)
+      .set('authorization', `Bearer ${intruder.body.token}`)
+      .expect(404);
+  });
 });

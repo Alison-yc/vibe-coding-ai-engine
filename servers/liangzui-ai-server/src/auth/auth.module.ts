@@ -5,6 +5,7 @@ import { DRIZZLE } from '../database/database.providers';
 import { DatabaseModule } from '../database/database.module';
 import type { AppDatabase } from '../database/pg-vector-store';
 import { AUTH_CONFIG, readAuthRuntimeConfig } from './auth.config';
+import { AuthCleanupScheduler } from './auth-cleanup.scheduler';
 import { AuthController } from './auth.controller';
 import { AUTH_REPOSITORY, DrizzleAuthRepository } from './auth.repository';
 import { AuthService } from './auth.service';
@@ -37,6 +38,7 @@ import { AUTH_GLOBAL_GUARDS } from './global-guards';
     },
     VerificationService,
     AuthService,
+    AuthCleanupScheduler,
     ...AUTH_GLOBAL_GUARDS,
   ],
   exports: [AuthService],

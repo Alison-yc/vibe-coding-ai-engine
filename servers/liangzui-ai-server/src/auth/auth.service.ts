@@ -1,15 +1,19 @@
 import { HttpStatus, Inject, Injectable } from '@nestjs/common';
 import { PinoLogger } from 'nestjs-pino';
 import {
+  AuthSessionListResponseSchema,
   AuthSessionResponseSchema,
   AuthUserSchema,
   MeResponseSchema,
+  RevokeSessionResponseSchema,
   PERMISSIONS,
   ROLE_KEYS,
   ROLE_PERMISSIONS,
   RoleKeySchema,
+  type AuthSessionListResponse,
   type AuthSessionResponse,
   type AuthUser,
+  type RevokeSessionResponse,
   type CodeLoginRequest,
   type MeResponse,
   type PasswordLoginRequest,
@@ -253,6 +257,43 @@ export class AuthService {
     await repo.revokeSession(principal.sessionId);
     await repo.insertEvent({ userId: principal.userId, type: 'logout' });
     this.log('info', '退出登录');
+  }
+
+  async listSessions(principal: AuthPrincipal): Promise<AuthSessionListResponse> {
+    const rows = await this.requireRepo().listActiveSessions(principal.userId, new Date());
+    return AuthSessionListResponseSchema.parse({
+      sessions: rows.map((row) => ({
+        id: row.id,
+        client: row.client,
+        userAgent: row.userAgent,
+        createdAt: row.createdAt.toISOString(),
+        lastSeenAt: row.lastSeenAt.toISOString(),
+        expiresAt: row.expiresAt.toISOString(),
+        current: row.id === principal.sessionId,
+      })),
+    });
+  }
+
+  async revokeDevice(principal: AuthPrincipal, sessionId: string): Promise<RevokeSessionResponse> {
+    const repo = this.requireRepo();
+    const current = sessionId === principal.sessionId;
+    if (!(await repo.revokeOwnedSession(principal.userId, sessionId))) {
+      throwAuthError(HttpStatus.NOT_FOUND, 'NOT_FOUND', '登录设备不存在');
+    }
+    await repo.insertEvent({ userId: principal.userId, type: 'logout' });
+    this.log('info', '注销登录设备');
+    return RevokeSessionResponseSchema.parse({ current });
+  }
+
+  /** 每天跑一次：先清过期会话，再删掉长期未活动的访客。 */
+  async cleanupExpired(): Promise<{ expiredSessions: number; staleGuests: number }> {
+    const repo = this.requireRepo();
+    const now = new Date();
+    const lastSeenBefore = new Date(now.getTime() - this.config.guestTtlDays * DAY_MS);
+    const expiredSessions = await repo.deleteExpiredSessions(now);
+    const staleGuests = await repo.deleteStaleGuests(lastSeenBefore);
+    this.log('info', '清理过期会话与访客');
+    return { expiredSessions, staleGuests };
   }
 
   async me(principal: AuthPrincipal): Promise<MeResponse> {
