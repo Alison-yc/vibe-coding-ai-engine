@@ -177,6 +177,21 @@ rules:
         - "/servers/*/src/main.ts"
     pattern: process.env.$VAR
 
+  - id: no-sensitive-auth-log-fields
+    languages: [typescript, javascript]
+    severity: ERROR
+    message: >-
+      日志不得带上 password、token 或 verificationCode 字段。这些值只允许出现在
+      请求处理和数据库里，日志改记长度或哈希。见 .plan/21。
+    paths:
+      include:
+        - "/servers/**"
+        - "/tests/semgrep/**"
+      exclude:
+        - "**/*.spec.ts"
+    pattern-regex: |-
+      \b(logger|console)\.\w+\([\s\S]*?\b(password|token|verificationCode)\s*[:,}]
+
   - id: no-full-content-logging
     languages: [typescript, javascript]
     severity: WARNING
