@@ -1,8 +1,12 @@
 import {
+  AuthSessionListResponseSchema,
   AuthSessionResponseSchema,
   MeResponseSchema,
+  RevokeSessionResponseSchema,
   SendCodeResponseSchema,
+  type AuthSessionListResponse,
   type AuthSessionResponse,
+  type RevokeSessionResponse,
   type CodeLoginRequest,
   type MeResponse,
   type PasswordLoginRequest,
@@ -87,3 +91,14 @@ export const logoutSession = async (platform: Platform): Promise<void> => {
 
 export const fetchMe = async (platform: Platform): Promise<MeResponse> =>
   MeResponseSchema.parse(await apiJson(platform, '/auth/me'));
+
+export const listAuthSessions = async (platform: Platform): Promise<AuthSessionListResponse> =>
+  AuthSessionListResponseSchema.parse(await apiJson(platform, '/auth/sessions'));
+
+export const revokeAuthSession = async (
+  platform: Platform,
+  sessionId: string,
+): Promise<RevokeSessionResponse> =>
+  RevokeSessionResponseSchema.parse(
+    await apiJson(platform, `/auth/sessions/${sessionId}`, { method: 'DELETE' }),
+  );

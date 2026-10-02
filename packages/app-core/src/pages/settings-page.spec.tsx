@@ -11,7 +11,7 @@ import {
   type Platform,
 } from '@ai-engine/platform';
 import { MemoryRouter, Route, Routes } from 'react-router';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { SettingsPage } from './settings-page';
 import { TestAuthProvider } from '../auth/test-auth';
 
@@ -24,6 +24,13 @@ const mocks = vi.hoisted(() => ({
   reconnect: vi.fn(),
   patch: vi.fn(),
   listExposed: vi.fn(),
+  listSessions: vi.fn(),
+  revokeSession: vi.fn(),
+}));
+
+vi.mock('../auth/auth-api', () => ({
+  listAuthSessions: mocks.listSessions,
+  revokeAuthSession: mocks.revokeSession,
 }));
 
 vi.mock('../mcp/mcp-api', () => ({
@@ -65,9 +72,14 @@ const platform = {
   },
 } satisfies Platform;
 
+beforeEach(() => {
+  mocks.listSessions.mockResolvedValue({ sessions: [] });
+});
+
 afterEach(async () => {
   cleanup();
   vi.clearAllMocks();
+  mocks.listSessions.mockResolvedValue({ sessions: [] });
   await kv.remove('ui.locale');
   document.documentElement.lang = '';
   document.documentElement.dir = '';
@@ -290,5 +302,45 @@ describe('SettingsPage 按角色门控', () => {
     expect(screen.queryByTestId('settings-login-guide')).toBeNull();
     fireEvent.click(checkbox);
     expect(mocks.patch).not.toHaveBeenCalled();
+  });
+
+  it('登录设备卡片可注销其他设备，注销当前设备会退出', async () => {
+    mocks.listSessions.mockResolvedValue({
+      sessions: [
+        {
+          id: '00000000-0000-4000-8000-0000000000b1',
+          client: 'web',
+          userAgent: 'Browser',
+          createdAt: '2026-10-02T00:00:00.000Z',
+          lastSeenAt: '2026-10-02T00:00:00.000Z',
+          expiresAt: '2026-10-09T00:00:00.000Z',
+          current: true,
+        },
+        {
+          id: '00000000-0000-4000-8000-0000000000b2',
+          client: 'desktop',
+          userAgent: null,
+          createdAt: '2026-10-02T00:00:00.000Z',
+          lastSeenAt: '2026-10-02T00:00:00.000Z',
+          expiresAt: '2026-10-09T00:00:00.000Z',
+          current: false,
+        },
+      ],
+    });
+    mocks.revokeSession.mockResolvedValue({ current: false });
+    renderAs('user');
+    expect(await screen.findByTestId('settings-devices')).toBeTruthy();
+    expect(await screen.findByText('当前设备')).toBeTruthy();
+    expect(screen.getByText('未知客户端')).toBeTruthy();
+    const revokeButtons = screen.getAllByRole('button', { name: '注销' });
+    const otherDevice = revokeButtons[1];
+    if (!otherDevice) throw new Error('缺少其他设备的注销按钮');
+    fireEvent.click(otherDevice);
+    await waitFor(() =>
+      expect(mocks.revokeSession).toHaveBeenCalledWith(
+        platform,
+        '00000000-0000-4000-8000-0000000000b2',
+      ),
+    );
   });
 });

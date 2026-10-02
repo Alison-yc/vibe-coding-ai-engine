@@ -32,8 +32,9 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { usePlatform } from '@ai-engine/platform';
+import { listAuthSessions, revokeAuthSession } from '../auth/auth-api';
 import { loginPathFor } from '../auth/require-permission';
-import { useCan } from '../auth/use-auth';
+import { useAuth, useCan } from '../auth/use-auth';
 import {
   checkBackendConnection,
   localizeBackendConnectionError,
@@ -350,6 +351,66 @@ const ServerCard = ({ server, manageable }: { server: McpServerStatus; manageabl
   );
 };
 
+const DevicesCard = () => {
+  const platform = usePlatform();
+  const { t } = useFeatureTranslation('auth');
+  const { logout } = useAuth();
+  const sessions = useQuery({
+    queryKey: ['auth', 'sessions'],
+    queryFn: () => listAuthSessions(platform),
+  });
+  const revoke = useMutation({
+    mutationFn: (sessionId: string) => revokeAuthSession(platform, sessionId),
+    onSuccess: async (result) => {
+      if (result.current) {
+        await logout();
+        return;
+      }
+      await sessions.refetch();
+    },
+  });
+  return (
+    <Card data-testid="settings-devices" className="w-full min-w-0 overflow-hidden">
+      <CardHeader>
+        <CardTitle className="line-clamp-2 min-w-0">{t('devices.title')}</CardTitle>
+      </CardHeader>
+      <CardContent className="flex min-w-0 flex-col gap-3 text-sm">
+        <p className="text-muted-foreground line-clamp-3">{t('devices.hint')}</p>
+        {sessions.isPending ? null : sessions.isError ? (
+          <p className="text-destructive">{t('unavailable')}</p>
+        ) : sessions.data.sessions.length === 0 ? (
+          <p className="text-muted-foreground">{t('devices.empty')}</p>
+        ) : (
+          sessions.data?.sessions.map((session) => (
+            <div key={session.id} className="flex min-w-0 items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="flex min-w-0 items-center gap-2">
+                  <span className="truncate">{t(`devices.client.${session.client}`)}</span>
+                  {session.current ? (
+                    <Badge variant="secondary">{t('devices.current')}</Badge>
+                  ) : null}
+                </p>
+                <p className="text-muted-foreground truncate">
+                  {session.userAgent ?? t('devices.unknownAgent')}
+                </p>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={revoke.isPending}
+                onClick={() => revoke.mutate(session.id)}
+              >
+                {t('devices.revoke')}
+              </Button>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  );
+};
+
 const LoginGuideCard = () => {
   const { t } = useFeatureTranslation('auth');
   return (
@@ -452,6 +513,7 @@ export const SettingsPage = () => {
     <PageShell title={commonT('settings.title')} description={commonT('settings.description')}>
       <EffectsCard />
       <LanguageCard />
+      <DevicesCard />
       {platform.capabilities.backendConnectionSetup ? <BackendAddressCard /> : null}
       {canReadMcp ? <McpSection /> : <LoginGuideCard />}
     </PageShell>
