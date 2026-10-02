@@ -518,6 +518,17 @@ CR-AUTH-5 自检记录（2026-10-02）：
 - 验证：`pnpm test:integration` 5 个文件 / 16 条通过，含登录设备列表和注销他人设备 404。`pnpm ci:local` 里 `format:check`、`lint`、`test:cov`（145 文件 / 790 条）、`sec:sast` 通过，随后单独跑了 `build`。`sec:sca` 仍因既有 27 个依赖漏洞失败（3 low / 15 moderate / 9 high），本批次未改 lockfile。Semgrep 的 2 条 `pool.render` audit 不阻断。
 - 未验证：dmg 打包后的 sidecar 自动迁移与完整登录走查仍要人工做，挂在 README「并行保留」。远端 CI 要等推送后才看得到。本批次未改 Rust，没有重跑 `rust:check`。
 
+CR-AUTH-5 审查记录（2026-10-02）：代码审查通过，交付验证未完成。
+
+- 修订：无数据库时定时清理原先每天抛 503，改为直接跳过，并补单测。
+- 修订：`ScheduleModule.forRoot()` 从 `KnowledgeModule` 移到 `AppModule`，认证清理任务不再隐式依赖知识库模块。
+- 修订：访客清理的 `not exists` 子查询原先只有内存仓库测试，现补真实 Postgres 集成用例，在事务内造数据并回滚，不污染开发库。把条件改成 `<` 后用例变红。
+- 修订：Semgrep 敏感日志规则原先用 `[\s\S]*?`，会跨语句命中后面的 `{ token }`，改为 `[^;]*?`，并补跨语句反例。旧正则下自测变红。
+- 修订：访客不再显示「登录设备」卡片，也不请求 `/auth/sessions`。去掉门控后访客用例变红。
+- 确认：注销当前设备后 `logout()` 会吞掉 `/auth/logout` 的 401，再清 token 并换新访客。设备列表只返回本人未注销、未过期的会话，没有 token。CI 集成 job 的认证环境变量齐全。
+- 验证：`pnpm test:integration` 5 个文件 / 17 条，`lint`、`typecheck`、`format:check`、`test:cov`（790 条）、`sec:sast`、`sec:sast:test`（12/12）、`build` 通过。`sec:sca` 同自检记录。
+- 未完成（阻塞 21-E 关闭）：远端 CI 需推送后确认；dmg 实包 sidecar 自动迁移与访客 → 注册 → 知识库 → 退出走查需人工执行。两项通过后 21-E 才算完成，再进入 M6 集成 Review。
+
 ## 验收标准（DoD）
 
 - [ ] 7 张新表与 3 个归属列可从空库迁移重建，约束均有反例测试
