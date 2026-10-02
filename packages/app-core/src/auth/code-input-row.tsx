@@ -39,20 +39,20 @@ export const CodeInputRow = ({
 
   return (
     <div className="flex min-w-0 flex-col gap-2">
-      <div className="flex min-w-0 gap-2">
+      <div className="flex min-w-0 flex-col gap-2 sm:flex-row">
         <Input
           id={id}
           inputMode="numeric"
           autoComplete="one-time-code"
           maxLength={6}
-          className="min-w-0 flex-1"
+          className="min-w-0 sm:flex-1"
           value={value}
           onChange={(event) => onChange(event.target.value)}
         />
         <Button
           type="button"
           variant="outline"
-          className="w-32 shrink-0"
+          className="w-full shrink-0 sm:w-32"
           disabled={send.isPending || remaining > 0}
           onClick={() => {
             if (!identifier) {

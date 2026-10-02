@@ -143,7 +143,7 @@ export const LoginPage = () => {
                 : null
           }
         />
-        <Button type="submit" disabled={submit.isPending}>
+        <Button type="submit" className="w-full" disabled={submit.isPending}>
           {submit.isPending ? t('login.submitting') : t('login.submit')}
         </Button>
       </form>

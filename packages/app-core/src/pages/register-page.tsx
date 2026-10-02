@@ -87,9 +87,15 @@ export const RegisterPage = () => {
               aria-checked={type === item}
               className={cn(type === item && 'bg-background shadow-sm')}
               onClick={() => {
+                if (item === type) return;
                 setType(item);
                 setRawIdentifier('');
+                setCode('');
+                setDisplayName('');
+                setPassword('');
+                setConfirm('');
                 setFieldError(null);
+                submit.reset();
               }}
             >
               {t(item === 'email' ? 'identifier.email' : 'identifier.phone')}
@@ -113,6 +119,7 @@ export const RegisterPage = () => {
         </AuthField>
         <AuthField id="register-code" label={t('fields.code')}>
           <CodeInputRow
+            key={type}
             id="register-code"
             value={code}
             onChange={setCode}
@@ -156,7 +163,7 @@ export const RegisterPage = () => {
                 : null
           }
         />
-        <Button type="submit" disabled={submit.isPending}>
+        <Button type="submit" className="w-full" disabled={submit.isPending}>
           {submit.isPending ? t('register.submitting') : t('register.submit')}
         </Button>
       </form>

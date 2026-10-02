@@ -117,7 +117,7 @@ export const ResetPasswordPage = () => {
                 : null
           }
         />
-        <Button type="submit" disabled={submit.isPending}>
+        <Button type="submit" className="w-full" disabled={submit.isPending}>
           {submit.isPending ? t('reset.submitting') : t('reset.submit')}
         </Button>
       </form>

@@ -272,6 +272,33 @@ describe('注册页', () => {
     expect(backend.callsTo('/auth/register')).toHaveLength(0);
   });
 
+  it('切换邮箱和手机号时清空已填内容和验证码状态', async () => {
+    createFakeBackend();
+    const platform = renderAt('/register');
+    await waitForGuest(platform);
+
+    type('邮箱', ACCOUNT.identifier);
+    type('验证码', STATIC_CODE);
+    type('昵称（可选）', 'Alice');
+    type('密码', ACCOUNT.password);
+    type('确认密码', ACCOUNT.password);
+    submit('获取验证码');
+    expect(await screen.findByRole('button', { name: '60 秒后重发' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('radio', { name: '手机号' }));
+
+    const valueOf = (label: string) => (screen.getByLabelText(label) as HTMLInputElement).value;
+    expect(valueOf('手机号')).toBe('');
+    expect(valueOf('验证码')).toBe('');
+    expect(valueOf('昵称（可选）')).toBe('');
+    expect(valueOf('密码')).toBe('');
+    expect(valueOf('确认密码')).toBe('');
+    expect((screen.getByRole('button', { name: '获取验证码' }) as HTMLButtonElement).disabled).toBe(
+      false,
+    );
+    expect(screen.queryByRole('status')).toBeNull();
+  });
+
   it('手机号注册携带访客 token 并归一化号码，成功后导航栏切换为已登录', async () => {
     const backend = createFakeBackend();
     const platform = renderAt('/register?redirect=%2Fsomewhere');
